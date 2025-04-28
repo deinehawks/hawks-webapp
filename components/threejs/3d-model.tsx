@@ -55,7 +55,7 @@ export function ThreeDimensionalModel({ survey }) {
           )} */}
           {selected3dModel === "pcd-odm" && (
             <PointCloud
-              url={`/3d/${survey.code?.toLowercase()}/${getYear(
+              url={`/3d/${survey.code?.toLowerCase()}/${getYear(
                 survey.flight_date
               )}/${survey.id}/odm.pcd`}
               material-size={0.1}
