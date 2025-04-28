@@ -40,7 +40,7 @@ export function FoiSelector({
   return (
     <Select value={selectedFoi} onValueChange={setSelectedFoi}>
       <SelectTrigger className="w-fit" id="foi-selector">
-        <Label>Crop Status:</Label>
+        <Label>FOI:</Label>
         <SelectValue placeholder="Select feature of interest" />
       </SelectTrigger>
       <SelectContent>

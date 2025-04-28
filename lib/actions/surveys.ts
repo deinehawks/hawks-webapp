@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { getUser } from "./auth";
 import { getUserProfile } from "./profiles";
+import { redirect } from "next/navigation";
 
 export async function getAllUserSurveys() {
   const supabase = await createClient();
@@ -35,11 +36,16 @@ export async function getObjectDetectionData(id?: string) {
 
   if (user && user.role === "authenticated") {
     const userProfile = await getUserProfile(user.id);
+
     const { access_code } = userProfile;
+
+    if (!access_code) {
+      redirect("/error");
+    }
 
     const { data: detected_objects, error } = await supabase.storage
       .from("detected-objects")
-      .download(`${access_code.toLowerCase()}.json`);
+      .download(`${access_code?.toLowerCase()}.json`);
 
     if (error) {
       throw new Error("Failed to fetch object detection data.");

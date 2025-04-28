@@ -29,7 +29,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useMemo, useState } from "react";
 import { useOrthoMapStore } from "@/providers/ortho-map-store-provider";
-import { Badge } from "../ui/badge";
+import { Badge } from "@/components/ui/badge";
 import type { ComputerVisionObject } from "@/lib/types";
 
 function OrthomapFoiSelector({

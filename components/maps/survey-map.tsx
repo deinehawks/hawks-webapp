@@ -36,15 +36,14 @@ import {
 import { format, getYear } from "date-fns";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ThreeDimensionalModelCard } from "../3d-model-card";
-import { ElevationModelCard } from "../elevation-model-card";
-import { ThreeDimensionalModelSelector } from "../selectors/3d-model-selector";
-import { DemSelector } from "../selectors/dem-selectors";
-import { FoiSelector } from "../selectors/foi-selector";
-import { VegetationIndexSelector } from "../selectors/vegetation-index-selector";
-import { VegetationIndexCard } from "../vegetation-index-card";
-import { ThreeDimensionalModel } from "../threejs/3d-model";
-import ThreeDimensionalModelCaller from "../callers/3d-caller";
+import { ThreeDimensionalModelCard } from "@/components/3d-model-card";
+import { ElevationModelCard } from "@/components/elevation-model-card";
+import { ThreeDimensionalModelSelector } from "@/components/selectors/3d-model-selector";
+import { DemSelector } from "@/components/selectors/dem-selectors";
+import { FoiSelector } from "@/components/selectors/foi-selector";
+import { VegetationIndexSelector } from "@/components/selectors/vegetation-index-selector";
+import { VegetationIndexCard } from "@/components/vegetation-index-card";
+import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
 
 function SurveyMapEvents({
   survey,

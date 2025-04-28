@@ -4,12 +4,12 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-export async function signup(formData) {
+export async function signup(form_data) {
   const supabase = await createClient();
 
   const data = {
-    email: formData.email,
-    password: formData.password,
+    email: form_data.email,
+    password: form_data.password,
   };
 
   const { error } = await supabase.auth.signUp(data);
@@ -65,6 +65,8 @@ export async function getUser() {
     console.error(error);
     redirect("/error");
   }
+
+  console.log(user);
 
   return user;
 }

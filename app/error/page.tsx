@@ -1,7 +1,7 @@
 export default function Page() {
   return (
-    <div className="flex flex-1 items-center justify-center">
-      Something went wrong.
+    <div className="flex h-svh flex-col items-center justify-center">
+      <div>Something went wrong.</div>
     </div>
   );
 }

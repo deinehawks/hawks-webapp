@@ -50,7 +50,7 @@ export function VegetationIndexCard() {
       <CardContent>
         <div className="flex flex-col gap-4">
           <div>{index.description}</div>
-          <div>{index.formula_description}</div>
+          {/* <div>{index.formula_description}</div> */}
 
           <Table className="w-full table-auto text-left">
             <TableCaption>{index.formula}</TableCaption>
