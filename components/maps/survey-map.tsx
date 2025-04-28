@@ -242,6 +242,7 @@ export default function SurveyMap({
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
       <Tabs
         defaultValue="ortho"
+        value={activeTab}
         onValueChange={setActiveTab}
         className="flex flex-1 h-full w-full flex-col justify-start gap-6"
       >
@@ -250,7 +251,7 @@ export default function SurveyMap({
             {" "}
             View{" "}
           </Label>
-          <Select defaultValue="ortho">
+          <Select value={activeTab} onValueChange={setActiveTab}>
             <SelectTrigger
               className="@4xl/main:hidden flex w-fit"
               id="view-selector"
@@ -259,8 +260,12 @@ export default function SurveyMap({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ortho">Orthomosaic</SelectItem>
-              <SelectItem value="plant-health">Plant Health</SelectItem>
-              <SelectItem value="dem">Elevation Model</SelectItem>
+              {survey.tags.includes("multispectral") && (
+                <SelectItem value="plant-health">Plant Health</SelectItem>
+              )}
+              {survey.tags.includes("lidar") && (
+                <SelectItem value="dem">Elevation Model</SelectItem>
+              )}
               <SelectItem value="3d">3D Model</SelectItem>
             </SelectContent>
           </Select>

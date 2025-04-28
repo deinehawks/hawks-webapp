@@ -66,7 +66,5 @@ export async function getUser() {
     redirect("/error");
   }
 
-  console.log(user);
-
   return user;
 }

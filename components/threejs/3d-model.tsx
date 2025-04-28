@@ -39,6 +39,7 @@ export function ThreeDimensionalModel({ survey }) {
           WebGL is not supported.{" "}
         </div>
       }
+      className="flex flex-1 items-center justify-center"
     >
       <Bounds fit={true} clip={true} observe={true}>
         <Center>
