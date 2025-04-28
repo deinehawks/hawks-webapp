@@ -491,7 +491,7 @@ export default function SurveyMap({
                     <ThreeDimensionalModelSelector />
                   </div>
                 </CardContent>
-                <ThreeDimensionalModelCard />
+                <ThreeDimensionalModelCard pcd={survey.point_cloud} />
               </Card>
             </TabsContent>
           </div>

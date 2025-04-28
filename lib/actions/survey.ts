@@ -15,7 +15,7 @@ export async function getUserSurvey(id: string) {
 
     const { data: survey, error } = await supabase
       .from("surveys")
-      .select("*, ortho(*)")
+      .select("*, ortho(*), point_cloud(*)")
       .eq("id", id)
       .single();
 

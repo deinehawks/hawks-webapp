@@ -9,7 +9,7 @@ import {
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { ThreeDimensionalAxesHelperSwitch } from "./selectors/3d-model-selector";
 
-export function ThreeDimensionalModelCard() {
+export function ThreeDimensionalModelCard({ pcd }) {
   const { selected3dModel } = useSurveyMapStore((state) => state);
 
   const model = three_dimensional_models.find(
@@ -35,7 +35,7 @@ export function ThreeDimensionalModelCard() {
               <TableBody>
                 <TableRow>
                   <TableCell className="font-medium"> No. of Points </TableCell>
-                  <TableCell> 123,456 </TableCell>
+                  <TableCell> {pcd?.num_points.toLocaleString()} </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
