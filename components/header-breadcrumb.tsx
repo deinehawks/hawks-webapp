@@ -23,9 +23,7 @@ export function HeaderBreadcrumb() {
             return (
               <React.Fragment key={i}>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#" className="capitalize">
-                    {path}
-                  </BreadcrumbLink>
+                  <span className="capitalize">{path}</span>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
               </React.Fragment>
