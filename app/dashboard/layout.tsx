@@ -63,7 +63,6 @@ export default async function DashboardLayout({
                       <Image
                         src={hawks_logo}
                         alt="Typescript logo of ASIMOV-HAWKS"
-                        objectFit="contain"
                         style={{ width: "100%", height: "auto" }}
                       />
                     </div>
@@ -72,7 +71,6 @@ export default async function DashboardLayout({
                     <Image
                       src={hawks_typescript}
                       alt="Typescript logo of ASIMOV-HAWKS"
-                      objectFit="contain"
                       style={{ width: "100%", height: "auto" }}
                     />
                   </div>
