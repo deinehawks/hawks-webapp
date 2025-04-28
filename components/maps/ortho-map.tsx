@@ -348,7 +348,9 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                     id={survey.id}
                     type="raster"
                     tiles={[
-                      `/tiles/${survey.code}/${flightYear}/${survey.id}/ortho/round-corners/{z}/{x}/{y}.png`,
+                      `/tiles/${survey.code.toLowerCase()}/${flightYear}/${
+                        survey.id
+                      }/ortho/round-corners/{z}/{x}/{y}.png`,
                     ]}
                     scheme="tms"
                     tileSize={256}
