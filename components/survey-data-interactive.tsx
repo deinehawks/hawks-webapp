@@ -1,3 +1,4 @@
+import DashboardMapCaller from "@/components/callers/dashboard-map-caller";
 import {
   Card,
   CardContent,
@@ -5,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import MapCaller from "@/components/callers/map-caller";
 import { getEarliestandLatestDates } from "@/lib/helpers";
 import { format } from "date-fns";
 
@@ -26,7 +26,7 @@ export default function SurveyDataInteractive({ data }) {
       </CardHeader>
       <CardContent>
         <div className="w-full h-96">
-          <MapCaller data={data} />
+          <DashboardMapCaller data={data} />
         </div>
       </CardContent>
     </Card>

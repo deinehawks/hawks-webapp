@@ -10,7 +10,6 @@ import { LngLatLike, Map, Marker, Popup, useMap } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Link from "next/link";
 import { useState } from "react";
-import { Button } from "./ui/button";
 
 function MapMarker({ data, longitude, latitude, setPopupInfo }) {
   const { current: map } = useMap();

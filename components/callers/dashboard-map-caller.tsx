@@ -5,7 +5,7 @@ import maplibregl from "maplibre-gl";
 import { useEffect } from "react";
 import { Protocol } from "pmtiles";
 
-export default function MapCaller(props) {
+export default function DashboardMapCaller(props) {
   // useEffect(() => {
   //   let protocol = new Protocol();
   //   maplibregl.addProtocol("pmtiles", protocol.tile);
@@ -14,14 +14,17 @@ export default function MapCaller(props) {
   //   };
   // }, []);
 
-  const MapLibre = dynamic(() => import("@/components/maplibre"), {
-    ssr: false,
-    loading: () => (
-      <div className="justify center flex flex-1 items-center justify-center">
-        Loading map...
-      </div>
-    ),
-  });
+  const DashboardMap = dynamic(
+    () => import("@/components/maps/dashboard-map"),
+    {
+      ssr: false,
+      loading: () => (
+        <div className="justify center flex flex-1 items-center justify-center">
+          Loading map...
+        </div>
+      ),
+    }
+  );
 
-  return <MapLibre {...props} />;
+  return <DashboardMap {...props} />;
 }
