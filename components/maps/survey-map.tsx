@@ -238,6 +238,12 @@ export default function SurveyMap({
     return findExtremeCoordinates(survey.geojson_boundaries);
   }, [survey]);
 
+  const numBananas = useMemo(() => {
+    if (!detectedObjects) return null;
+    return detectedObjects.filter((object) => object.label.includes("Banana"))
+      .length;
+  });
+
   return (
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
       <Tabs
@@ -406,11 +412,15 @@ export default function SurveyMap({
                           <TableCell> No. of Images </TableCell>
                           <TableCell>{survey.ortho?.num_images}</TableCell>
                         </TableRow>
-                        <TableRow>
+                        {/* <TableRow>
                           <TableCell>GPS Error</TableCell>
                           <TableCell>
                             {survey.ortho?.gps_error.toFixed(2)} m
                           </TableCell>
+                        </TableRow> */}
+                        <TableRow>
+                          <TableCell>Crop Inventory</TableCell>
+                          <TableCell>{numBananas?.toLocaleString()}</TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
