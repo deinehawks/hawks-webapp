@@ -350,7 +350,7 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                     id={survey.id}
                     type="raster"
                     tiles={[
-                      `/tiles/${survey.code.toLowerCase()}/${flightYear}/${
+                      `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${flightYear}/${
                         survey.id
                       }/ortho/round-corners/{z}/{x}/{y}.png`,
                     ]}
