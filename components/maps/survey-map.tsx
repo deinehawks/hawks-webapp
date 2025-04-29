@@ -342,7 +342,7 @@ export default function SurveyMap({
                               id="ortho"
                               type="raster"
                               tiles={[
-                                `/tiles/${survey.code?.toLowerCase()}/${getYear(
+                                `/asimov-hawks/tiles/${survey.code?.toLowerCase()}/${getYear(
                                   survey.flight_date
                                 )}/${
                                   survey.id
