@@ -92,7 +92,6 @@ function MapEvents({ data, setPopupInfo }) {
   });
 
   map?.on("click", "area-fills", (e) => {
-    console.log(e.features);
     if (e.features?.length && e.features.length > 0) {
       clickedAreaId = e.features?.at(0)?.properties.survey_id;
 
@@ -222,11 +221,7 @@ export default function MapLibre({ data: surveys }) {
     >
       <MapEvents data={surveys} setPopupInfo={setPopupInfo} />
       {popupInfo && (
-        <MapPopup
-          initialViewState={initialViewState}
-          popupInfo={popupInfo}
-          setPopupInfo={setPopupInfo}
-        />
+        <MapPopup popupInfo={popupInfo} setPopupInfo={setPopupInfo} />
       )}
     </Map>
   );
