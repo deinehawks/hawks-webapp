@@ -316,7 +316,7 @@ export default function SurveyMap({
                             osm: {
                               type: "raster",
                               tiles: [
-                                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                                "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
                               ],
                               tileSize: 256,
                               attribution: "&copy; OpenStreetMap Contributors",
