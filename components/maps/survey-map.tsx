@@ -242,7 +242,7 @@ export default function SurveyMap({
     if (!detectedObjects) return null;
     return detectedObjects.filter((object) => object.label.includes("Banana"))
       .length;
-  });
+  }, [detectedObjects]);
 
   return (
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
@@ -266,27 +266,27 @@ export default function SurveyMap({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ortho">Orthomosaic</SelectItem>
-              {survey.tags.includes("multispectral") && (
+              {/* {survey.tags.includes("multispectral") && (
                 <SelectItem value="plant-health">Plant Health</SelectItem>
               )}
               {survey.tags.includes("lidar") && (
                 <SelectItem value="dem">Elevation Model</SelectItem>
-              )}
+              )} */}
               <SelectItem value="3d">3D Model</SelectItem>
             </SelectContent>
           </Select>
           <TabsList className="@4xl/main:flex hidden">
             <TabsTrigger value="ortho">Orthomosaic</TabsTrigger>
-            {survey.tags.includes("multispectral") && (
+            {/* {survey.tags.includes("multispectral") && (
               <TabsTrigger value="plant-health" className="gap-1">
                 Plant Health
               </TabsTrigger>
-            )}
-            {survey.tags.includes("lidar") && (
+            )} */}
+            {/* {survey.tags.includes("lidar") && (
               <TabsTrigger value="dem" className="gap-1">
                 Elevation Model
               </TabsTrigger>
-            )}
+            )} */}
             {survey.tags.includes("rgb") && (
               <TabsTrigger value="3d">3D Model</TabsTrigger>
             )}
@@ -503,7 +503,7 @@ export default function SurveyMap({
                       (i.e., color, texture, etc.) of a real world space and/or
                       object.
                     </div>
-                    <ThreeDimensionalModelSelector />
+                    <ThreeDimensionalModelSelector code={survey.code} />
                   </div>
                 </CardContent>
                 <ThreeDimensionalModelCard pcd={survey.point_cloud} />

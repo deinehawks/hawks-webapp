@@ -47,3 +47,6 @@ next-env.d.ts
 /public/tiles/lxd
 /public/tiles/mdahi
 /public/tiles/mxl
+
+# 3d
+/public/3d

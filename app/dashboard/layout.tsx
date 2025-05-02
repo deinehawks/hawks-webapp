@@ -25,6 +25,7 @@ import hawks_logo from "@/public/hawks/logo.png";
 import hawks_typescript from "@/public/hawks/typescript.png";
 import {
   Building2Icon,
+  HouseIcon,
   LayoutDashboardIcon,
   LocateFixedIcon,
 } from "lucide-react";
@@ -94,14 +95,16 @@ export default async function DashboardLayout({
                     <span> Dashboard </span>
                   </Link>
                 </SidebarMenuButton>
-                <Button
-                  size="icon"
-                  className="h-9 w-9 shrink-0 group-data-[collapsible=icon]:opacity-0"
-                  variant="outline"
-                >
-                  <LocateFixedIcon />
-                  <span className="sr-only"> Location </span>
-                </Button>
+                <Link href={`/`}>
+                  <Button
+                    size="icon"
+                    className="h-9 w-9 shrink-0 group-data-[collapsible=icon]:opacity-0"
+                    variant="outline"
+                  >
+                    <HouseIcon />
+                    <span className="sr-only"> Homepage </span>
+                  </Button>
+                </Link>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroup>

@@ -1,11 +1,11 @@
 export const three_dimensional_models = [
-  // {
-  //   code: "pcd-lidar",
-  //   name: "Point Cloud (LiDAR)",
-  //   source: "LiDAR",
-  //   description:
-  //     "LiDAR-derived point clouds are created by actively emitting laser pulses and measuring the time it takes for the reflections to return to the sensor. Each measured return generates a precise 3D point with spatial coordinates, forming a dense and accurate representation of the scanned environment.",
-  // },
+  {
+    code: "pcd-lidar",
+    name: "Point Cloud (LiDAR)",
+    source: "LiDAR",
+    description:
+      "LiDAR-derived point clouds are created by actively emitting laser pulses and measuring the time it takes for the reflections to return to the sensor. Each measured return generates a precise 3D point with spatial coordinates, forming a dense and accurate representation of the scanned environment.",
+  },
   {
     code: "pcd-odm",
     name: "Point Cloud (Photogrammetry)",

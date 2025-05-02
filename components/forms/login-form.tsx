@@ -30,11 +30,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 import { login } from "@/lib/actions/auth";
+import { Checkbox } from "../ui/checkbox";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const [passwordInputType, setPasswordInputType] = useState("password");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -59,6 +61,16 @@ export function LoginForm({
     } else {
       setError("");
     }
+  }
+
+  function togglePasswordInputVisibility() {
+    if (passwordInputType === "password") {
+      setPasswordInputType("text");
+    }
+    if (passwordInputType === "text") {
+      setPasswordInputType("password");
+    }
+    return null;
   }
 
   return (
@@ -110,7 +122,27 @@ export function LoginForm({
                         </a>
                       </div>
                       <FormControl>
-                        <Input id="password" type="password" {...field} />
+                        <div className="flex flex-col gap-2">
+                          <Input
+                            id="password"
+                            type={passwordInputType}
+                            {...field}
+                          />
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id="show-password"
+                              onCheckedChange={() =>
+                                togglePasswordInputVisibility()
+                              }
+                            />
+                            <label
+                              htmlFor="show-password"
+                              className="text-sm leading none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              Show Password
+                            </label>
+                          </div>
+                        </div>
                       </FormControl>
                       <FormDescription></FormDescription>
                       <FormMessage>

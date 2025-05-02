@@ -6,13 +6,21 @@ import {
   generateFeatureCollectionByFoi,
   getUniqueYears,
 } from "@/lib/helpers";
-import { Layer, LngLatLike, Map, Source, useMap } from "@vis.gl/react-maplibre";
+import {
+  Layer,
+  LngLatLike,
+  Map,
+  MapProvider,
+  Source,
+  useMap,
+} from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -27,10 +35,48 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useOrthoMapStore } from "@/providers/ortho-map-store-provider";
 import { Badge } from "@/components/ui/badge";
 import type { ComputerVisionObject } from "@/lib/types";
+
+function SourceLoadingStatus({ idList }: { idList: string[] }) {
+  const {
+    currentLoadingSource,
+    setCurrentLoadingSource,
+    areAllSourcesLoaded,
+    setAreAllSourcesLoaded,
+  } = useOrthoMapStore((state) => state);
+
+  const { orthomap } = useMap();
+
+  useEffect(() => {
+    if (!orthomap) return;
+    orthomap.on("idle", () => {
+      setAreAllSourcesLoaded(true);
+    });
+
+    return () => {
+      orthomap.off("idle", () => {
+        setAreAllSourcesLoaded(false);
+      });
+    };
+  }, [orthomap]);
+
+  useEffect(() => {
+    if (!orthomap) return;
+    orthomap.on("click", (e) => {
+      console.log(e.features);
+    });
+  }, [orthomap]);
+
+  return (
+    <div className="text-sm text-muted-foreground">
+      {" "}
+      {areAllSourcesLoaded ? "All sources loaded." : `Loading orthomosaics...`}
+    </div>
+  );
+}
 
 function OrthomapFoiSelector({
   detectedObjects,
@@ -38,6 +84,23 @@ function OrthomapFoiSelector({
   detectedObjects: ComputerVisionObject[];
 }) {
   const { selectedFoi, setSelectedFoi } = useOrthoMapStore((state) => state);
+  const [inputPlaceholder, setInputPlaceholder] = useState("");
+
+  useEffect(() => {
+    const handleWindowResize = () => {
+      if (window.innerWidth < 768) {
+        setInputPlaceholder("FOI");
+      } else {
+        setInputPlaceholder("feature of interest");
+      }
+    };
+
+    handleWindowResize();
+
+    window.addEventListener("resize", handleWindowResize);
+
+    return () => window.removeEventListener("resize", handleWindowResize);
+  });
 
   const numHealthyBananas = useMemo(() => {
     if (!detectedObjects) return 0;
@@ -59,7 +122,7 @@ function OrthomapFoiSelector({
     <Select value={selectedFoi} onValueChange={setSelectedFoi}>
       <SelectTrigger className="w-fit" id="foi-selector">
         <Label>Crop Status:</Label>
-        <SelectValue placeholder="Select feature of interest" />
+        <SelectValue placeholder={`Select ${inputPlaceholder}`} />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
@@ -170,76 +233,17 @@ function FeaturesOfInterest({
   );
 }
 
-function ObjectDetectionBoundingBoxes({ data, foi }: { foi: string }) {
-  const healthyBananas = generateFeatureCollectionByFoi(
-    data,
-    "Banana Plant (Healthy-looking)"
-  );
-
-  const unhealthyBananas = generateFeatureCollectionByFoi(
-    data,
-    "Banana Plant (Infected)"
-  );
-
-  return (
-    <>
-      {(foi === "healthy" || foi === "all") && (
-        <Source
-          id="overview-healthy-bananas"
-          type="geojson"
-          data={healthyBananas}
-        >
-          <Layer
-            id="healthyBanana-fills"
-            type="fill"
-            source="overview-healthy-bananas"
-            paint={{
-              "fill-color": "#008000",
-              "fill-opacity": 0.1,
-            }}
-          />
-          <Layer
-            id="healthyBanana-borders"
-            type="line"
-            source="overview-healthy-bananas"
-            paint={{
-              "line-color": "#008000",
-              "line-width": 1,
-            }}
-          />
-        </Source>
-      )}
-      {(foi === "unhealthy" || foi === "all") && (
-        <Source id="unhealthy-bananas" type="geojson" data={unhealthyBananas}>
-          <Layer
-            id="unhealthy-fills"
-            type="fill"
-            source="unhealthy-bananas"
-            paint={{
-              "fill-color": "#ff0000",
-              "fill-opacity": 0.1,
-            }}
-          />
-          <Layer
-            id="unhealthy-borders"
-            type="line"
-            source="unhealthy-bananas"
-            paint={{
-              "line-color": "#ff0000",
-              "line-width": 1,
-            }}
-          />
-        </Source>
-      )}
-    </>
-  );
-}
-
 export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
   // States
   const [flightYear, setFlightYear] = useState("");
 
   // Memoized calculations
+
+  const surveyIds = useMemo(() => {
+    if (!surveys) return null;
+    return surveys.map((survey) => survey.id);
+  }, [surveys]);
+
   const uniqueFlightYears = useMemo(() => {
     if (!surveys) return [];
     return getUniqueYears(
@@ -248,7 +252,7 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
   }, [surveys]);
 
   const { global_x, global_y } = useMemo(() => {
-    if (surveys)
+    if (!surveys)
       return { global_x: 125.58147596772221, global_y: 7.0763840759644 };
     return calculateGlobalCenters(surveys);
   }, [surveys]);
@@ -307,76 +311,83 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
         </div>
       </Tabs>
 
-      <div className="flex flex-1 h-full px-4 lg:px-6">
-        <Card className="@container/card flex flex-1 flex-col h-full">
-          <CardHeader>
-            <CardTitle> {userProfile.organization.code} </CardTitle>
-            <CardDescription>{userProfile.organization.name}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1">
-            <div className="h-full flex">
-              <Map
-                id="overview"
-                initialViewState={{
-                  latitude: global_y,
-                  longitude: global_x,
-                  bounds: bounds,
-                  fitBoundsOptions: { padding: 15 },
-                }}
-                mapStyle={{
-                  version: 8,
-                  sources: {
-                    osm: {
-                      type: "raster",
-                      tiles: [
-                        "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
-                      ],
-                      tileSize: 256,
-                      attribution: "&copy; OpenStreetMap Contributors",
+      <MapProvider>
+        <div className="flex flex-1 h-full px-4 lg:px-6">
+          <Card className="@container/card flex flex-1 flex-col h-full">
+            <CardHeader>
+              <CardTitle> {userProfile.organization.code} </CardTitle>
+              <CardDescription>{userProfile.organization.name}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1">
+              <div className="h-full flex">
+                <Map
+                  id="orthomap"
+                  initialViewState={{
+                    latitude: global_y,
+                    longitude: global_x,
+                    bounds: bounds,
+                    fitBoundsOptions: { padding: 15 },
+                  }}
+                  minZoom={15}
+                  maxZoom={25}
+                  mapStyle={{
+                    version: 8,
+                    sources: {
+                      osm: {
+                        type: "raster",
+                        tiles: [
+                          "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+                        ],
+                        tileSize: 256,
+                        attribution: "&copy; OpenStreetMap Contributors",
+                      },
                     },
-                  },
-                  layers: [
-                    {
-                      id: "osm",
-                      type: "raster",
-                      source: "osm",
-                    },
-                  ],
-                }}
-              >
-                {surveys.map((survey) => (
-                  <Source
-                    key={survey.id}
-                    id={survey.id}
-                    type="raster"
-                    tiles={[
-                      `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${flightYear}/${
-                        survey.id
-                      }/ortho/round-corners/{z}/{x}/{y}.png`,
-                    ]}
-                    scheme="tms"
-                    tileSize={256}
-                    minzoom={15}
-                    maxzoom={25}
-                  >
-                    <Layer
+                    layers: [
+                      {
+                        id: "osm",
+                        type: "raster",
+                        source: "osm",
+                      },
+                    ],
+                  }}
+                >
+                  {surveys.map((survey) => (
+                    <Source
+                      key={survey.id}
                       id={survey.id}
                       type="raster"
-                      source={survey.id}
+                      tiles={[
+                        `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${flightYear}/${
+                          survey.id
+                        }/ortho/sharp-corners/{z}/{x}/{y}.png`,
+                      ]}
+                      scheme="tms"
+                      tileSize={256}
                       minzoom={15}
-                      maxzoom={24}
-                    />
-                  </Source>
-                ))}
-                <FeaturesOfInterest
-                  code={surveys.at(0).code}
-                  detectedObjects={detectedObjects}
-                />
-              </Map>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                      maxzoom={25}
+                    >
+                      <Layer
+                        id={survey.id}
+                        type="raster"
+                        source={survey.id}
+                        minzoom={15}
+                        maxzoom={24}
+                      />
+                    </Source>
+                  ))}
+                  <FeaturesOfInterest
+                    code={surveys.at(0).code}
+                    detectedObjects={detectedObjects}
+                  />
+                </Map>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <SourceLoadingStatus idList={surveyIds} />
+            </CardFooter>
+          </Card>
+        </div>
+      </MapProvider>
     </div>
   );
 }

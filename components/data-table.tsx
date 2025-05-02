@@ -58,7 +58,7 @@ import {
   MoreVerticalIcon,
   XIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Tabs } from "./ui/tabs";
 import {
@@ -245,6 +245,8 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
 ];
 
 export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
+  const [searchInputPlaceholder, setSearchInputPlaceholder] = useState("");
+
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -253,6 +255,22 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+
+  useEffect(() => {
+    const handleWindowResize = () => {
+      if (window.innerWidth < 1024) {
+        setSearchInputPlaceholder("ID");
+      } else {
+        setSearchInputPlaceholder("Search by ID");
+      }
+    };
+
+    handleWindowResize();
+
+    window.addEventListener("resize", handleWindowResize);
+
+    return () => window.removeEventListener("resize", handleWindowResize);
+  });
 
   const table = useReactTable({
     data,
@@ -287,7 +305,7 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
       <div className="flex items-center justify-between px-4 lg:px-6">
         <div className="flex items-center gap-2">
           <Input
-            placeholder="Search by ID"
+            placeholder={searchInputPlaceholder}
             value={(table.getColumn("id")?.getFilterValue() as string) ?? ""}
             onChange={(e) =>
               table.getColumn("id")?.setFilterValue(e.target.value)
@@ -400,7 +418,7 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
             </TableBody>
           </Table>
         </div>
-        {/* <div className="flex items-center justify-between px-4">
+        <div className="flex items-center justify-between px-4">
           <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
             {table.getFilteredSelectedRowModel().rows.length} of{" "}
             {table.getFilteredRowModel().rows.length} row(s) selected.
@@ -476,7 +494,7 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
               </Button>
             </div>
           </div>
-        </div> */}
+        </div>
       </div>
     </div>
   );
@@ -592,17 +610,19 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
               <TableRow>
                 <TableCell>Plant Health Data:</TableCell>
                 <TableCell>
-                  <DataAvailabilityIndicator
+                  {/* <DataAvailabilityIndicator
                     availability={survey.tags.includes("multispectral")}
-                  />
+                  /> */}
+                  <CircleXIcon className="size-4 text-destructive" />
                 </TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>Elevation Models:</TableCell>
                 <TableCell>
-                  <DataAvailabilityIndicator
+                  {/* <DataAvailabilityIndicator
                     availability={survey.tags.includes("lidar")}
-                  />
+                  /> */}
+                  <CircleXIcon className="size-4 text-destructive" />
                 </TableCell>
               </TableRow>
               <TableRow>
@@ -632,10 +652,12 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
           <Link href={`/dashboard/surveys/${survey.id}`}>
             <Button className="w-full"> View {survey.id} </Button>
           </Link>
-          <Button variant="outline" className="w-full">
-            {" "}
-            View {survey.code}
-          </Button>
+          <Link href={`/dashboard/orthomap/${survey.code}`}>
+            <Button variant="outline" className="w-full">
+              {" "}
+              View {survey.code}
+            </Button>
+          </Link>
         </SheetFooter>
       </SheetContent>
     </Sheet>

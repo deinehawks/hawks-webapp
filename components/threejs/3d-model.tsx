@@ -19,6 +19,46 @@ function PointCloud(props) {
   return <primitive object={points} {...props} />;
 }
 
+function OdmPointCloud({ survey }) {
+  return (
+    <Bounds fit={true} clip={true} observe={true}>
+      <Center>
+        <PointCloud
+          url={`/asimov-hawks/3d/${survey.code?.toLowerCase()}/${getYear(
+            survey.flight_date
+          )}/${survey.id}/odm.pcd`}
+          material-size={0.1}
+          material-vertexColors={true}
+          material-blending={CustomBlending}
+          material-blendingEquation={AddEquation}
+          material-blendSrc={SrcColorFactor}
+          material-blendDst={ZeroFactor}
+        />
+      </Center>
+    </Bounds>
+  );
+}
+
+function LidarPointCloud({ survey }) {
+  return (
+    <Bounds fit={true} clip={true} observe={true}>
+      <Center>
+        <PointCloud
+          url={`/asimov-hawks/3d/${survey.code?.toLowerCase()}/${getYear(
+            survey.flight_date
+          )}/${survey.id}/lidar.pcd`}
+          material-size={0.1}
+          material-vertexColors={true}
+          material-blending={CustomBlending}
+          material-blendingEquation={AddEquation}
+          material-blendSrc={SrcColorFactor}
+          material-blendDst={ZeroFactor}
+        />
+      </Center>
+    </Bounds>
+  );
+}
+
 export function ThreeDimensionalModel({ survey }) {
   const { selected3dModel, show3dAxesHelper } = useSurveyMapStore(
     (state) => state
@@ -31,6 +71,38 @@ export function ThreeDimensionalModel({ survey }) {
       </div>
     );
 
+  // if (selected3dModel === "pcd-lidar") {
+  //   return (
+  //     <Canvas
+  //       fallback={
+  //         <div className="flex flex-1 items-center justify-center">
+  //           {" "}
+  //           WebGL is not supported.{" "}
+  //         </div>
+  //       }
+  //       className="flex flex-1 items-center justify-center"
+  //     >
+  //       <Bounds fit={true} clip={true} observe={true}>
+  //         <Center>
+  //           <PointCloud
+  //             url={`/asimov-hawks/3d/${survey.code?.toLowerCase()}/${getYear(
+  //               survey.flight_date
+  //             )}/${survey.id}/lidar.pcd`}
+  //             material-size={0.1}
+  //             material-vertexColors={true}
+  //             material-blending={CustomBlending}
+  //             material-blendingEquation={AddEquation}
+  //             material-blendSrc={SrcColorFactor}
+  //             material-blendDst={ZeroFactor}
+  //           />
+  //           <OrbitControls />
+  //         </Center>
+  //       </Bounds>
+  //       {show3dAxesHelper && <axesHelper args={[150]} />}
+  //     </Canvas>
+  //   );
+  // }
+
   return (
     <Canvas
       fallback={
@@ -41,36 +113,10 @@ export function ThreeDimensionalModel({ survey }) {
       }
       className="flex flex-1 items-center justify-center"
     >
-      <Bounds fit={true} clip={true} observe={true}>
-        <Center>
-          {/* {selected3dModel === "pcd-lidar" && (
-            <PointCloud
-              url="/3d/odm_0.25D.pcd"
-              material-size={0.1}
-              material-vertexColors={true}
-              material-blending={CustomBlending}
-              material-blendingEquation={AddEquation}
-              material-blendSrc={SrcColorFactor}
-              material-blendDst={ZeroFactor}
-            />
-          )} */}
-          {selected3dModel === "pcd-odm" && (
-            <PointCloud
-              url={`/asimov-hawks/3d/${survey.code?.toLowerCase()}/${getYear(
-                survey.flight_date
-              )}/${survey.id}/odm.pcd`}
-              material-size={0.1}
-              material-vertexColors={true}
-              material-blending={CustomBlending}
-              material-blendingEquation={AddEquation}
-              material-blendSrc={SrcColorFactor}
-              material-blendDst={ZeroFactor}
-            />
-          )}
+      {selected3dModel === "pcd-lidar" && <LidarPointCloud survey={survey} />}
+      {selected3dModel === "pcd-odm" && <OdmPointCloud survey={survey} />}
+      <OrbitControls />
 
-          <OrbitControls />
-        </Center>
-      </Bounds>
       {show3dAxesHelper && <axesHelper args={[150]} />}
     </Canvas>
   );

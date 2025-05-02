@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { three_dimensional_models } from "@/data/3d-models";
 import { Switch } from "../ui/switch";
 
-export function ThreeDimensionalModelSelector() {
+export function ThreeDimensionalModelSelector({ code }) {
   const { selected3dModel, setSelected3dModel } = useSurveyMapStore(
     (state) => state
   );
@@ -26,17 +26,21 @@ export function ThreeDimensionalModelSelector() {
       <SelectContent>
         <SelectGroup>
           <SelectLabel>3D Models</SelectLabel>
-          {three_dimensional_models.map((model) => (
+          {(code === "JXA" || code === "MXL") && (
+            <SelectItem value="pcd-lidar">
+              <span>Point Cloud (LiDAR)</span>
+            </SelectItem>
+          )}
+          <SelectItem value="pcd-odm">
+            <span>Point Cloud (Photogrammetry)</span>
+          </SelectItem>
+          {/* {three_dimensional_models.map((model) => (
             <SelectItem key={model.code} value={model.code}>
               <div className="flex gap-2">
                 <span>{model.name}</span>
-                {/* <span className="capitalize text-muted-foreground hidden lg:flex">
-                  {" "}
-                  {`(${model.source})`}{" "}
-                </span> */}
               </div>
             </SelectItem>
-          ))}
+          ))} */}
         </SelectGroup>
       </SelectContent>
     </Select>
