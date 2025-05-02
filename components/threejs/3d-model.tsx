@@ -112,7 +112,6 @@ export function ThreeDimensionalModel({ survey }) {
         </div>
       }
       className="flex flex-1 items-center justify-center"
-      style={{ width: "100%", height: "100%" }}
     >
       {selected3dModel === "pcd-lidar" && <LidarPointCloud survey={survey} />}
       {selected3dModel === "pcd-odm" && <OdmPointCloud survey={survey} />}

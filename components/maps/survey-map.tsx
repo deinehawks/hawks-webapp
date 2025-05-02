@@ -376,7 +376,7 @@ export default function SurveyMap({
                       </Map>
                     )}
                     {activeTab === "3d" && (
-                      <div className="flex h-full w-full bg-primary">
+                      <div className="flex h-full w-full min-w-0 bg-primary">
                         <ThreeDimensionalModelCaller survey={survey} />{" "}
                       </div>
                     )}
