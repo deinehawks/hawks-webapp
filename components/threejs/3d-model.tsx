@@ -104,22 +104,21 @@ export function ThreeDimensionalModel({ survey }) {
   // }
 
   return (
-    <div className="flex flex-1 items-center justify-center">
-      <Canvas
-        fallback={
-          <div className="flex flex-1 items-center justify-center">
-            {" "}
-            WebGL is not supported.{" "}
-          </div>
-        }
-        style={{ width: "100%", height: "100%" }}
-      >
-        {selected3dModel === "pcd-lidar" && <LidarPointCloud survey={survey} />}
-        {selected3dModel === "pcd-odm" && <OdmPointCloud survey={survey} />}
-        <OrbitControls />
+    <Canvas
+      fallback={
+        <div className="flex flex-1 items-center justify-center">
+          {" "}
+          WebGL is not supported.{" "}
+        </div>
+      }
+      className="flex flex-1 items-center justify-center"
+      style={{ width: "100%", height: "100%" }}
+    >
+      {selected3dModel === "pcd-lidar" && <LidarPointCloud survey={survey} />}
+      {selected3dModel === "pcd-odm" && <OdmPointCloud survey={survey} />}
+      <OrbitControls />
 
-        {show3dAxesHelper && <axesHelper args={[150]} />}
-      </Canvas>
-    </div>
+      {show3dAxesHelper && <axesHelper args={[150]} />}
+    </Canvas>
   );
 }
