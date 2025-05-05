@@ -5,6 +5,7 @@ export type OrthoMapState = {
   selectedFoi: string;
   currentLoadingSource: string;
   areAllSourcesLoaded: boolean;
+  popupInfo: unknown;
 };
 
 export type OrthoMapActions = {
@@ -12,6 +13,7 @@ export type OrthoMapActions = {
   setSelectedFoi: (selectedFoi: string) => void;
   setCurrentLoadingSource: (currentLoadingSource: string) => void;
   setAreAllSourcesLoaded: (areAllSourcesLoaded: boolean) => void;
+  setPopupInfo: (popupInfo: unknown) => void;
 };
 
 export type OrthoMapStore = OrthoMapState & OrthoMapActions;
@@ -22,6 +24,7 @@ export const initOrthoMapStore = (): OrthoMapState => {
     selectedFoi: "",
     currentLoadingSource: "",
     areAllSourcesLoaded: false,
+    popupInfo: null,
   };
 };
 
@@ -30,6 +33,7 @@ export const defaultInitState: OrthoMapState = {
   selectedFoi: "none",
   currentLoadingSource: "",
   areAllSourcesLoaded: false,
+  popupInfo: null,
 };
 
 export const createOrthoMapStore = (
@@ -43,5 +47,6 @@ export const createOrthoMapStore = (
       set(() => ({ currentLoadingSource })),
     setAreAllSourcesLoaded: (areAllSourcesLoaded: boolean) =>
       set(() => ({ areAllSourcesLoaded })),
+    setPopupInfo: (popupInfo: unknown) => set(() => ({ popupInfo })),
   }));
 };

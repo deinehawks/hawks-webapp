@@ -5,12 +5,15 @@ import {
   findExtremeCoordinates,
   generateFeatureCollectionByFoi,
   getUniqueYears,
+  transformCoordinatesToLonLatFormat,
 } from "@/lib/helpers";
 import {
   Layer,
   LngLatLike,
   Map,
+  MapMouseEvent,
   MapProvider,
+  Popup,
   Source,
   useMap,
 } from "@vis.gl/react-maplibre";
@@ -39,6 +42,71 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useOrthoMapStore } from "@/providers/ortho-map-store-provider";
 import { Badge } from "@/components/ui/badge";
 import type { ComputerVisionObject } from "@/lib/types";
+import Link from "next/link";
+
+function MapEvents({ surveys }) {
+  const { orthomap } = useMap();
+  const { setPopupInfo } = useOrthoMapStore((state) => state);
+
+  const handleMapClick = useCallback(
+    (e: MapMouseEvent) => {
+      if (!surveys || !e.features?.length) return;
+
+      const clickedAreaData = surveys.find(
+        (survey) => survey.id === e.features.at(0)?.properties.survey_id
+      );
+
+      if (clickedAreaData) {
+        setPopupInfo({
+          ...clickedAreaData,
+          lat: e.lngLat.lat,
+          lng: e.lngLat.lng,
+        });
+      }
+    },
+    [surveys, setPopupInfo]
+  );
+
+  useEffect(() => {
+    if (!orthomap) return;
+
+    orthomap.on("click", "area-fills", handleMapClick);
+
+    return () => {
+      orthomap.off("click", "area-fills", handleMapClick);
+    };
+  }, [orthomap, handleMapClick]);
+
+  return null;
+}
+
+function MapPopup() {
+  const { popupInfo, setPopupInfo } = useOrthoMapStore((state) => state);
+
+  if (!popupInfo) return null;
+
+  return (
+    <Popup
+      anchor="bottom"
+      longitude={popupInfo?.lng}
+      latitude={popupInfo?.lat}
+      onClose={() => setPopupInfo(null)}
+      closeOnClick={false}
+      closeOnMove={false}
+    >
+      <div className="rounded-none p-1.5">
+        <div className="flex flex-col">
+          <div className="text-muted-foreground">{popupInfo.id}</div>
+          <Link href={`/dashboard/surveys/${popupInfo.id}`}>
+            <button className="text-primary font-medium underline-offset-4 hover:underline">
+              View
+            </button>
+          </Link>
+        </div>
+      </div>
+    </Popup>
+  );
+}
 
 function SourceLoadingStatus({ idList }: { idList: string[] }) {
   const {
@@ -61,13 +129,6 @@ function SourceLoadingStatus({ idList }: { idList: string[] }) {
         setAreAllSourcesLoaded(false);
       });
     };
-  }, [orthomap]);
-
-  useEffect(() => {
-    if (!orthomap) return;
-    orthomap.on("click", (e) => {
-      console.log(e.features);
-    });
   }, [orthomap]);
 
   return (
@@ -343,12 +404,50 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                         tileSize: 256,
                         attribution: "&copy; OpenStreetMap Contributors",
                       },
+                      areas: {
+                        type: "geojson",
+                        data: {
+                          type: "FeatureCollection",
+                          features: surveys?.map((survey) => {
+                            return {
+                              type: "Feature",
+                              properties: {
+                                survey_id: survey.id,
+                                latitude: Number(
+                                  (survey.max_y + survey.min_y) / 2
+                                ),
+                                longitude: Number(
+                                  (survey.max_x + survey.min_x) / 2
+                                ),
+                              },
+                              geometry: {
+                                type: "Polygon",
+                                coordinates: [
+                                  transformCoordinatesToLonLatFormat(
+                                    survey.boundaries
+                                  ),
+                                ],
+                              },
+                            };
+                          }),
+                        },
+                        generateId: true,
+                      },
                     },
                     layers: [
                       {
                         id: "osm",
                         type: "raster",
                         source: "osm",
+                      },
+                      {
+                        id: "area-fills",
+                        type: "fill",
+                        source: "areas",
+                        paint: {
+                          "fill-color": "#088",
+                          "fill-opacity": 0,
+                        },
                       },
                     ],
                   }}
@@ -381,6 +480,9 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                     code={surveys.at(0).code}
                     detectedObjects={detectedObjects}
                   />
+                  <MapEvents surveys={surveys} />
+
+                  <MapPopup />
                 </Map>
               </div>
             </CardContent>

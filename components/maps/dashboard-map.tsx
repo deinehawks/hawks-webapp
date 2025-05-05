@@ -9,7 +9,7 @@ import {
 import { LngLatLike, Map, Marker, Popup, useMap } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 function MapMarker({ data, longitude, latitude, setPopupInfo }) {
   const { current: map } = useMap();
@@ -46,11 +46,11 @@ function MapPopup({ popupInfo, setPopupInfo }) {
           <div className="flex flex-1 text-xs text-muted-foreground">
             {popupInfo.id}
           </div>
-          {/* <div className="text-sm font-semibold">
+          <div className="text-sm font-semibold">
             {" "}
             {`${popupInfo.access_code}-${popupInfo.area_code}`}{" "}
-          </div> */}
-          <div className="text-sm font-semibold"> {`HAWKS`} </div>
+          </div>
+          {/* <div className="text-sm font-semibold"> {`HAWKS`} </div> */}
         </div>
         <Separator />
         <div className="flex flex-col gap-2 mt-2">
@@ -75,68 +75,88 @@ function MapPopup({ popupInfo, setPopupInfo }) {
 
 function MapEvents({ data, setPopupInfo }) {
   const { current: map } = useMap();
+  const hoveredAreaIdRef = useRef(null);
 
-  let clickedAreaId = null;
-  let hoveredAreaId = null;
+  const handleMapClick = useCallback(
+    (e) => {
+      if (!data || !e.features?.length) return;
 
-  const bounds: LngLatLike[][] = data.map((area) => {
-    return area.geojson_boundaries.map((pair: string[]) => [
-      parseFloat(pair[0]),
-      parseFloat(pair[1]),
-    ]);
-  });
+      const clickedAreaData = data.find(
+        (datum) => datum.id === e.features[0]?.properties.survey_id
+      );
 
-  const extremePoints = findExtremeCoordinates(bounds);
+      if (clickedAreaData) {
+        setPopupInfo({
+          ...clickedAreaData,
+          lat: e.lngLat.lat,
+          lng: e.lngLat.lng,
+          opacity: 1,
+        });
+      }
+    },
+    [data, setPopupInfo]
+  );
 
-  map?.fitBounds(extremePoints, {
-    padding: { top: 50, bottom: 50, left: 10, right: 10 },
-  });
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (!map || !e.features?.length) return;
 
-  map?.on("click", "area-fills", (e) => {
-    if (e.features?.length && e.features.length > 0) {
-      clickedAreaId = e.features?.at(0)?.properties.survey_id;
-
-      const clickedAreaData = data
-        .filter((datum) => datum.id === e.features?.at(0)?.properties.survey_id)
-        .at(0);
-
-      setPopupInfo({
-        ...clickedAreaData,
-        lat: e.lngLat.lat,
-        lng: e.lngLat.lng,
-        opacity: 1,
-      });
-    }
-  });
-
-  map?.on("mousemove", "area-fills", (e) => {
-    if (e.features?.length > 0) {
-      if (hoveredAreaId >= 0) {
+      if (hoveredAreaIdRef.current !== null) {
         map.setFeatureState(
-          {
-            source: "areas",
-            id: hoveredAreaId,
-          },
+          { source: "areas", id: hoveredAreaIdRef.current },
           { hover: false }
         );
       }
-      hoveredAreaId = e.features[0].id;
+      hoveredAreaIdRef.current = e.features[0].id;
       map.setFeatureState(
-        { source: "areas", id: hoveredAreaId },
+        { source: "areas", id: hoveredAreaIdRef.current },
         { hover: true }
       );
-    }
-  });
+    },
+    [map]
+  );
 
-  map?.on("mouseleave", "area-fills", () => {
-    if (hoveredAreaId >= 0) {
+  const handleMouseLeave = useCallback(() => {
+    if (!map) return;
+    if (hoveredAreaIdRef.current !== null) {
       map.setFeatureState(
-        { source: "areas", id: hoveredAreaId },
+        { source: "areas", id: hoveredAreaIdRef.current },
         { hover: false }
       );
+      hoveredAreaIdRef.current = null;
     }
-    hoveredAreaId = null;
-  });
+  }, [map]);
+
+  useEffect(() => {
+    if (!map) return;
+
+    map.on("click", "area-fills", handleMapClick);
+    map.on("mousemove", "area-fills", handleMouseMove);
+    map.on("mouseleave", "area-fills", handleMouseLeave);
+
+    return () => {
+      map.off("click", "area-fills", handleMapClick);
+      map.off("mousemove", "area-fills", handleMouseMove);
+      map.off("mouseleave", "area-fills", handleMouseLeave);
+    };
+  }, [map, handleMapClick, handleMouseMove, handleMouseLeave]);
+
+  useEffect(() => {
+    if (!map || !data.length) return;
+
+    const bounds: LngLatLike[][] = data.map((area) =>
+      area.geojson_boundaries.map((pair: string[]) => [
+        parseFloat(pair[0]),
+        parseFloat(pair[1]),
+      ])
+    );
+
+    const extremePoints = findExtremeCoordinates(bounds);
+
+    map.fitBounds(extremePoints, {
+      padding: { top: 50, bottom: 50, left: 10, right: 10 },
+    });
+  }, [map, data]);
 
   return null;
 }
