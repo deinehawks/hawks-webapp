@@ -182,6 +182,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
       const province = location.split(",").at(2);
 
       return <div className="w-32"> {`${barangay}, ${city}`} </div>;
+      // return <div className="w-32"> {`Davao City`} </div>;
     },
   },
   {
@@ -594,6 +595,7 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
               <TableRow>
                 <TableCell> Client: </TableCell>
                 <TableCell>{survey.code}</TableCell>
+                {/* <TableCell>HAWKS</TableCell> */}
               </TableRow>
               <TableRow>
                 <TableCell> Area Code: </TableCell>
@@ -657,6 +659,10 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
               {" "}
               View {survey.code}
             </Button>
+            {/* <Button variant="outline" className="w-full">
+              {" "}
+              View orthomap
+            </Button> */}
           </Link>
         </SheetFooter>
       </SheetContent>

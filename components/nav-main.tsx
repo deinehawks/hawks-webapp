@@ -29,6 +29,7 @@ import {
 import { Button } from "./ui/button";
 import { useMemo } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 const data = {
   navMain: [
@@ -52,6 +53,9 @@ const data = {
 };
 
 export function NavMain({ surveys }) {
+  const params = useParams();
+  const selectedSurvey = params.surveyId;
+
   const surveyIds = useMemo(() => {
     if (!surveys) return null;
     return surveys.map((survey) => survey.id);
@@ -82,7 +86,10 @@ export function NavMain({ surveys }) {
                   <SidebarMenuSub>
                     {surveyIds?.map((id) => (
                       <SidebarMenuSubItem key={id}>
-                        <SidebarMenuSubButton asChild>
+                        <SidebarMenuSubButton
+                          isActive={id === selectedSurvey}
+                          asChild
+                        >
                           <Link href={`/dashboard/surveys/${id}`}>
                             <span>{id}</span>
                           </Link>

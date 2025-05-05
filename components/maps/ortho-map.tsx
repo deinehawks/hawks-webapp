@@ -317,6 +317,8 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
             <CardHeader>
               <CardTitle> {userProfile.organization.code} </CardTitle>
               <CardDescription>{userProfile.organization.name}</CardDescription>
+              {/* <CardTitle> ASIMOV-HAWKS </CardTitle>
+              <CardDescription>Sample orthomap data</CardDescription> */}
             </CardHeader>
             <CardContent className="flex-1">
               <div className="h-full flex">

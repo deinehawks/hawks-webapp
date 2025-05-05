@@ -46,10 +46,11 @@ function MapPopup({ popupInfo, setPopupInfo }) {
           <div className="flex flex-1 text-xs text-muted-foreground">
             {popupInfo.id}
           </div>
-          <div className="text-sm font-semibold">
+          {/* <div className="text-sm font-semibold">
             {" "}
             {`${popupInfo.access_code}-${popupInfo.area_code}`}{" "}
-          </div>
+          </div> */}
+          <div className="text-sm font-semibold"> {`HAWKS`} </div>
         </div>
         <Separator />
         <div className="flex flex-col gap-2 mt-2">

@@ -268,8 +268,8 @@ export default function SurveyMap({
               <SelectItem value="ortho">Orthomosaic</SelectItem>
               {/* {survey.tags.includes("multispectral") && (
                 <SelectItem value="plant-health">Plant Health</SelectItem>
-              )}
-              {survey.tags.includes("lidar") && (
+              )} */}
+              {/* {survey.tags.includes("lidar") && (
                 <SelectItem value="dem">Elevation Model</SelectItem>
               )} */}
               <SelectItem value="3d">3D Model</SelectItem>
@@ -304,6 +304,12 @@ export default function SurveyMap({
                       "dd MMMM yyyy"
                     )} | ${survey.location}`}
                   </CardDescription>
+                  {/* <CardDescription>
+                    {`Sample Data | ${survey.area_code} | ${format(
+                      survey.flight_date,
+                      "dd MMMM yyyy"
+                    )} | Davao City`}
+                  </CardDescription> */}
                 </CardHeader>
                 <CardContent className="flex-1">
                   <div className="flex h-96 lg:h-full">
@@ -373,6 +379,31 @@ export default function SurveyMap({
                             <ObjectPopup />
                           </>
                         )}
+                        {/* {activeTab === "plant-health" && (
+                          <Source
+                            id="ortho"
+                            type="raster"
+                            tiles={[
+                              `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
+                                survey.flight_date
+                              )}/${
+                                survey.id
+                              }/${activeTab}/round-corners/{z}/{x}/{y}.png`,
+                            ]}
+                            tileSize={256}
+                            scheme="tms"
+                            minzoom={15}
+                            maxzoom={24}
+                          >
+                            <Layer
+                              id="ortho"
+                              type="raster"
+                              source="ortho"
+                              minzoom={15}
+                              maxzoom={24}
+                            />
+                          </Source>
+                        )} */}
                       </Map>
                     )}
                     {activeTab === "3d" && (

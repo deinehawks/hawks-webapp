@@ -23,6 +23,13 @@ export default function SurveyDataInteractive({ data }) {
             "dd MMM yyyy"
           )}`}{" "}
         </CardDescription>
+        {/* <CardDescription>
+          {" "}
+          {`SAMPLE DATA | ${format(earliest, "dd MMM yyyy")} - ${format(
+            latest,
+            "dd MMM yyyy"
+          )}`}{" "}
+        </CardDescription> */}
       </CardHeader>
       <CardContent>
         <div className="w-full h-96">

@@ -117,6 +117,7 @@ export default async function DashboardLayout({
                   <Link href={`/dashboard/orthomap/${userProfile.access_code}`}>
                     <Building2Icon />
                     <span> {userProfile.access_code} </span>
+                    {/* <span> HAWKS </span> */}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
