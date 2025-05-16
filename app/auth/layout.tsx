@@ -13,7 +13,6 @@ export default function Layout({
             <Image
               src={hawks_logo}
               alt="Logo of ASIMOV-HAWKS"
-              objectFit="contain"
               style={{ width: "100%", height: "auto" }}
             />
           </div>
@@ -21,7 +20,6 @@ export default function Layout({
             <Image
               src={hawks_typescript}
               alt="Typescript of ASIMOV-HAWKS"
-              objectFit="contain"
               style={{ width: "100%", height: "auto" }}
             />
           </div>

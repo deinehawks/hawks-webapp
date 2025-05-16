@@ -126,10 +126,6 @@
 }
 
 @layer components {
-  .maplibregl-popup-content {
-    /* border-radius: 0; */
-  }
-
   .maplibregl-popup-close-button {
     padding-left: 0.375rem;
     padding-right: 0.375rem;

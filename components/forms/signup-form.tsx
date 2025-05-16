@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/form";
 import { signup } from "@/lib/actions/auth";
 import { useForm } from "react-hook-form";
+import Link from "next/link";
 
 const formSchema = z
   .object({
@@ -127,12 +128,12 @@ export function SignupForm({
                 </Button>
                 <div className="text-center text-sm">
                   Already have an account?{" "}
-                  <a
+                  <Link
                     href="/auth/login"
                     className="underline underline-offset-4"
                   >
                     Login
-                  </a>
+                  </Link>
                 </div>
               </div>
             </form>

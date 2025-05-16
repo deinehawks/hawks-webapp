@@ -18,7 +18,6 @@ export async function getAllUserSurveys() {
       .from("surveys")
       .select("*")
       .eq("access_code", access_code)
-      .order("flight_date")
       .order("id");
 
     if (error) {

@@ -132,7 +132,7 @@ function FeaturesOfInterest({
             type="fill"
             source={`${id}-healthy`}
             paint={{
-              "fill-color": "#008000",
+              "fill-color": "#ffff00",
               "fill-opacity": 0.1,
             }}
           />
@@ -141,7 +141,7 @@ function FeaturesOfInterest({
             type="line"
             source={`${id}-healthy`}
             paint={{
-              "line-color": "#008000",
+              "line-color": "#ffff00",
               "line-width": 1,
             }}
           />
@@ -244,6 +244,47 @@ export default function SurveyMap({
       .length;
   }, [detectedObjects]);
 
+  const tileUrl = useMemo(() => {
+    if (!survey) return null;
+    if (survey.code === "DIFCO") {
+      return `pmtiles://asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
+        survey.flight_date
+      )}/${survey.id}/${activeTab}/sharp-corners/ortho.pmtiles`;
+    } else {
+      return `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
+        survey.flight_date
+      )}/${survey.id}/${activeTab}/sharp-corners/{z}/{x}/{y}.png`;
+    }
+  }, [survey]);
+
+  const source = useMemo(() => {
+    if (!survey)
+      return {
+        type: "",
+        url: "",
+      };
+    return {
+      type: "raster",
+      url: `pmtiles://asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
+        survey.flight_date
+      )}/${survey.id}/${activeTab}/sharp-corners/ortho.pmtiles`,
+    };
+  }, [survey]);
+
+  const layer = useMemo(() => {
+    if (!survey)
+      return {
+        id: "",
+        type: "",
+        source: "",
+      };
+    return {
+      id: survey.id,
+      type: "raster",
+      source: source,
+    };
+  }, [survey]);
+
   return (
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
       <Tabs
@@ -272,7 +313,9 @@ export default function SurveyMap({
               {/* {survey.tags.includes("lidar") && (
                 <SelectItem value="dem">Elevation Model</SelectItem>
               )} */}
-              <SelectItem value="3d">3D Model</SelectItem>
+              {survey.code !== "DIFCO" && (
+                <SelectItem value="3d">3D Model</SelectItem>
+              )}
             </SelectContent>
           </Select>
           <TabsList className="@4xl/main:flex hidden">
@@ -287,7 +330,7 @@ export default function SurveyMap({
                 Elevation Model
               </TabsTrigger>
             )} */}
-            {survey.tags.includes("rgb") && (
+            {survey.tags.includes("rgb") && survey.code !== "DIFCO" && (
               <TabsTrigger value="3d">3D Model</TabsTrigger>
             )}
           </TabsList>
@@ -322,6 +365,8 @@ export default function SurveyMap({
                           bounds: bounds,
                           fitBoundsOptions: { padding: 15 },
                         }}
+                        minZoom={15}
+                        maxZoom={24}
                         mapStyle={{
                           version: 8,
                           sources: {
@@ -333,6 +378,14 @@ export default function SurveyMap({
                               tileSize: 256,
                               attribution: "&copy; OpenStreetMap Contributors",
                             },
+                            // "AH-022018": {
+                            //   type: "raster",
+                            //   url: `pmtiles:/asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
+                            //     survey.flight_date
+                            //   )}/${
+                            //     survey.id
+                            //   }/${activeTab}/sharp-corners/ortho.pmtiles`,
+                            // },
                           },
                           layers: [
                             {
@@ -340,6 +393,11 @@ export default function SurveyMap({
                               type: "raster",
                               source: "osm",
                             },
+                            // {
+                            //   id: "AH-022018",
+                            //   type: "raster",
+                            //   source: "AH-022018",
+                            // },
                           ],
                         }}
                         doubleClickZoom={false}
@@ -358,8 +416,9 @@ export default function SurveyMap({
                                   survey.flight_date
                                 )}/${
                                   survey.id
-                                }/${activeTab}/round-corners/{z}/{x}/{y}.png`,
+                                }/${activeTab}/sharp-corners/{z}/{x}/{y}.png`,
                               ]}
+                              // tiles={[tileUrl]}
                               tileSize={256}
                               scheme="tms"
                               minzoom={15}
@@ -439,10 +498,12 @@ export default function SurveyMap({
                           <TableCell> Area </TableCell>
                           <TableCell> {survey.area?.toFixed(2)} ha</TableCell>
                         </TableRow>
-                        <TableRow>
-                          <TableCell> No. of Images </TableCell>
-                          <TableCell>{survey.ortho?.num_images}</TableCell>
-                        </TableRow>
+                        {survey.ortho?.num_images && (
+                          <TableRow>
+                            <TableCell> No. of Images </TableCell>
+                            <TableCell>{survey.ortho.num_images}</TableCell>
+                          </TableRow>
+                        )}
                         {/* <TableRow>
                           <TableCell>GPS Error</TableCell>
                           <TableCell>

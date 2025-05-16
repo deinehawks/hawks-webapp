@@ -43,6 +43,7 @@ import { useOrthoMapStore } from "@/providers/ortho-map-store-provider";
 import { Badge } from "@/components/ui/badge";
 import type { ComputerVisionObject } from "@/lib/types";
 import Link from "next/link";
+import { format, getYear } from "date-fns";
 
 function MapEvents({ surveys }) {
   const { orthomap } = useMap();
@@ -71,6 +72,8 @@ function MapEvents({ surveys }) {
     if (!orthomap) return;
 
     orthomap.on("click", "area-fills", handleMapClick);
+
+    console.log("layers", orthomap.getLayersOrder());
 
     return () => {
       orthomap.off("click", "area-fills", handleMapClick);
@@ -134,7 +137,7 @@ function SourceLoadingStatus({ idList }: { idList: string[] }) {
   return (
     <div className="text-sm text-muted-foreground">
       {" "}
-      {areAllSourcesLoaded ? "All sources loaded." : `Loading orthomosaics...`}
+      {areAllSourcesLoaded ? "All sources loaded." : `Loading map sources...`}
     </div>
   );
 }
@@ -253,7 +256,7 @@ function FeaturesOfInterest({
             type="fill"
             source={`${code}-healthy`}
             paint={{
-              "fill-color": "#008000",
+              "fill-color": "#ffff00",
               "fill-opacity": 0.1,
             }}
           />
@@ -262,7 +265,7 @@ function FeaturesOfInterest({
             type="line"
             source={`${code}-healthy`}
             paint={{
-              "line-color": "#008000",
+              "line-color": "#ffff00",
               "line-width": 1,
             }}
           />
@@ -358,7 +361,7 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
             </SelectContent>
           </Select>
           <TabsList className="@4xl/main:flex hidden">
-            {uniqueFlightYears.map((year) => (
+            {/* {uniqueFlightYears.map((year) => (
               <TabsTrigger
                 key={year}
                 value={year}
@@ -366,7 +369,14 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
               >
                 {year}
               </TabsTrigger>
-            ))}
+            ))} */}
+            <TabsTrigger
+              defaultChecked={true}
+              value="orthomap"
+              className="gap-1 :first-child:gap-0 :last-child:gap-0"
+            >
+              Orthomap
+            </TabsTrigger>
           </TabsList>
           <OrthomapFoiSelector detectedObjects={detectedObjects} />
         </div>
@@ -391,8 +401,8 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                     bounds: bounds,
                     fitBoundsOptions: { padding: 15 },
                   }}
-                  minZoom={15}
-                  maxZoom={25}
+                  minZoom={10}
+                  maxZoom={24}
                   mapStyle={{
                     version: 8,
                     sources: {
@@ -445,7 +455,7 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                         type: "fill",
                         source: "areas",
                         paint: {
-                          "fill-color": "#088",
+                          "fill-color": "#fff",
                           "fill-opacity": 0,
                         },
                       },
@@ -458,20 +468,20 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                       id={survey.id}
                       type="raster"
                       tiles={[
-                        `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${flightYear}/${
-                          survey.id
-                        }/ortho/sharp-corners/{z}/{x}/{y}.png`,
+                        `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
+                          survey.flight_date
+                        )}/${survey.id}/ortho/sharp-corners/{z}/{x}/{y}.png`,
                       ]}
                       scheme="tms"
                       tileSize={256}
-                      minzoom={15}
-                      maxzoom={25}
+                      minzoom={10}
+                      maxzoom={24}
                     >
                       <Layer
                         id={survey.id}
                         type="raster"
                         source={survey.id}
-                        minzoom={15}
+                        minzoom={10}
                         maxzoom={24}
                       />
                     </Source>
