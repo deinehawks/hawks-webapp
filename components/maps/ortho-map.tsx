@@ -336,21 +336,22 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
   return (
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
       <Tabs
-        defaultValue={uniqueFlightYears.at(uniqueFlightYears.length - 1)}
+        // defaultValue={uniqueFlightYears.at(uniqueFlightYears.length - 1)}
+        defaultValue="orthomap"
         className="flex w-full flex-col justify-start gap-6"
       >
         <div className="flex items-center justify-between px-4 lg:px-6">
           <Label htmlFor="year-selector" className="sr-only">
             Year
           </Label>
-          <Select
+          {/* <Select
             defaultValue={uniqueFlightYears.at(uniqueFlightYears.length - 1)}
           >
             <SelectTrigger
               className="@4xl/main:hidden flex w-fit"
               id="year-selector"
             >
-              <SelectValue placeholder="Select flight year" />
+              <SelectValue placeholder="Select orthomap" />
             </SelectTrigger>
             <SelectContent>
               {uniqueFlightYears.map((year) => (
@@ -359,8 +360,8 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
-          <TabsList className="@4xl/main:flex hidden">
+          </Select> */}
+          <TabsList className="@4xl/main:flex">
             {/* {uniqueFlightYears.map((year) => (
               <TabsTrigger
                 key={year}
@@ -371,7 +372,6 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
               </TabsTrigger>
             ))} */}
             <TabsTrigger
-              defaultChecked={true}
               value="orthomap"
               className="gap-1 :first-child:gap-0 :last-child:gap-0"
             >

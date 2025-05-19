@@ -41,6 +41,23 @@ yarn-error.log*
 next-env.d.ts
 
 # tiles
-/public/tiles
+/public/tiles/axd
+/public/tiles/barbco
+/public/tiles/bsbg
+/public/tiles/difco
+/public/tiles/dxg
+/public/tiles/jxa
+/public/tiles/lxd
+/public/tiles/mdahi
+/public/tiles/mxl
+
 # 3d
-/public/3d
+/public/3d/axd
+/public/3d/barbco
+/public/3d/bsbg
+/public/3d/difco
+/public/3d/dxg
+/public/3d/jxa
+/public/3d/lxd
+/public/3d/mdahi
+/public/3d/mxl
