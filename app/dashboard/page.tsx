@@ -6,7 +6,20 @@ import {
   getObjectDetectionData,
 } from "@/lib/actions/surveys";
 
+import { AppSidebar } from "@/components/app-sidebar";
+import { HeaderBreadcrumb } from "@/components/header-breadcrumb";
+import { Separator } from "@/components/ui/separator";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { getUser } from "@/lib/actions/auth";
+import { getUserProfile } from "@/lib/actions/profiles";
+
 export default async function Page() {
+  const user = await getUser();
+  const userProfile = await getUserProfile(user?.id);
   const surveys = await getAllUserSurveys();
   const detectedObjects = await getObjectDetectionData();
 

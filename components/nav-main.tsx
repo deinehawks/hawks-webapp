@@ -2,6 +2,7 @@
 
 import {
   BarChartIcon,
+  Building2Icon,
   ChevronRight,
   icons,
   LayoutDashboardIcon,
@@ -38,21 +39,12 @@ const data = {
       url: "#",
       icon: SquareTerminalIcon,
       isActive: true,
-      items: [
-        {
-          title: "AH-025001",
-          url: "/dashboard/surveys/AH-025001",
-        },
-        {
-          title: "AH-025002",
-          url: "/dashboard/surveys/AH-025002",
-        },
-      ],
+      items: [],
     },
   ],
 };
 
-export function NavMain({ surveys }) {
+export function NavMain({ surveys, userProfile }) {
   const params = useParams();
   const selectedSurvey = params.surveyId;
 
@@ -62,47 +54,65 @@ export function NavMain({ surveys }) {
   }, [surveys]);
 
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Survey Data</SidebarGroupLabel>
-      <SidebarMenu>
-        {data.navMain.map((item) => (
-          <Collapsible
-            key={item.title}
-            asChild
-            defaultOpen={item.isActive}
-            className="group/collapsible"
-          >
-            <SidebarMenuItem>
-              <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip={item.title}>
-                  {item.icon && <item.icon />}
-                  <span>{item.title}</span>
+    <>
+      <SidebarGroup>
+        <SidebarGroupLabel>Orthomap</SidebarGroupLabel>
+        <SidebarMenu>
+          <SidebarMenuItem className="flex items-center gap-2">
+            <SidebarMenuButton
+              isActive={params.plantation === userProfile.access_code}
+              asChild
+            >
+              <Link href={`/dashboard/orthomap/${userProfile.access_code}`}>
+                <Building2Icon />
+                <span> {userProfile.access_code}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarGroup>
+      <SidebarGroup>
+        <SidebarGroupLabel>Survey Data</SidebarGroupLabel>
+        <SidebarMenu>
+          {data.navMain.map((item) => (
+            <Collapsible
+              key={item.title}
+              asChild
+              defaultOpen={item.isActive}
+              className="group/collapsible"
+            >
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton tooltip={item.title}>
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
 
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                </SidebarMenuButton>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                {surveyIds?.length > 0 && (
-                  <SidebarMenuSub>
-                    {surveyIds?.map((id) => (
-                      <SidebarMenuSubItem key={id}>
-                        <SidebarMenuSubButton
-                          isActive={id === selectedSurvey}
-                          asChild
-                        >
-                          <Link href={`/dashboard/surveys/${id}`}>
-                            <span>{id}</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                )}
-              </CollapsibleContent>
-            </SidebarMenuItem>
-          </Collapsible>
-        ))}
-      </SidebarMenu>
-    </SidebarGroup>
+                    <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  {surveyIds?.length > 0 && (
+                    <SidebarMenuSub>
+                      {surveyIds?.map((id) => (
+                        <SidebarMenuSubItem key={id}>
+                          <SidebarMenuSubButton
+                            isActive={id === selectedSurvey}
+                            asChild
+                          >
+                            <Link href={`/dashboard/surveys/${id}`}>
+                              <span>{id}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  )}
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
+          ))}
+        </SidebarMenu>
+      </SidebarGroup>
+    </>
   );
 }
