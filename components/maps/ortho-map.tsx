@@ -41,9 +41,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useOrthoMapStore } from "@/providers/ortho-map-store-provider";
 import { Badge } from "@/components/ui/badge";
-import type { ComputerVisionObject } from "@/lib/types";
+import { GeometryType, type ComputerVisionObject } from "@/lib/types";
 import Link from "next/link";
 import { format, getYear } from "date-fns";
+import { generateFeatureCollection } from "@/lib/helpers/geometry";
 
 function MapEvents({ surveys }) {
   const { orthomap } = useMap();
@@ -231,25 +232,44 @@ function FeaturesOfInterest({
 }) {
   const { selectedFoi } = useOrthoMapStore((state) => state);
 
+  // const healthyBananas = useMemo(() => {
+  //   if (!detectedObjects) return "";
+  //   return generateFeatureCollectionByFoi(
+  //     detectedObjects,
+  //     "Banana Plant (Healthy-looking)"
+  //   );
+  // }, [detectedObjects]);
+
+  // const unhealthyBananas = useMemo(() => {
+  //   if (!detectedObjects) return "";
+  //   return generateFeatureCollectionByFoi(
+  //     detectedObjects,
+  //     "Banana Plant (Infected)"
+  //   );
+  // }, [detectedObjects]);
+
   const healthyBananas = useMemo(() => {
     if (!detectedObjects) return "";
-    return generateFeatureCollectionByFoi(
-      detectedObjects,
-      "Banana Plant (Healthy-looking)"
+    return generateFeatureCollection(
+      GeometryType.LineString,
+      "Banana Plant (Healthy-looking)",
+      detectedObjects
     );
   }, [detectedObjects]);
 
   const unhealthyBananas = useMemo(() => {
     if (!detectedObjects) return "";
-    return generateFeatureCollectionByFoi(
-      detectedObjects,
-      "Banana Plant (Infected)"
+    return generateFeatureCollection(
+      GeometryType.LineString,
+      "Banana Plant (Infected)",
+      detectedObjects
     );
+    A;
   }, [detectedObjects]);
 
   return (
     <>
-      {(selectedFoi === "healthy" || selectedFoi === "all") && (
+      {/* {(selectedFoi === "healthy" || selectedFoi === "all") && (
         <Source id={`${code}-healthy`} type="geojson" data={healthyBananas}>
           <Layer
             id={`${code}-healthy-fill`}
@@ -270,8 +290,8 @@ function FeaturesOfInterest({
             }}
           />
         </Source>
-      )}
-      {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
+      )} */}
+      {/* {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
         <Source id={`${code}-unhealthy`} type="geojson" data={unhealthyBananas}>
           <Layer
             id={`${code}-unhealthy-fill`}
@@ -290,6 +310,26 @@ function FeaturesOfInterest({
               "line-color": "#ff0000",
               "line-width": 1,
             }}
+          />
+        </Source>
+      )} */}
+      {(selectedFoi === "healthy" || selectedFoi === "all") && (
+        <Source id={`${code}-healthy`} type="geojson" data={healthyBananas}>
+          <Layer
+            id={`${code}-healthy-fill`}
+            type="line"
+            source={`${code}-healthy`}
+            paint={{ "line-color": "#ffff00", "line-width": 3 }}
+          />
+        </Source>
+      )}
+      {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
+        <Source id={`${code}-unhealthy`} type="geojson" data={unhealthyBananas}>
+          <Layer
+            id={`${code}-unhealthy-fill`}
+            type="line"
+            source={`${code}-unhealthy`}
+            paint={{ "line-color": "#ff0000", "line-width": 3 }}
           />
         </Source>
       )}

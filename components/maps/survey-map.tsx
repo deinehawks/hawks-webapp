@@ -23,7 +23,7 @@ import {
   findExtremeCoordinates,
   generateFeatureCollectionByFoi,
 } from "@/lib/helpers";
-import type { ComputerVisionObject } from "@/lib/types";
+import { GeometryType, type ComputerVisionObject } from "@/lib/types";
 import { useSurveyMapStore } from "@/providers/survey-map-store-provider";
 import {
   Layer,
@@ -44,6 +44,7 @@ import { FoiSelector } from "@/components/selectors/foi-selector";
 import { VegetationIndexSelector } from "@/components/selectors/vegetation-index-selector";
 import { VegetationIndexCard } from "@/components/vegetation-index-card";
 import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
+import { generateFeatureCollection } from "@/lib/helpers/geometry";
 
 function SurveyMapEvents({
   survey,
@@ -98,6 +99,81 @@ function SurveyMapEvents({
   return null;
 }
 
+// function FeaturesOfInterest({
+//   detectedObjects,
+// }: {
+//   detectedObjects: ComputerVisionObject[];
+// }) {
+//   const { selectedFoi } = useSurveyMapStore((state) => state);
+
+//   const id = detectedObjects.at(0)?.areaCode;
+
+//   const healthyBananas = useMemo(() => {
+//     if (!detectedObjects) return "";
+//     return generateFeatureCollectionByFoi(
+//       detectedObjects,
+//       "Banana Plant (Healthy-looking)"
+//     );
+//   }, [detectedObjects]);
+
+//   const unhealthyBananas = useMemo(() => {
+//     if (!detectedObjects) return "";
+//     return generateFeatureCollectionByFoi(
+//       detectedObjects,
+//       "Banana Plant (Infected)"
+//     );
+//   }, [detectedObjects]);
+
+//   return (
+//     <>
+//       {(selectedFoi === "healthy" || selectedFoi === "all") && (
+//         <Source id={`${id}-healthy`} type="geojson" data={healthyBananas}>
+//           <Layer
+//             id={`${id}-healthy-fill`}
+//             type="fill"
+//             source={`${id}-healthy`}
+//             paint={{
+//               "fill-color": "#ffff00",
+//               "fill-opacity": 0.1,
+//             }}
+//           />
+//           <Layer
+//             id={`${id}-healthy-border`}
+//             type="line"
+//             source={`${id}-healthy`}
+//             paint={{
+//               "line-color": "#ffff00",
+//               "line-width": 1,
+//             }}
+//           />
+//         </Source>
+//       )}
+//       {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
+//         <Source id={`${id}-unhealthy`} type="geojson" data={unhealthyBananas}>
+//           <Layer
+//             id={`${id}-unhealthy-fill`}
+//             type="fill"
+//             source={`${id}-unhealthy`}
+//             paint={{
+//               "fill-color": "#ff0000",
+//               "fill-opacity": 0.1,
+//             }}
+//           />
+//           <Layer
+//             id={`${id}-unhealthy-border`}
+//             type="line"
+//             source={`${id}-unhealthy`}
+//             paint={{
+//               "line-color": "#ff0000",
+//               "line-width": 1,
+//             }}
+//           />
+//         </Source>
+//       )}
+//     </>
+//   );
+// }
+
 function FeaturesOfInterest({
   detectedObjects,
 }: {
@@ -109,17 +185,19 @@ function FeaturesOfInterest({
 
   const healthyBananas = useMemo(() => {
     if (!detectedObjects) return "";
-    return generateFeatureCollectionByFoi(
-      detectedObjects,
-      "Banana Plant (Healthy-looking)"
+    return generateFeatureCollection(
+      GeometryType.LineString,
+      "Banana Plant (Healthy-looking)",
+      detectedObjects
     );
   }, [detectedObjects]);
 
   const unhealthyBananas = useMemo(() => {
     if (!detectedObjects) return "";
-    return generateFeatureCollectionByFoi(
-      detectedObjects,
-      "Banana Plant (Infected)"
+    return generateFeatureCollection(
+      GeometryType.LineString,
+      "Banana Plant (Infected)",
+      detectedObjects
     );
   }, [detectedObjects]);
 
@@ -129,21 +207,9 @@ function FeaturesOfInterest({
         <Source id={`${id}-healthy`} type="geojson" data={healthyBananas}>
           <Layer
             id={`${id}-healthy-fill`}
-            type="fill"
-            source={`${id}-healthy`}
-            paint={{
-              "fill-color": "#ffff00",
-              "fill-opacity": 0.1,
-            }}
-          />
-          <Layer
-            id={`${id}-healthy-border`}
             type="line"
             source={`${id}-healthy`}
-            paint={{
-              "line-color": "#ffff00",
-              "line-width": 1,
-            }}
+            paint={{ "line-color": "#ffff00", "line-width": 3 }}
           />
         </Source>
       )}
@@ -151,24 +217,44 @@ function FeaturesOfInterest({
         <Source id={`${id}-unhealthy`} type="geojson" data={unhealthyBananas}>
           <Layer
             id={`${id}-unhealthy-fill`}
-            type="fill"
-            source={`${id}-unhealthy`}
-            paint={{
-              "fill-color": "#ff0000",
-              "fill-opacity": 0.1,
-            }}
-          />
-          <Layer
-            id={`${id}-unhealthy-border`}
             type="line"
             source={`${id}-unhealthy`}
-            paint={{
-              "line-color": "#ff0000",
-              "line-width": 1,
-            }}
+            paint={{ "line-color": "#ff0000", "line-width": 3 }}
           />
         </Source>
       )}
+      {/* 
+      {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
+        <Source id={`${id}-unhealthy`} type="geojson" data={unhealthyBananas}>
+          <Layer
+            id={`${id}-unhealthy-fill`}
+            type="circle"
+            source={`${id}-unhealthy`}
+            paint={{
+              "circle-color": "#ff0000",
+              "circle-radius": 8,
+              "circle-stroke-opacity": 1,
+              "circle-stroke-width": 2,
+            }}
+          />
+        </Source>
+      )} */}
+      {/* {(selectedFoi === "healthy" || selectedFoi === "all") && (
+        <Source id={`${id}-healthy`} type="geojson" data={healthyBananas}>
+          <Layer
+            id={`${id}-healthy-fill`}
+            type="circle"
+            source={`${id}-healthy`}
+            paint={{
+              "circle-color": "#ffff00",
+              "circle-radius": 8,
+              "circle-stroke-opacity": 1,
+              "circle-stroke-color": "#ffa500",
+              "circle-stroke-width": 2,
+            }}
+          />
+        </Source>
+      )} */}
     </>
   );
 }
