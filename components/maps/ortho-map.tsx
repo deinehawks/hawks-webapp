@@ -3,13 +3,11 @@
 import {
   calculateGlobalCenters,
   findExtremeCoordinates,
-  generateFeatureCollectionByFoi,
   getUniqueYears,
   transformCoordinatesToLonLatFormat,
 } from "@/lib/helpers";
 import {
   Layer,
-  LngLatLike,
   Map,
   MapMouseEvent,
   MapProvider,
@@ -19,6 +17,7 @@ import {
 } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -38,13 +37,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useOrthoMapStore } from "@/providers/ortho-map-store-provider";
-import { Badge } from "@/components/ui/badge";
-import { GeometryType, type ComputerVisionObject } from "@/lib/types";
-import Link from "next/link";
-import { format, getYear } from "date-fns";
 import { generateFeatureCollection } from "@/lib/helpers/geometry";
+import { GeometryType, type ComputerVisionObject } from "@/lib/types";
+import { useOrthoMapStore } from "@/providers/ortho-map-store-provider";
+import { getYear } from "date-fns";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 function MapEvents({ surveys }) {
   const { orthomap } = useMap();
@@ -264,7 +262,6 @@ function FeaturesOfInterest({
       "Banana Plant (Infected)",
       detectedObjects
     );
-    A;
   }, [detectedObjects]);
 
   return (
@@ -291,6 +288,7 @@ function FeaturesOfInterest({
           />
         </Source>
       )} */}
+
       {/* {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
         <Source id={`${code}-unhealthy`} type="geojson" data={unhealthyBananas}>
           <Layer

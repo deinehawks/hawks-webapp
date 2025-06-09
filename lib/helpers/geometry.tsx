@@ -1,6 +1,3 @@
-import { Feature, FeatureCollection, Position } from "geojson";
-import { ComputerVisionObject, GeometryType } from "@/lib/types";
-
 import { Feature, FeatureCollection } from "geojson";
 import { ComputerVisionObject, GeometryType } from "@/lib/types";
 
