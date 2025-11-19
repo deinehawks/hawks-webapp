@@ -519,7 +519,7 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                     fitBoundsOptions: { padding: 15 },
                   }}
                   minZoom={10}
-                  maxZoom={24}
+                  maxZoom={25}
                   mapStyle={{
                     version: 8,
                     sources: {

@@ -5,6 +5,9 @@ import { getUser } from "./auth";
 import { getUserProfile } from "./profiles";
 import { redirect } from "next/navigation";
 
+import path from "path";
+import { getSurveyMaxZoom } from "@/lib/helpers/get-max-zoom";
+
 export async function getAllUserSurveys() {
   const supabase = await createClient();
 
@@ -24,7 +27,27 @@ export async function getAllUserSurveys() {
       throw new Error("Failed to fetch survey data.");
     }
 
-    return surveys;
+    const root = path.join(process.cwd(), "public", "asimov-hawks", "tiles");
+
+    const updatedSurveys = surveys.map((survey) => {
+      const folderPath = path.join(
+        root,
+        survey.code.toLowerCase(),
+        String(new Date(survey.flight_date).getFullYear()),
+        survey.id,
+        "ortho",
+        "sharp-corners"
+      );
+
+      const maxZoom = getSurveyMaxZoom(folderPath);
+
+      return {
+        ...survey,
+        max_zoom: maxZoom, // <-- added to survey object
+      };
+    });
+
+    return updatedSurveys;
   }
 }
 
