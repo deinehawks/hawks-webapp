@@ -13,21 +13,59 @@ export function generateFeatureCollection(
   featureOfInterestLabel: string,
   data: ComputerVisionObject[]
 ): FeatureCollection {
+  /**
+   * Helper function to extract or calculate center coordinates from bounding box.
+   *
+   * Supports two data formats:
+   * 1. Pre-calculated center: Uses cen_lon and cen_lat if available
+   * 2. Bounding box format: Calculates center from min/max values (other datasets)
+   *    - Center longitude = (min_lon + max_lon) / 2
+   *    - Center latitude = (min_lat + max_lat) / 2
+   *
+   * @param bbox - Bounding box object with either (cen_lon, cen_lat) or (min_lon, max_lon, min_lat, max_lat)
+   * @returns Object with lon and lat properties representing the center point
+   */
+  const getCenter = (bbox: any) => {
+    // Check if pre-calculated center coordinates are provided
+    if (bbox.cen_lon !== undefined && bbox.cen_lat !== undefined) {
+      return { lon: bbox.cen_lon, lat: bbox.cen_lat };
+    }
+
+    // Calculate center from bounding box min/max values
+    if (
+      bbox.min_lon !== undefined &&
+      bbox.max_lon !== undefined &&
+      bbox.min_lat !== undefined &&
+      bbox.max_lat !== undefined
+    ) {
+      return {
+        lon: (bbox.min_lon + bbox.max_lon) / 2, // Midpoint between left and right edges
+        lat: (bbox.min_lat + bbox.max_lat) / 2, // Midpoint between bottom and top edges
+      };
+    }
+
+    // Fallback if neither format is available to prevent errors
+    return { lon: 0, lat: 0 };
+  };
+
   if (geometryType === GeometryType.Point) {
     const features: Feature[] = data
       .filter((object) => object.label === featureOfInterestLabel)
-      .map((foi) => ({
-        type: "Feature",
-        properties: {
-          pairId: foi.pairId,
-          areaId: foi.areaPairId,
-          areaCode: foi.areaCode,
-        },
-        geometry: {
-          type: "Point",
-          coordinates: [foi.bbox.cen_lon, foi.bbox.cen_lat],
-        },
-      }));
+      .map((foi) => {
+        const { lon: cen_lon, lat: cen_lat } = getCenter(foi.bbox);
+        return {
+          type: "Feature",
+          properties: {
+            pairId: foi.pairId,
+            areaId: foi.areaPairId,
+            areaCode: foi.areaCode,
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [cen_lon, cen_lat],
+          },
+        };
+      });
 
     return {
       type: "FeatureCollection",
@@ -39,8 +77,8 @@ export function generateFeatureCollection(
     const features: Feature[] = data
       .filter((object) => object.label === featureOfInterestLabel)
       .flatMap((obj) => {
-        const { min_lon, max_lon, min_lat, max_lat, cen_lon, cen_lat } =
-          obj.bbox;
+        const { min_lon, max_lon, min_lat, max_lat } = obj.bbox;
+        const { lon: cen_lon, lat: cen_lat } = getCenter(obj.bbox);
 
         // Calculate halfway points between center and min/max for lat and lon
         const halfMinLat = (cen_lat + min_lat) / 2;

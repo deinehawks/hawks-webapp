@@ -44,6 +44,18 @@ import { getYear } from "date-fns";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+// Pin SVG images
+const PIN_IMAGES = {
+  yellow: `<svg width="32" height="48" viewBox="0 0 32 48" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 2C8.27 2 2 8.27 2 16c0 8 14 28 14 28s14-20 14-28c0-7.73-6.27-14-14-14z" fill="#fbc02d" stroke="#fff" stroke-width="2"/>
+    <circle cx="16" cy="16" r="5" fill="#fff"/>
+  </svg>`,
+  red: `<svg width="32" height="48" viewBox="0 0 32 48" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 2C8.27 2 2 8.27 2 16c0 8 14 28 14 28s14-20 14-28c0-7.73-6.27-14-14-14z" fill="#ff0000" stroke="#fff" stroke-width="2"/>
+    <circle cx="16" cy="16" r="5" fill="#fff"/>
+  </svg>`,
+};
+
 function MapEvents({ surveys }) {
   const { orthomap } = useMap();
   const { setPopupInfo } = useOrthoMapStore((state) => state);
@@ -78,6 +90,29 @@ function MapEvents({ surveys }) {
       orthomap.off("click", "area-fills", handleMapClick);
     };
   }, [orthomap, handleMapClick]);
+
+  return null;
+}
+
+function InitializeMapImages() {
+  const { orthomap } = useMap();
+
+  useEffect(() => {
+    if (!orthomap) return;
+
+    // Only add if not already added
+    if (!orthomap.hasImage("pin-yellow")) {
+      const img = new Image();
+      img.onload = () => orthomap.addImage("pin-yellow", img);
+      img.src = `data:image/svg+xml;base64,${btoa(PIN_IMAGES.yellow)}`;
+    }
+
+    if (!orthomap.hasImage("pin-red")) {
+      const img = new Image();
+      img.onload = () => orthomap.addImage("pin-red", img);
+      img.src = `data:image/svg+xml;base64,${btoa(PIN_IMAGES.red)}`;
+    }
+  }, [orthomap]);
 
   return null;
 }
@@ -230,26 +265,10 @@ function FeaturesOfInterest({
 }) {
   const { selectedFoi } = useOrthoMapStore((state) => state);
 
-  // const healthyBananas = useMemo(() => {
-  //   if (!detectedObjects) return "";
-  //   return generateFeatureCollectionByFoi(
-  //     detectedObjects,
-  //     "Banana Plant (Healthy-looking)"
-  //   );
-  // }, [detectedObjects]);
-
-  // const unhealthyBananas = useMemo(() => {
-  //   if (!detectedObjects) return "";
-  //   return generateFeatureCollectionByFoi(
-  //     detectedObjects,
-  //     "Banana Plant (Infected)"
-  //   );
-  // }, [detectedObjects]);
-
   const healthyBananas = useMemo(() => {
     if (!detectedObjects) return "";
     return generateFeatureCollection(
-      GeometryType.LineString,
+      GeometryType.Point,
       "Banana Plant (Healthy-looking)",
       detectedObjects
     );
@@ -258,7 +277,7 @@ function FeaturesOfInterest({
   const unhealthyBananas = useMemo(() => {
     if (!detectedObjects) return "";
     return generateFeatureCollection(
-      GeometryType.LineString,
+      GeometryType.Point,
       "Banana Plant (Infected)",
       detectedObjects
     );
@@ -266,68 +285,156 @@ function FeaturesOfInterest({
 
   return (
     <>
-      {/* {(selectedFoi === "healthy" || selectedFoi === "all") && (
-        <Source id={`${code}-healthy`} type="geojson" data={healthyBananas}>
-          <Layer
-            id={`${code}-healthy-fill`}
-            type="fill"
-            source={`${code}-healthy`}
-            paint={{
-              "fill-color": "#ffff00",
-              "fill-opacity": 0.1,
-            }}
-          />
-          <Layer
-            id={`${code}-healthy-border`}
-            type="line"
-            source={`${code}-healthy`}
-            paint={{
-              "line-color": "#ffff00",
-              "line-width": 1,
-            }}
-          />
-        </Source>
-      )} */}
-
-      {/* {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
-        <Source id={`${code}-unhealthy`} type="geojson" data={unhealthyBananas}>
-          <Layer
-            id={`${code}-unhealthy-fill`}
-            type="fill"
-            source={`${code}-unhealthy`}
-            paint={{
-              "fill-color": "#ff0000",
-              "fill-opacity": 0.1,
-            }}
-          />
-          <Layer
-            id={`${code}-unhealthy-border`}
-            type="line"
-            source={`${code}-unhealthy`}
-            paint={{
-              "line-color": "#ff0000",
-              "line-width": 1,
-            }}
-          />
-        </Source>
-      )} */}
+      {/* HEALTHY HEATMAP - renders first */}
       {(selectedFoi === "healthy" || selectedFoi === "all") && (
         <Source id={`${code}-healthy`} type="geojson" data={healthyBananas}>
           <Layer
-            id={`${code}-healthy-fill`}
-            type="line"
+            id={`${code}-healthy-heatmap`}
+            type="heatmap"
             source={`${code}-healthy`}
-            paint={{ "line-color": "#ffff00", "line-width": 3 }}
+            maxzoom={18.8}
+            paint={{
+              "heatmap-weight": [
+                "interpolate",
+                ["linear"],
+                ["get", "mag"],
+                0,
+                0,
+                6,
+                1,
+              ],
+              "heatmap-color": [
+                "interpolate",
+                ["linear"],
+                ["heatmap-density"],
+                0,
+                "rgba(251, 192, 45, 0)",
+                0.2,
+                "rgba(251, 192, 45, 0.4)",
+                0.5,
+                "rgba(251, 192, 45, 0.8)",
+                1,
+                "rgba(251, 192, 45, 1)",
+              ],
+              "heatmap-radius": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                10,
+                15,
+                15,
+                25,
+              ],
+              "heatmap-opacity": 0.8,
+            }}
           />
         </Source>
       )}
+
+      {/* UNHEALTHY HEATMAP - renders second */}
       {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
         <Source id={`${code}-unhealthy`} type="geojson" data={unhealthyBananas}>
           <Layer
-            id={`${code}-unhealthy-fill`}
-            type="line"
+            id={`${code}-unhealthy-heatmap`}
+            type="heatmap"
             source={`${code}-unhealthy`}
-            paint={{ "line-color": "#ff0000", "line-width": 3 }}
+            maxzoom={18.8}
+            paint={{
+              "heatmap-weight": [
+                "interpolate",
+                ["linear"],
+                ["get", "mag"],
+                0,
+                0,
+                6,
+                1,
+              ],
+              "heatmap-color": [
+                "interpolate",
+                ["linear"],
+                ["heatmap-density"],
+                0,
+                "rgba(255, 0, 0, 0)",
+                0.2,
+                "rgba(255, 0, 0, 0.4)",
+                0.5,
+                "rgba(255, 0, 0, 0.8)",
+                1,
+                "rgba(150, 0, 0, 1)",
+              ],
+              "heatmap-radius": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                10,
+                15,
+                15,
+                25,
+              ],
+              "heatmap-opacity": 0.8,
+            }}
+          />
+        </Source>
+      )}
+
+      {/* HEALTHY PINS - renders third */}
+      {(selectedFoi === "healthy" || selectedFoi === "all") && (
+        <Source
+          id={`${code}-healthy-pins`}
+          type="geojson"
+          data={healthyBananas}
+        >
+          <Layer
+            id={`${code}-healthy-pin`}
+            type="symbol"
+            source={`${code}-healthy-pins`}
+            minzoom={18.8}
+            layout={{
+              "icon-image": "pin-yellow",
+              "icon-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                15,
+                0.8,
+                16,
+                0.7,
+                17,
+                0.6,
+              ],
+              "icon-allow-overlap": true,
+            }}
+          />
+        </Source>
+      )}
+
+      {/* UNHEALTHY PINS - renders last (on top) */}
+      {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
+        <Source
+          id={`${code}-unhealthy-pins`}
+          type="geojson"
+          data={unhealthyBananas}
+        >
+          <Layer
+            id={`${code}-unhealthy-pin`}
+            type="symbol"
+            source={`${code}-unhealthy-pins`}
+            minzoom={18.8}
+            layout={{
+              "icon-image": "pin-red",
+              "icon-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                15,
+                0.8,
+                16,
+                0.7,
+                17,
+                0.6,
+              ],
+              "icon-allow-overlap": true,
+            }}
           />
         </Source>
       )}
@@ -382,33 +489,7 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
           <Label htmlFor="year-selector" className="sr-only">
             Year
           </Label>
-          {/* <Select
-            defaultValue={uniqueFlightYears.at(uniqueFlightYears.length - 1)}
-          >
-            <SelectTrigger
-              className="@4xl/main:hidden flex w-fit"
-              id="year-selector"
-            >
-              <SelectValue placeholder="Select orthomap" />
-            </SelectTrigger>
-            <SelectContent>
-              {uniqueFlightYears.map((year) => (
-                <SelectItem key={year} value={year}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select> */}
           <TabsList className="@4xl/main:flex">
-            {/* {uniqueFlightYears.map((year) => (
-              <TabsTrigger
-                key={year}
-                value={year}
-                className="gap-1 :first-child:gap-0 :last-child:gap-0"
-              >
-                {year}
-              </TabsTrigger>
-            ))} */}
             <TabsTrigger
               value="orthomap"
               className="gap-1 :first-child:gap-0 :last-child:gap-0"
@@ -426,8 +507,6 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
             <CardHeader>
               <CardTitle> {userProfile.organization.code} </CardTitle>
               <CardDescription>{userProfile.organization.name}</CardDescription>
-              {/* <CardTitle> ASIMOV-HAWKS </CardTitle>
-              <CardDescription>Sample orthomap data</CardDescription> */}
             </CardHeader>
             <CardContent className="flex-1">
               <div className="h-full flex">
@@ -500,6 +579,8 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                     ],
                   }}
                 >
+                  <InitializeMapImages />
+
                   {surveys.map((survey) => (
                     <Source
                       key={survey.id}
@@ -529,7 +610,6 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                     detectedObjects={detectedObjects}
                   />
                   <MapEvents surveys={surveys} />
-
                   <MapPopup />
                 </Map>
               </div>
