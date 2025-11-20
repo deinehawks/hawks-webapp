@@ -100,18 +100,38 @@ function InitializeMapImages() {
   useEffect(() => {
     if (!orthomap) return;
 
-    // Only add if not already added
-    if (!orthomap.hasImage("pin-yellow")) {
+    // Convert SVG to canvas and then to image data
+    const loadSvgImage = (svgString: string, id: string) => {
       const img = new Image();
-      img.onload = () => orthomap.addImage("pin-yellow", img);
-      img.src = `data:image/svg+xml;base64,${btoa(PIN_IMAGES.yellow)}`;
-    }
+      img.onload = () => {
+        // Create canvas to convert image
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0);
 
-    if (!orthomap.hasImage("pin-red")) {
-      const img = new Image();
-      img.onload = () => orthomap.addImage("pin-red", img);
-      img.src = `data:image/svg+xml;base64,${btoa(PIN_IMAGES.red)}`;
-    }
+        // Convert canvas to ImageData
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        try {
+          if (!orthomap.hasImage(id)) {
+            orthomap.addImage(id, imageData);
+          }
+        } catch (error) {
+          console.warn(`Failed to add image ${id}:`, error);
+        }
+      };
+      img.onerror = () => {
+        console.error(`Failed to load SVG image for ${id}`);
+      };
+      img.src = `data:image/svg+xml;base64,${btoa(svgString)}`;
+    };
+
+    // Load both images
+    loadSvgImage(PIN_IMAGES.yellow, "pin-yellow");
+    loadSvgImage(PIN_IMAGES.red, "pin-red");
   }, [orthomap]);
 
   return null;

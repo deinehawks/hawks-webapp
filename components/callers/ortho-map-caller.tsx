@@ -5,6 +5,8 @@ import maplibregl from "maplibre-gl";
 import { useEffect } from "react";
 import { Protocol } from "pmtiles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import Lottie from "lottie-react";
+import loadingAnimation from "@/public/loading_blue_dots.json";
 
 const queryClient = new QueryClient();
 
@@ -20,8 +22,12 @@ export default function OrthoMapCaller(props) {
   const OrthoMap = dynamic(() => import("@/components/maps/ortho-map"), {
     ssr: false,
     loading: () => (
-      <div className="justify center flex flex-1 items-center justify-center">
-        Loading map...
+      <div className="flex flex-1 items-center justify-center h-full py-10">
+        <Lottie
+          animationData={loadingAnimation}
+          loop={true}
+          style={{ width: 200, height: 200 }}
+        />
       </div>
     ),
   });

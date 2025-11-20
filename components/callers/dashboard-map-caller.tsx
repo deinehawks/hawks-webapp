@@ -2,10 +2,12 @@
 
 import dynamic from "next/dynamic";
 import maplibregl from "maplibre-gl";
-import { useEffect } from "react";
 import { Protocol } from "pmtiles";
+import Lottie from "lottie-react";
+import loadingAnimation from "@/public/loading_blue_dots.json";
 
 export default function DashboardMapCaller(props) {
+  // Optional: PMTiles protocol
   // useEffect(() => {
   //   let protocol = new Protocol();
   //   maplibregl.addProtocol("pmtiles", protocol.tile);
@@ -19,8 +21,12 @@ export default function DashboardMapCaller(props) {
     {
       ssr: false,
       loading: () => (
-        <div className="justify center flex flex-1 items-center justify-center">
-          Loading map...
+        <div className="flex flex-1 items-center justify-center h-full py-10">
+          <Lottie
+            animationData={loadingAnimation}
+            loop={true}
+            style={{ width: 200, height: 200 }}
+          />
         </div>
       ),
     }
