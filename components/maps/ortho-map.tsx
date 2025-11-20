@@ -56,6 +56,84 @@ const PIN_IMAGES = {
   </svg>`,
 };
 
+/**
+ * Calculate optimal zoom levels based on data density
+ *
+ * Analyzes the spread and density of features to determine when:
+ * - Heatmap should be shown (zoomed out)
+ * - Individual pins should be shown (zoomed in)
+ */
+function calculateOptimalZoomLevels(features: any[]) {
+  if (!features || features.length === 0) {
+    return { heatmapMaxZoom: 15, pinMinZoom: 15 };
+  }
+
+  // Extract coordinates
+  const coords = features
+    .filter((f) => f.geometry?.coordinates)
+    .map((f) => f.geometry.coordinates);
+
+  if (coords.length === 0) {
+    return { heatmapMaxZoom: 15, pinMinZoom: 15 };
+  }
+
+  // Calculate bounding box
+  const lons = coords.map((c) => c[0]);
+  const lats = coords.map((c) => c[1]);
+  const minLon = Math.min(...lons);
+  const maxLon = Math.max(...lons);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+
+  const lonSpan = maxLon - minLon;
+  const latSpan = maxLat - minLat;
+
+  // Calculate average distance between points (simplified)
+  const avgSpan = (lonSpan + latSpan) / 2;
+
+  // ADJUST THESE VALUES to control when heatmap appears
+  // Larger spread = show pins at higher zoom level = heatmap shows longer
+  // Smaller spread = show pins at lower zoom level = heatmap disappears sooner
+  let zoomThreshold = 15;
+
+  if (avgSpan > 0.1) {
+    // Large area spread - pins are far apart
+    // ADJUST: Increase to show heatmap longer, decrease to show pins sooner
+    zoomThreshold = 30;
+  } else if (avgSpan > 0.05) {
+    // Medium spread
+    // ADJUST: Increase to show heatmap longer, decrease to show pins sooner
+    zoomThreshold = 28;
+  } else if (avgSpan > 0.01) {
+    // Small spread - pins close together
+    // ADJUST: Increase to show heatmap longer, decrease to show pins sooner
+    zoomThreshold = 26;
+  } else {
+    // Very tight cluster
+    // ADJUST: Increase to show heatmap longer, decrease to show pins sooner
+    zoomThreshold = 24;
+  }
+
+  // Density based adjustment
+  // More points = show heatmap longer
+  const density = features.length / (avgSpan * avgSpan || 1);
+
+  if (density > 1000) {
+    // Very high density - extend heatmap
+    // ADJUST: Change +1 to +2 for longer heatmap, 0 for no adjustment
+    zoomThreshold = Math.min(19, zoomThreshold + 1);
+  } else if (density < 10) {
+    // Low density - reduce heatmap
+    // ADJUST: Change -2 to -3 for shorter heatmap, 0 for no adjustment
+    zoomThreshold = Math.max(13, zoomThreshold - 2);
+  }
+
+  return {
+    heatmapMaxZoom: zoomThreshold,
+    pinMinZoom: zoomThreshold,
+  };
+}
+
 function MapEvents({ surveys }) {
   const { orthomap } = useMap();
   const { setPopupInfo } = useOrthoMapStore((state) => state);
@@ -303,6 +381,33 @@ function FeaturesOfInterest({
     );
   }, [detectedObjects]);
 
+  // Calculate dynamic zoom levels based on data density
+  const healthyZoomLevels = useMemo(() => {
+    if (!healthyBananas || healthyBananas === "")
+      return { heatmapMaxZoom: 15, pinMinZoom: 15 };
+    const levels = calculateOptimalZoomLevels(
+      (healthyBananas as any).features || []
+    );
+    // Lower the pin visibility threshold by 1-2 levels to prevent overlapping
+    return {
+      heatmapMaxZoom: levels.heatmapMaxZoom,
+      pinMinZoom: Math.max(13, levels.pinMinZoom - 1.5), // Show heatmap sooner
+    };
+  }, [healthyBananas]);
+
+  const unhealthyZoomLevels = useMemo(() => {
+    if (!unhealthyBananas || unhealthyBananas === "")
+      return { heatmapMaxZoom: 15, pinMinZoom: 15 };
+    const levels = calculateOptimalZoomLevels(
+      (unhealthyBananas as any).features || []
+    );
+    // Lower the pin visibility threshold by 1-2 levels to prevent overlapping
+    return {
+      heatmapMaxZoom: levels.heatmapMaxZoom,
+      pinMinZoom: Math.max(13, levels.pinMinZoom - 1.5), // Show heatmap sooner
+    };
+  }, [unhealthyBananas]);
+
   return (
     <>
       {/* HEALTHY HEATMAP - renders first */}
@@ -312,7 +417,7 @@ function FeaturesOfInterest({
             id={`${code}-healthy-heatmap`}
             type="heatmap"
             source={`${code}-healthy`}
-            maxzoom={18.8}
+            maxzoom={healthyZoomLevels.heatmapMaxZoom}
             paint={{
               "heatmap-weight": [
                 "interpolate",
@@ -341,8 +446,16 @@ function FeaturesOfInterest({
                 ["linear"],
                 ["zoom"],
                 10,
+                8,
+                12,
+                10,
+                14,
+                12,
+                16,
                 15,
-                15,
+                18,
+                20,
+                20,
                 25,
               ],
               "heatmap-opacity": 0.8,
@@ -358,7 +471,7 @@ function FeaturesOfInterest({
             id={`${code}-unhealthy-heatmap`}
             type="heatmap"
             source={`${code}-unhealthy`}
-            maxzoom={18.8}
+            maxzoom={unhealthyZoomLevels.heatmapMaxZoom}
             paint={{
               "heatmap-weight": [
                 "interpolate",
@@ -387,8 +500,16 @@ function FeaturesOfInterest({
                 ["linear"],
                 ["zoom"],
                 10,
+                8,
+                12,
+                10,
+                14,
+                12,
+                16,
                 15,
-                15,
+                18,
+                20,
+                20,
                 25,
               ],
               "heatmap-opacity": 0.8,
@@ -408,7 +529,7 @@ function FeaturesOfInterest({
             id={`${code}-healthy-pin`}
             type="symbol"
             source={`${code}-healthy-pins`}
-            minzoom={18.8}
+            minzoom={healthyZoomLevels.pinMinZoom}
             layout={{
               "icon-image": "pin-yellow",
               "icon-size": [
@@ -439,7 +560,7 @@ function FeaturesOfInterest({
             id={`${code}-unhealthy-pin`}
             type="symbol"
             source={`${code}-unhealthy-pins`}
-            minzoom={18.8}
+            minzoom={unhealthyZoomLevels.pinMinZoom}
             layout={{
               "icon-image": "pin-red",
               "icon-size": [
