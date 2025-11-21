@@ -44,31 +44,54 @@ import { getYear } from "date-fns";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-// Pin SVG images
+// CSS animations for pin drop effect
+const pinAnimationStyles = `
+  @keyframes dropPin {
+    0% {
+      opacity: 0;
+      transform: translateY(-30px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .pin-drop {
+    animation: dropPin 0.6s ease-out forwards;
+  }
+`;
+
+// Pin SVG images with slight shadow for depth
 const PIN_IMAGES = {
   yellow: `<svg width="32" height="48" viewBox="0 0 32 48" xmlns="http://www.w3.org/2000/svg">
-    <path d="M16 2C8.27 2 2 8.27 2 16c0 8 14 28 14 28s14-20 14-28c0-7.73-6.27-14-14-14z" fill="#fbc02d" stroke="#fff" stroke-width="2"/>
+    <defs>
+      <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+        <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+      </filter>
+    </defs>
+    <path d="M16 2C8.27 2 2 8.27 2 16c0 8 14 28 14 28s14-20 14-28c0-7.73-6.27-14-14-14z" fill="#fbc02d" stroke="#fff" stroke-width="2" filter="url(#shadow)"/>
     <circle cx="16" cy="16" r="5" fill="#fff"/>
   </svg>`,
   red: `<svg width="32" height="48" viewBox="0 0 32 48" xmlns="http://www.w3.org/2000/svg">
-    <path d="M16 2C8.27 2 2 8.27 2 16c0 8 14 28 14 28s14-20 14-28c0-7.73-6.27-14-14-14z" fill="#ff0000" stroke="#fff" stroke-width="2"/>
+    <defs>
+      <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+        <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+      </filter>
+    </defs>
+    <path d="M16 2C8.27 2 2 8.27 2 16c0 8 14 28 14 28s14-20 14-28c0-7.73-6.27-14-14-14z" fill="#ff0000" stroke="#fff" stroke-width="2" filter="url(#shadow)"/>
     <circle cx="16" cy="16" r="5" fill="#fff"/>
   </svg>`,
 };
 
 /**
  * Calculate optimal zoom levels based on data density
- *
- * Analyzes the spread and density of features to determine when:
- * - Heatmap should be shown (zoomed out)
- * - Individual pins should be shown (zoomed in)
  */
 function calculateOptimalZoomLevels(features: any[]) {
   if (!features || features.length === 0) {
     return { heatmapMaxZoom: 15, pinMinZoom: 15 };
   }
 
-  // Extract coordinates
   const coords = features
     .filter((f) => f.geometry?.coordinates)
     .map((f) => f.geometry.coordinates);
@@ -77,7 +100,6 @@ function calculateOptimalZoomLevels(features: any[]) {
     return { heatmapMaxZoom: 15, pinMinZoom: 15 };
   }
 
-  // Calculate bounding box
   const lons = coords.map((c) => c[0]);
   const lats = coords.map((c) => c[1]);
   const minLon = Math.min(...lons);
@@ -87,44 +109,25 @@ function calculateOptimalZoomLevels(features: any[]) {
 
   const lonSpan = maxLon - minLon;
   const latSpan = maxLat - minLat;
-
-  // Calculate average distance between points (simplified)
   const avgSpan = (lonSpan + latSpan) / 2;
 
-  // ADJUST THESE VALUES to control when heatmap appears
-  // Larger spread = show pins at higher zoom level = heatmap shows longer
-  // Smaller spread = show pins at lower zoom level = heatmap disappears sooner
   let zoomThreshold = 15;
 
   if (avgSpan > 0.1) {
-    // Large area spread - pins are far apart
-    // ADJUST: Increase to show heatmap longer, decrease to show pins sooner
-    zoomThreshold = 30;
-  } else if (avgSpan > 0.05) {
-    // Medium spread
-    // ADJUST: Increase to show heatmap longer, decrease to show pins sooner
-    zoomThreshold = 28;
+    zoomThreshold = 17;
   } else if (avgSpan > 0.01) {
-    // Small spread - pins close together
-    // ADJUST: Increase to show heatmap longer, decrease to show pins sooner
-    zoomThreshold = 26;
+    zoomThreshold = 16;
+  } else if (avgSpan > 0.01) {
+    zoomThreshold = 18;
   } else {
-    // Very tight cluster
-    // ADJUST: Increase to show heatmap longer, decrease to show pins sooner
-    zoomThreshold = 24;
+    zoomThreshold = 19;
   }
 
-  // Density based adjustment
-  // More points = show heatmap longer
   const density = features.length / (avgSpan * avgSpan || 1);
 
   if (density > 1000) {
-    // Very high density - extend heatmap
-    // ADJUST: Change +1 to +2 for longer heatmap, 0 for no adjustment
     zoomThreshold = Math.min(19, zoomThreshold + 1);
   } else if (density < 10) {
-    // Low density - reduce heatmap
-    // ADJUST: Change -2 to -3 for shorter heatmap, 0 for no adjustment
     zoomThreshold = Math.max(13, zoomThreshold - 2);
   }
 
@@ -162,8 +165,6 @@ function MapEvents({ surveys }) {
 
     orthomap.on("click", "area-fills", handleMapClick);
 
-    console.log("layers", orthomap.getLayersOrder());
-
     return () => {
       orthomap.off("click", "area-fills", handleMapClick);
     };
@@ -178,11 +179,9 @@ function InitializeMapImages() {
   useEffect(() => {
     if (!orthomap) return;
 
-    // Convert SVG to canvas and then to image data
     const loadSvgImage = (svgString: string, id: string) => {
       const img = new Image();
       img.onload = () => {
-        // Create canvas to convert image
         const canvas = document.createElement("canvas");
         canvas.width = img.width;
         canvas.height = img.height;
@@ -190,7 +189,6 @@ function InitializeMapImages() {
         if (!ctx) return;
         ctx.drawImage(img, 0, 0);
 
-        // Convert canvas to ImageData
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
         try {
@@ -207,12 +205,89 @@ function InitializeMapImages() {
       img.src = `data:image/svg+xml;base64,${btoa(svgString)}`;
     };
 
-    // Load both images
     loadSvgImage(PIN_IMAGES.yellow, "pin-yellow");
     loadSvgImage(PIN_IMAGES.red, "pin-red");
   }, [orthomap]);
 
   return null;
+}
+
+function MapLegend() {
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <div className="absolute bottom-8 left-8 z-10">
+      {/* Toggle Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="mb-2 p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+        title={isOpen ? "Hide legend" : "Show legend"}
+      >
+        <svg
+          className={`w-5 h-5 text-gray-700 transition-transform ${
+            isOpen ? "rotate-0" : "rotate-180"
+          }`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 5l7 7m0 0l-7 7m7-7H6"
+          />
+        </svg>
+      </button>
+
+      {/* Legend Content */}
+      {isOpen && (
+        <div className="bg-white rounded-lg shadow-lg p-4 max-w-xs border border-gray-200 animate-in fade-in slide-in-from-left-2 duration-200">
+          <div className="text-sm font-semibold text-gray-800 mb-3">Legend</div>
+
+          <div className="space-y-3">
+            {/* Healthy Plants */}
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 bg-yellow-400 rounded-full border-2 border-white shadow-md"></div>
+              <div className="text-xs text-gray-700">
+                <div className="font-medium">Healthy Plants</div>
+                <div className="text-gray-500">No signs of disease</div>
+              </div>
+            </div>
+
+            {/* Infected Plants */}
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-md"></div>
+              <div className="text-xs text-gray-700">
+                <div className="font-medium">Infected Plants</div>
+                <div className="text-gray-500">Disease detected</div>
+              </div>
+            </div>
+
+            {/* Heatmap */}
+            <div className="pt-2 border-t border-gray-200">
+              <div className="text-xs font-medium text-gray-700 mb-2">
+                Heatmap (Zoomed Out)
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1">
+                  <div className="w-3 h-3 bg-yellow-200"></div>
+                  <div className="w-3 h-3 bg-yellow-300"></div>
+                  <div className="w-3 h-3 bg-yellow-400"></div>
+                  <div className="w-3 h-3 bg-yellow-500"></div>
+                </div>
+                <span className="text-gray-600">Low → High Density</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-xs text-gray-500 mt-3 italic">
+            Zoom in to see individual plants
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function MapPopup() {
@@ -381,17 +456,15 @@ function FeaturesOfInterest({
     );
   }, [detectedObjects]);
 
-  // Calculate dynamic zoom levels based on data density
   const healthyZoomLevels = useMemo(() => {
     if (!healthyBananas || healthyBananas === "")
       return { heatmapMaxZoom: 15, pinMinZoom: 15 };
     const levels = calculateOptimalZoomLevels(
       (healthyBananas as any).features || []
     );
-    // Lower the pin visibility threshold by 1-2 levels to prevent overlapping
     return {
       heatmapMaxZoom: levels.heatmapMaxZoom,
-      pinMinZoom: Math.max(13, levels.pinMinZoom - 1.5), // Show heatmap sooner
+      pinMinZoom: Math.max(13, levels.pinMinZoom - 1.5),
     };
   }, [healthyBananas]);
 
@@ -401,16 +474,15 @@ function FeaturesOfInterest({
     const levels = calculateOptimalZoomLevels(
       (unhealthyBananas as any).features || []
     );
-    // Lower the pin visibility threshold by 1-2 levels to prevent overlapping
     return {
       heatmapMaxZoom: levels.heatmapMaxZoom,
-      pinMinZoom: Math.max(13, levels.pinMinZoom - 1.5), // Show heatmap sooner
+      pinMinZoom: Math.max(13, levels.pinMinZoom - 1.5),
     };
   }, [unhealthyBananas]);
 
   return (
     <>
-      {/* HEALTHY HEATMAP - renders first */}
+      {/* HEALTHY HEATMAP */}
       {(selectedFoi === "healthy" || selectedFoi === "all") && (
         <Source id={`${code}-healthy`} type="geojson" data={healthyBananas}>
           <Layer
@@ -435,11 +507,11 @@ function FeaturesOfInterest({
                 0,
                 "rgba(251, 192, 45, 0)",
                 0.2,
-                "rgba(251, 192, 45, 0.4)",
+                "rgba(251, 192, 45, 0.3)",
                 0.5,
-                "rgba(251, 192, 45, 0.8)",
+                "rgba(251, 192, 45, 0.6)",
                 1,
-                "rgba(251, 192, 45, 1)",
+                "rgba(251, 192, 45, 0.9)",
               ],
               "heatmap-radius": [
                 "interpolate",
@@ -458,13 +530,13 @@ function FeaturesOfInterest({
                 20,
                 25,
               ],
-              "heatmap-opacity": 0.8,
+              "heatmap-opacity": 0.7,
             }}
           />
         </Source>
       )}
 
-      {/* UNHEALTHY HEATMAP - renders second */}
+      {/* UNHEALTHY HEATMAP */}
       {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
         <Source id={`${code}-unhealthy`} type="geojson" data={unhealthyBananas}>
           <Layer
@@ -489,11 +561,11 @@ function FeaturesOfInterest({
                 0,
                 "rgba(255, 0, 0, 0)",
                 0.2,
-                "rgba(255, 0, 0, 0.4)",
+                "rgba(255, 0, 0, 0.3)",
                 0.5,
-                "rgba(255, 0, 0, 0.8)",
+                "rgba(255, 0, 0, 0.6)",
                 1,
-                "rgba(150, 0, 0, 1)",
+                "rgba(150, 0, 0, 0.9)",
               ],
               "heatmap-radius": [
                 "interpolate",
@@ -512,13 +584,13 @@ function FeaturesOfInterest({
                 20,
                 25,
               ],
-              "heatmap-opacity": 0.8,
+              "heatmap-opacity": 0.7,
             }}
           />
         </Source>
       )}
 
-      {/* HEALTHY PINS - renders third */}
+      {/* HEALTHY PINS */}
       {(selectedFoi === "healthy" || selectedFoi === "all") && (
         <Source
           id={`${code}-healthy-pins`}
@@ -536,20 +608,31 @@ function FeaturesOfInterest({
                 "interpolate",
                 ["linear"],
                 ["zoom"],
+                13,
+                0.1,
+                14,
+                0.2,
                 15,
-                0.8,
+                0.2,
                 16,
-                0.7,
+                0.3,
                 17,
-                0.6,
+                0.3,
+                18,
+                0.4,
+                20,
+                0.5,
               ],
               "icon-allow-overlap": true,
+            }}
+            paint={{
+              "icon-opacity": 0.75,
             }}
           />
         </Source>
       )}
 
-      {/* UNHEALTHY PINS - renders last (on top) */}
+      {/* UNHEALTHY PINS */}
       {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
         <Source
           id={`${code}-unhealthy-pins`}
@@ -567,14 +650,25 @@ function FeaturesOfInterest({
                 "interpolate",
                 ["linear"],
                 ["zoom"],
+                13,
+                0.1,
+                14,
+                0.2,
                 15,
-                0.8,
+                0.2,
                 16,
-                0.7,
+                0.3,
                 17,
+                0.4,
+                18,
+                0.5,
+                20,
                 0.6,
               ],
               "icon-allow-overlap": true,
+            }}
+            paint={{
+              "icon-opacity": 0.75,
             }}
           />
         </Source>
@@ -584,10 +678,7 @@ function FeaturesOfInterest({
 }
 
 export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
-  // States
   const [flightYear, setFlightYear] = useState("");
-
-  // Memoized calculations
 
   const surveyIds = useMemo(() => {
     if (!surveys) return null;
@@ -614,15 +705,15 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
     );
   }, [surveys]);
 
-  //
   useEffect(() => {
     setFlightYear(uniqueFlightYears.at(uniqueFlightYears.length - 1) || "");
   }, [uniqueFlightYears]);
 
   return (
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
+      <style>{pinAnimationStyles}</style>
+
       <Tabs
-        // defaultValue={uniqueFlightYears.at(uniqueFlightYears.length - 1)}
         defaultValue="orthomap"
         className="flex w-full flex-col justify-start gap-6"
       >
@@ -644,12 +735,12 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
 
       <MapProvider>
         <div className="flex flex-1 h-full px-4 lg:px-6">
-          <Card className="@container/card flex flex-1 flex-col h-full">
+          <Card className="@container/card flex flex-1 flex-col h-full relative">
             <CardHeader>
               <CardTitle> {userProfile.organization.code} </CardTitle>
               <CardDescription>{userProfile.organization.name}</CardDescription>
             </CardHeader>
-            <CardContent className="flex-1">
+            <CardContent className="flex-1 relative">
               <div className="h-full flex">
                 <Map
                   id="orthomap"
@@ -751,8 +842,12 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                     detectedObjects={detectedObjects}
                   />
                   <MapEvents surveys={surveys} />
+
                   <MapPopup />
                 </Map>
+
+                {/* Legend positioned over the map */}
+                <MapLegend />
               </div>
             </CardContent>
             <CardFooter>
