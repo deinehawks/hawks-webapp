@@ -6,17 +6,29 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { getUser } from "@/lib/actions/auth";
-import { getUserProfile } from "@/lib/actions/profiles";
+import { getCurrentUserProfile } from "@/lib/actions/profiles";
 import { getAllUserSurveys } from "@/lib/actions/surveys";
+import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const user = await getUser();
-  const userProfile = await getUserProfile(user?.id);
+  // Get authenticated user
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    redirect("/auth/login");
+  }
+
+  // Now get profile with correct user ID
+  const userProfile = await getCurrentUserProfile();
   const surveys = await getAllUserSurveys();
 
   return (

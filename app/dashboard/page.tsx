@@ -14,12 +14,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { getUser } from "@/lib/actions/auth";
-import { getUserProfile } from "@/lib/actions/profiles";
+import { getCurrentUserProfile } from "@/lib/actions/profiles";
 
 export default async function Page() {
-  const user = await getUser();
-  const userProfile = await getUserProfile(user?.id);
+  const userProfile = await getCurrentUserProfile();
   const surveys = await getAllUserSurveys();
   const detectedObjects = await getObjectDetectionData();
 

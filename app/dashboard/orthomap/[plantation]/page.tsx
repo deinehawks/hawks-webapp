@@ -1,13 +1,14 @@
 import OrthoMapCaller from "@/components/callers/ortho-map-caller";
 
-import { getUser } from "@/lib/actions/auth";
 import { getAllClients } from "@/lib/actions/clients";
-import { getUserProfile } from "@/lib/actions/profiles";
+import { getCurrentUserProfile } from "@/lib/actions/profiles";
 import {
   getAllUserSurveys,
   getObjectDetectionData,
 } from "@/lib/actions/surveys";
 import { OrthoMapStoreProvider } from "@/providers/ortho-map-store-provider";
+import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 
 export default async function Page(props: { params: { plantation: string } }) {
   const { plantation } = await props.params;
@@ -24,8 +25,18 @@ export default async function Page(props: { params: { plantation: string } }) {
     );
   }
 
-  const user = await getUser();
-  const userProfile = await getUserProfile(user?.id);
+  // Get authenticated user
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    redirect("/auth/login");
+  }
+
+  const userProfile = await getCurrentUserProfile();
   const surveys = await getAllUserSurveys();
   const detectedObjects = await getObjectDetectionData();
 

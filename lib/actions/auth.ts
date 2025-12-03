@@ -4,39 +4,39 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-export async function signup(form_data) {
+export async function signup(form_data: { email: string; password: string }) {
   const supabase = await createClient();
 
-  const data = {
+  const { error, data } = await supabase.auth.signUp({
     email: form_data.email,
     password: form_data.password,
-  };
-
-  const { error } = await supabase.auth.signUp(data);
+  });
 
   if (error) {
-    redirect("/error");
+    return { error };
   }
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+
+  return { data };
 }
 
-export async function login(form_data) {
+export async function login(form_data: { email: string; password: string }) {
   const supabase = await createClient();
 
-  const data = {
+  const { error } = await supabase.auth.signInWithPassword({
     email: form_data.email,
     password: form_data.password,
-  };
-
-  const { error } = await supabase.auth.signInWithPassword(data);
+  });
 
   if (error) {
-    return error;
+    return { error: error.message };
   }
 
+  // Revalidate all routes to clear any cached data
   revalidatePath("/", "layout");
+
+  // Server-side redirect after successful login
   redirect("/dashboard");
 }
 
@@ -46,10 +46,10 @@ export async function logout() {
   const { error } = await supabase.auth.signOut();
 
   if (error) {
-    console.error(error);
-    redirect("/error");
+    return { error };
   }
 
+  revalidatePath("/", "layout");
   redirect("/auth/login");
 }
 
@@ -62,9 +62,8 @@ export async function getUser() {
   } = await supabase.auth.getUser();
 
   if (error) {
-    console.error(error);
-    redirect("/error");
+    return { error };
   }
 
-  return user;
+  return { user };
 }

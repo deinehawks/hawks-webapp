@@ -50,7 +50,6 @@ function MapPopup({ popupInfo, setPopupInfo }) {
             {" "}
             {`${popupInfo.access_code}-${popupInfo.area_code}`}{" "}
           </div>
-          {/* <div className="text-sm font-semibold"> {`HAWKS`} </div> */}
         </div>
         <Separator />
         <div className="flex flex-col gap-2 mt-2">
@@ -164,9 +163,6 @@ function MapEvents({ data, setPopupInfo }) {
 export default function MapLibre({ data: surveys }) {
   const [popupInfo, setPopupInfo] = useState(null);
 
-  // const global_x = 125.58147596772221;
-  // const global_y = 7.0763840759644;
-
   const { global_x, global_y } = calculateGlobalCenters(surveys);
 
   const initialViewState = {
@@ -180,43 +176,43 @@ export default function MapLibre({ data: surveys }) {
       initialViewState={initialViewState}
       mapStyle={{
         version: 8,
+        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
         sources: {
           osm: {
             type: "raster",
             tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
             tileSize: 256,
-            attribution: "&copy; OpenStreetMap Contributors",
           },
           areas: {
             type: "geojson",
             data: {
               type: "FeatureCollection",
-              features: surveys?.map((survey) => {
-                return {
-                  type: "Feature",
-                  properties: {
-                    survey_id: survey.id,
-                    latitude: Number((survey.max_y + survey.min_y) / 2),
-                    longitude: Number((survey.max_x + survey.min_x) / 2),
-                  },
-                  geometry: {
-                    type: "Polygon",
-                    coordinates: [
-                      transformCoordinatesToLonLatFormat(survey.boundaries),
-                    ],
-                  },
-                };
-              }),
+              features: surveys.map((survey) => ({
+                type: "Feature",
+                properties: {
+                  survey_id: survey.id,
+                  label: `${survey.access_code}-${survey.area_code}`,
+                },
+                geometry: {
+                  type: "Polygon",
+                  coordinates: [
+                    transformCoordinatesToLonLatFormat(survey.boundaries),
+                  ],
+                },
+              })),
             },
             generateId: true,
           },
         },
         layers: [
           {
-            id: "osm",
-            type: "raster",
-            source: "osm",
+            id: "background",
+            type: "background",
+            paint: { "background-color": "#e5e5e5" },
           },
+
+          { id: "osm", type: "raster", source: "osm" },
+
           {
             id: "area-fills",
             type: "fill",
@@ -231,11 +227,28 @@ export default function MapLibre({ data: surveys }) {
               ],
             },
           },
+
           {
             id: "area-borders",
             type: "line",
             source: "areas",
             paint: { "line-color": "#088", "line-width": 1.25 },
+          },
+
+          {
+            id: "area-labels",
+            type: "symbol",
+            source: "areas",
+            layout: {
+              "text-field": ["get", "label"],
+              "text-size": 14,
+              "text-anchor": "center",
+            },
+            paint: {
+              "text-color": "#ffffff",
+              "text-halo-color": "#088",
+              "text-halo-width": 2,
+            },
           },
         ],
       }}

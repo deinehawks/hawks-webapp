@@ -1,12 +1,9 @@
 "use client";
 
 import { useState } from "react";
-
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import { useForm } from "react-hook-form";
-
 import { cn } from "@/lib/utils";
 
 import {
@@ -16,10 +13,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -28,10 +25,15 @@ import {
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
-import { login } from "@/lib/actions/auth";
 import { Checkbox } from "../ui/checkbox";
 import Link from "next/link";
+
+import { login } from "@/lib/actions/auth";
+
+const formSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+});
 
 export function LoginForm({
   className,
@@ -39,12 +41,6 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const [passwordInputType, setPasswordInputType] = useState("password");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const formSchema = z.object({
-    email: z.string().email(),
-    password: z.string(),
-  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -55,23 +51,28 @@ export function LoginForm({
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    const error = await login(values);
+    setIsLoading(true);
 
-    if (error) {
-      setError(error.message);
-    } else {
-      setError("");
+    try {
+      const result = await login(values);
+
+      // If we reach here, login failed (redirect throws)
+      if (result?.error) {
+        form.setError("root", {
+          message: result.error,
+        });
+      }
+    } catch (error) {
+      // Server action redirects throw NEXT_REDIRECT
+      // This is expected behavior, don't catch it
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   }
 
   function togglePasswordInputVisibility() {
-    if (passwordInputType === "password") {
-      setPasswordInputType("text");
-    }
-    if (passwordInputType === "text") {
-      setPasswordInputType("password");
-    }
-    return null;
+    setPasswordInputType((prev) => (prev === "password" ? "text" : "password"));
   }
 
   return (
@@ -79,14 +80,14 @@ export function LoginForm({
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Welcome back</CardTitle>
-          <CardDescription>
-            {/* Login with your Apple or Google account */}
-          </CardDescription>
+          <CardDescription>Sign in to your account to continue</CardDescription>
         </CardHeader>
+
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
               <div className="grid gap-6">
+                {/* Email */}
                 <FormField
                   control={form.control}
                   name="email"
@@ -98,16 +99,17 @@ export function LoginForm({
                           id="email"
                           type="email"
                           placeholder="you@example.com"
+                          autoComplete="email"
+                          disabled={isLoading}
                           {...field}
                         />
                       </FormControl>
-                      <FormDescription></FormDescription>
-                      <FormMessage>
-                        {form.formState.errors.email?.message}
-                      </FormMessage>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                {/* Password */}
                 <FormField
                   control={form.control}
                   name="password"
@@ -115,55 +117,55 @@ export function LoginForm({
                     <FormItem>
                       <div className="flex items-center">
                         <FormLabel>Password</FormLabel>
-                        <a
-                          href="#"
+                        <Link
+                          href="/auth/forgot-password"
                           className="ml-auto text-sm underline-offset-4 hover:underline"
                         >
                           Forgot your password?
-                        </a>
+                        </Link>
                       </div>
                       <FormControl>
                         <div className="flex flex-col gap-2">
                           <Input
                             id="password"
                             type={passwordInputType}
+                            autoComplete="current-password"
+                            disabled={isLoading}
                             {...field}
                           />
                           <div className="flex items-center gap-2">
                             <Checkbox
                               id="show-password"
-                              onCheckedChange={() =>
-                                togglePasswordInputVisibility()
-                              }
+                              disabled={isLoading}
+                              onCheckedChange={togglePasswordInputVisibility}
                             />
                             <label
                               htmlFor="show-password"
-                              className="text-sm leading none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                             >
                               Show Password
                             </label>
                           </div>
                         </div>
                       </FormControl>
-                      <FormDescription></FormDescription>
-                      <FormMessage>
-                        {form.formState.errors.password?.message}
-                      </FormMessage>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
-                {error && (
-                  <FormItem>
-                    <FormMessage> Error: {error} </FormMessage>
-                  </FormItem>
+
+                {/* Root error message */}
+                {form.formState.errors.root && (
+                  <div className="text-sm text-red-500">
+                    {form.formState.errors.root.message}
+                  </div>
                 )}
-                <Button
-                  onClick={() => setError("")}
-                  type="submit"
-                  className="w-full"
-                >
-                  {form.formState.isSubmitting ? "Logging in..." : "Login"}
+
+                {/* Submit button */}
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Logging in..." : "Login"}
                 </Button>
+
+                {/* Link to signup */}
                 <div className="text-center text-sm">
                   Don&apos;t have an account?{" "}
                   <Link
@@ -178,9 +180,23 @@ export function LoginForm({
           </Form>
         </CardContent>
       </Card>
-      <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
-        By continuing, you agree to our <a href="#">Terms of Service</a> and{" "}
-        <a href="#">Privacy Policy</a>.
+
+      <div className="text-muted-foreground text-center text-xs text-balance">
+        By continuing, you agree to our{" "}
+        <Link
+          href="/terms"
+          className="underline underline-offset-4 hover:text-primary"
+        >
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link
+          href="/privacy"
+          className="underline underline-offset-4 hover:text-primary"
+        >
+          Privacy Policy
+        </Link>
+        .
       </div>
     </div>
   );
