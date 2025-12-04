@@ -1,22 +1,13 @@
 "use client";
 
-import {
-  BarChartIcon,
-  Building2Icon,
-  ChevronRight,
-  icons,
-  LayoutDashboardIcon,
-  LocateFixedIcon,
-  MapIcon,
-  SquareTerminalIcon,
-  type LucideIcon,
-} from "lucide-react";
+import { Building2Icon, ChevronRight, SquareTerminalIcon } from "lucide-react";
 
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -27,10 +18,12 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import { Button } from "./ui/button";
-import { useMemo } from "react";
+
+import { Badge } from "./ui/badge";
 import Link from "next/link";
+import { useMemo } from "react";
 import { useParams } from "next/navigation";
+import { isAfter, subMonths } from "date-fns";
 
 const data = {
   navMain: [
@@ -39,38 +32,77 @@ const data = {
       url: "#",
       icon: SquareTerminalIcon,
       isActive: true,
-      items: [],
     },
   ],
 };
 
-export function NavMain({ surveys, userProfile }) {
+export function NavMain({
+  surveys,
+  userProfile,
+}: {
+  surveys: any[];
+  userProfile: any;
+}) {
   const params = useParams();
   const selectedSurvey = params.surveyId;
 
-  const surveyIds = useMemo(() => {
-    if (!surveys) return null;
-    return surveys.map((survey) => survey.id);
+  const sixMonthsAgo = subMonths(new Date(), 6);
+
+  // --- Map of survey IDs that are NEW based on created_at
+  const surveyNewMap = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    surveys?.forEach((s) => {
+      // Use created_at if available, fallback to flight_date if not
+      const date = s.created_at
+        ? new Date(s.created_at)
+        : new Date(s.flight_date);
+      map[s.id] = isAfter(date, sixMonthsAgo);
+    });
+    return map;
   }, [surveys]);
+
+  // --- Map of survey counts per area --- //
+  const surveyCounts = useMemo(() => {
+    const map: Record<string, { total: number; new: number }> = {};
+    if (!surveys) return map;
+    surveys.forEach((s) => {
+      const key = s.access_code;
+      const isNew = isAfter(new Date(s.flight_date), subMonths(new Date(), 3));
+      if (!map[key]) map[key] = { total: 0, new: 0 };
+      map[key].total += 1;
+      if (isNew) map[key].new += 1;
+    });
+    return map;
+  }, [surveys]);
+
+  const surveyIds = useMemo(() => surveys?.map((s) => s.id) ?? [], [surveys]);
+  const isLoading = !surveyIds.length;
 
   return (
     <>
+      {/* Orthomap */}
       <SidebarGroup>
         <SidebarGroupLabel>Orthomap</SidebarGroupLabel>
         <SidebarMenu>
-          <SidebarMenuItem className="flex items-center gap-2">
+          <SidebarMenuItem>
             <SidebarMenuButton
               isActive={params.plantation === userProfile.access_code}
               asChild
+              className="transition-colors hover:bg-primary/10"
             >
-              <Link href={`/dashboard/orthomap/${userProfile.access_code}`}>
-                <Building2Icon />
-                <span> {userProfile.access_code}</span>
+              <Link
+                href={`/dashboard/orthomap/${userProfile.access_code}`}
+                className="flex items-center gap-2 px-3 py-2 rounded"
+              >
+                <Building2Icon className="size-4" />
+                <span className="font-medium">{userProfile.access_code}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroup>
+
+      {/* Survey Data */}
       <SidebarGroup>
         <SidebarGroupLabel>Survey Data</SidebarGroupLabel>
         <SidebarMenu>
@@ -83,24 +115,61 @@ export function NavMain({ surveys, userProfile }) {
             >
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton tooltip={item.title}>
-                    {item.icon && <item.icon />}
-                    <span>{item.title}</span>
-
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    className="flex items-center gap-2 px-3 py-2 rounded transition-colors hover:bg-primary/10"
+                  >
+                    {item.icon && <item.icon className="size-4" />}
+                    <span className="font-medium">{item.title}</span>
+                    {surveyCounts[userProfile.access_code] && (
+                      <Badge variant="secondary" className="ml-auto flex gap-1">
+                        {" "}
+                        {surveyCounts[userProfile.access_code].total}{" "}
+                      </Badge>
+                    )}
                     <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
+
                 <CollapsibleContent>
-                  {surveyIds?.length > 0 && (
+                  {isLoading ? (
                     <SidebarMenuSub>
-                      {surveyIds?.map((id) => (
-                        <SidebarMenuSubItem key={id}>
+                      {[1, 2, 3].map((i) => (
+                        <SidebarMenuSubItem key={i}>
+                          <div className="flex items-center gap-2 px-3 py-2 w-full">
+                            <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded animate-shimmer w-full"></div>
+                          </div>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  ) : (
+                    <SidebarMenuSub>
+                      {surveyIds.map((id, index) => (
+                        <SidebarMenuSubItem
+                          key={id}
+                          className="animate-fadeIn"
+                          style={{
+                            animationDelay: `${index * 50}ms`,
+                            animationFillMode: "backwards",
+                          }}
+                        >
                           <SidebarMenuSubButton
                             isActive={id === selectedSurvey}
                             asChild
+                            className="transition-colors hover:bg-primary/10 rounded px-3 py-2 flex items-center justify-between"
                           >
-                            <Link href={`/dashboard/surveys/${id}`}>
+                            <Link
+                              href={`/dashboard/surveys/${id}`}
+                              className="flex items-center gap-2"
+                            >
                               <span>{id}</span>
+
+                              {/* NEW SURVEY BADGE */}
+                              {surveyNewMap[id] && (
+                                <Badge variant="secondary" className="ml-auto">
+                                  NEW
+                                </Badge>
+                              )}
                             </Link>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>
@@ -113,6 +182,38 @@ export function NavMain({ surveys, userProfile }) {
           ))}
         </SidebarMenu>
       </SidebarGroup>
+
+      {/* Animations */}
+      <style jsx>{`
+        @keyframes shimmer {
+          0% {
+            background-position: -200% 0;
+          }
+          100% {
+            background-position: 200% 0;
+          }
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        :global(.animate-shimmer) {
+          animation: shimmer 1.5s ease-in-out infinite;
+          background-size: 200% 100%;
+        }
+
+        :global(.animate-fadeIn) {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
     </>
   );
 }

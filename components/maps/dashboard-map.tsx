@@ -10,65 +10,158 @@ import { LngLatLike, Map, Marker, Popup, useMap } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
-function MapMarker({ data, longitude, latitude, setPopupInfo }) {
-  const { current: map } = useMap();
+// Calculate polygon centroid
+function calculateCentroid(coordinates) {
+  let sumX = 0;
+  let sumY = 0;
+  const points = coordinates[0]; // First ring of polygon
 
-  return (
-    <Marker
-      latitude={latitude}
-      longitude={longitude}
-      anchor="center"
-      onClick={(e) => {
-        e.originalEvent.stopPropagation();
-        setPopupInfo(data);
-        map?.flyTo({ center: [longitude, latitude], zoom: 16 });
-      }}
-    ></Marker>
-  );
+  for (let i = 0; i < points.length; i++) {
+    sumX += points[i][0];
+    sumY += points[i][1];
+  }
+
+  return [sumX / points.length, sumY / points.length];
 }
 
 function MapPopup({ popupInfo, setPopupInfo }) {
   return (
-    <Popup
-      anchor="bottom"
-      longitude={popupInfo.lng}
-      latitude={popupInfo.lat}
-      style={{ opacity: popupInfo.opacity }}
-      onClose={() => {
-        setPopupInfo(null);
-      }}
-      closeOnClick={false}
-      closeOnMove={false}
-    >
-      <div className="rounded-none p-1.5">
-        <div className="flex flex-col">
-          <div className="flex flex-1 text-xs text-muted-foreground">
-            {popupInfo.id}
-          </div>
-          <div className="text-sm font-semibold">
-            {" "}
-            {`${popupInfo.access_code}-${popupInfo.area_code}`}{" "}
-          </div>
-        </div>
-        <Separator />
-        <div className="flex flex-col gap-2 mt-2">
-          <div className="grid grid-cols-2">
-            <div> Area:</div>
-            <div className="text-muted-foreground">
-              {popupInfo.area.toFixed(2)} ha
+    <AnimatePresence mode="wait">
+      {popupInfo && (
+        <Popup
+          key={popupInfo.id}
+          anchor="bottom"
+          longitude={popupInfo.lng}
+          latitude={popupInfo.lat}
+          onClose={() => {
+            setPopupInfo(null);
+          }}
+          closeOnClick={false}
+          closeOnMove={false}
+          maxWidth="none"
+        >
+          <motion.div
+            key={`popup-${popupInfo.id}`}
+            initial={{ opacity: 0, y: 12, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.95 }}
+            transition={{ duration: 0.23, ease: "easeOut" }}
+            className="rounded-xl overflow-hidden shadow-xl border border-border bg-card w-full max-w-[340px]"
+          >
+            {/* Header */}
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.07 }}
+              className="bg-primary px-4 py-3.5 border-b"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="text-[11px] uppercase tracking-wider text-primary-foreground/70 font-medium mb-1">
+                    Survey Area
+                  </div>
+                  <div className="text-lg font-semibold text-primary-foreground">
+                    {`${popupInfo.access_code}-${popupInfo.area_code}`}
+                  </div>
+                </div>
+                <div className="text-xs px-2.5 py-1 bg-primary-foreground/20 text-primary-foreground rounded-md font-medium">
+                  #{popupInfo.id}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Body content */}
+            <div className="bg-card px-4 py-3.5 space-y-3">
+              {/* Area information */}
+              <motion.div
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.11 }}
+              >
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border/50">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-2 h-2 rounded-full bg-primary"></div>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Area
+                    </span>
+                  </div>
+                  <span className="text-base font-bold text-foreground">
+                    {popupInfo.area.toFixed(2)} ha
+                  </span>
+                </div>
+              </motion.div>
+
+              {/* Additional Details */}
+              {(popupInfo.flight_date ||
+                popupInfo.location ||
+                popupInfo.tags) && (
+                <>
+                  <Separator />
+                  <motion.div
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="space-y-2"
+                  >
+                    {popupInfo.flight_date && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">
+                          Flight date
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {popupInfo.flight_date}
+                        </span>
+                      </div>
+                    )}
+
+                    {popupInfo.location && (
+                      <div className="flex justify-between items-center gap-3">
+                        <span className="text-sm text-muted-foreground">
+                          Location
+                        </span>
+                        <span
+                          className="text-sm font-semibold text-foreground truncate max-w-[180px]"
+                          title={popupInfo.location}
+                        >
+                          {popupInfo.location}
+                        </span>
+                      </div>
+                    )}
+
+                    {popupInfo.tags && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">
+                          Type
+                        </span>
+                        <span className="text-xs font-semibold text-foreground uppercase px-2 py-0.5 bg-muted rounded">
+                          {popupInfo.tags}
+                        </span>
+                      </div>
+                    )}
+                  </motion.div>
+                </>
+              )}
+
+              {/* View details button */}
+              <motion.div
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.18 }}
+                className="pt-1"
+              >
+                <Link href={`/dashboard/surveys/${popupInfo.id}`}>
+                  <button className="w-full px-4 py-2.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold shadow-sm">
+                    View Details →
+                  </button>
+                </Link>
+              </motion.div>
             </div>
-          </div>
-        </div>
-        <div className="mt-2">
-          <Link href={`/dashboard/surveys/${popupInfo.id}`}>
-            <button className="text-primary font-medium underline-offset-4 hover:underline">
-              View
-            </button>
-          </Link>
-        </div>
-      </div>
-    </Popup>
+          </motion.div>
+        </Popup>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -85,20 +178,36 @@ function MapEvents({ data, setPopupInfo }) {
       );
 
       if (clickedAreaData) {
+        // Calculate the centroid of the clicked polygon
+        const coordinates = [
+          transformCoordinatesToLonLatFormat(clickedAreaData.boundaries),
+        ];
+        const [lng, lat] = calculateCentroid(coordinates);
+
         setPopupInfo({
           ...clickedAreaData,
-          lat: e.lngLat.lat,
-          lng: e.lngLat.lng,
+          lat: lat,
+          lng: lng,
           opacity: 1,
+        });
+
+        // Center the map on the polygon's centroid with proper padding
+        map?.flyTo({
+          center: [lng, lat],
+          zoom: Math.max(map.getZoom(), 16),
+          padding: { top: 300, bottom: 25, left: 50, right: 50 },
+          duration: 800,
         });
       }
     },
-    [data, setPopupInfo]
+    [data, setPopupInfo, map]
   );
 
   const handleMouseMove = useCallback(
     (e) => {
       if (!map || !e.features?.length) return;
+
+      map.getCanvas().style.cursor = "pointer";
 
       if (hoveredAreaIdRef.current !== null) {
         map.setFeatureState(
@@ -117,6 +226,7 @@ function MapEvents({ data, setPopupInfo }) {
 
   const handleMouseLeave = useCallback(() => {
     if (!map) return;
+    map.getCanvas().style.cursor = "";
     if (hoveredAreaIdRef.current !== null) {
       map.setFeatureState(
         { source: "areas", id: hoveredAreaIdRef.current },
@@ -153,7 +263,8 @@ function MapEvents({ data, setPopupInfo }) {
     const extremePoints = findExtremeCoordinates(bounds);
 
     map.fitBounds(extremePoints, {
-      padding: { top: 50, bottom: 50, left: 10, right: 10 },
+      padding: { top: 50, bottom: 50, left: 50, right: 50 },
+      duration: 1000,
     });
   }, [map, data]);
 
@@ -171,6 +282,39 @@ export default function MapLibre({ data: surveys }) {
     zoom: 15,
   };
 
+  // Create polygon features
+  const polygonFeatures = surveys.map((survey) => {
+    const coordinates = [transformCoordinatesToLonLatFormat(survey.boundaries)];
+    return {
+      type: "Feature",
+      properties: {
+        survey_id: survey.id,
+      },
+      geometry: {
+        type: "Polygon",
+        coordinates: coordinates,
+      },
+    };
+  });
+
+  // Create separate point features for labels at polygon centroids
+  const labelFeatures = surveys.map((survey) => {
+    const coordinates = [transformCoordinatesToLonLatFormat(survey.boundaries)];
+    const centroid = calculateCentroid(coordinates);
+
+    return {
+      type: "Feature",
+      properties: {
+        survey_id: survey.id,
+        label: `${survey.access_code}-${survey.area_code}`,
+      },
+      geometry: {
+        type: "Point",
+        coordinates: centroid,
+      },
+    };
+  });
+
   return (
     <Map
       initialViewState={initialViewState}
@@ -182,76 +326,137 @@ export default function MapLibre({ data: surveys }) {
             type: "raster",
             tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
             tileSize: 256,
+            attribution: "© OpenStreetMap contributors",
           },
           areas: {
             type: "geojson",
             data: {
               type: "FeatureCollection",
-              features: surveys.map((survey) => ({
-                type: "Feature",
-                properties: {
-                  survey_id: survey.id,
-                  label: `${survey.access_code}-${survey.area_code}`,
-                },
-                geometry: {
-                  type: "Polygon",
-                  coordinates: [
-                    transformCoordinatesToLonLatFormat(survey.boundaries),
-                  ],
-                },
-              })),
+              features: polygonFeatures,
             },
             generateId: true,
+          },
+          "area-labels": {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              features: labelFeatures,
+            },
           },
         },
         layers: [
           {
             id: "background",
             type: "background",
-            paint: { "background-color": "#e5e5e5" },
+            paint: { "background-color": "#f0f0f0" },
           },
-
-          { id: "osm", type: "raster", source: "osm" },
-
+          {
+            id: "osm",
+            type: "raster",
+            source: "osm",
+            paint: {
+              "raster-opacity": 0.85,
+            },
+          },
           {
             id: "area-fills",
             type: "fill",
             source: "areas",
             paint: {
-              "fill-color": "#088",
+              "fill-color": [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                "#0ea5e9",
+                "#06b6d4",
+              ],
               "fill-opacity": [
                 "case",
                 ["boolean", ["feature-state", "hover"], false],
-                0.8,
-                0.5,
+                0.7,
+                0.4,
               ],
             },
           },
-
           {
             id: "area-borders",
             type: "line",
             source: "areas",
-            paint: { "line-color": "#088", "line-width": 1.25 },
+            paint: {
+              "line-color": [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                "#0284c7",
+                "#0891b2",
+              ],
+              "line-width": [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                3,
+                1.5,
+              ],
+              "line-blur": [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                0.5,
+                0,
+              ],
+            },
           },
-
+          {
+            id: "area-glow",
+            type: "line",
+            source: "areas",
+            paint: {
+              "line-color": "#0ea5e9",
+              "line-width": [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                6,
+                0,
+              ],
+              "line-blur": [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                4,
+                0,
+              ],
+              "line-opacity": [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                0.6,
+                0,
+              ],
+            },
+          },
           {
             id: "area-labels",
             type: "symbol",
-            source: "areas",
+            source: "area-labels",
             layout: {
               "text-field": ["get", "label"],
-              "text-size": 14,
+              "text-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                12,
+                10,
+                16,
+                14,
+                20,
+                18,
+              ],
               "text-anchor": "center",
             },
             paint: {
               "text-color": "#ffffff",
-              "text-halo-color": "#088",
+              "text-halo-color": "#0891b2",
               "text-halo-width": 2,
+              "text-halo-blur": 1,
             },
           },
         ],
       }}
+      attributionControl={true}
     >
       <MapEvents data={surveys} setPopupInfo={setPopupInfo} />
       {popupInfo && (

@@ -13,26 +13,20 @@ export default function SurveyDataInteractive({ data }) {
   const { earliest, latest } = getEarliestandLatestDates(data, "flight_date");
 
   return (
-    <Card className="@container/card">
+    /* height column flex container */
+    <Card className="@container/card h-full flex flex-col">
       <CardHeader>
         <CardTitle> Surveyed Areas </CardTitle>
         <CardDescription>
-          {" "}
           {`${data.at(0).code} | ${format(earliest, "dd MMM yyyy")} - ${format(
             latest,
             "dd MMM yyyy"
-          )}`}{" "}
+          )}`}
         </CardDescription>
-        {/* <CardDescription>
-          {" "}
-          {`SAMPLE DATA | ${format(earliest, "dd MMM yyyy")} - ${format(
-            latest,
-            "dd MMM yyyy"
-          )}`}{" "}
-        </CardDescription> */}
       </CardHeader>
-      <CardContent>
-        <div className="w-full h-96">
+
+      <CardContent className="flex-1 flex flex-col">
+        <div className="flex-1 w-full">
           <DashboardMapCaller data={data} />
         </div>
       </CardContent>
