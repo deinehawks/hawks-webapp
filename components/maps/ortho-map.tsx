@@ -679,6 +679,7 @@ function FeaturesOfInterest({
 
 export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
   const [flightYear, setFlightYear] = useState("");
+  const [showBoundaries, setShowBoundaries] = useState(false);
 
   const surveyIds = useMemo(() => {
     if (!surveys) return null;
@@ -729,7 +730,15 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
               Orthomap
             </TabsTrigger>
           </TabsList>
-          <OrthomapFoiSelector detectedObjects={detectedObjects} />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowBoundaries(!showBoundaries)}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm text-sm"
+            >
+              {showBoundaries ? "Hide" : "Show"} Boundaries
+            </button>
+            <OrthomapFoiSelector detectedObjects={detectedObjects} />
+          </div>
         </div>
       </Tabs>
 
@@ -804,8 +813,18 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                         type: "fill",
                         source: "areas",
                         paint: {
-                          "fill-color": "#fff",
-                          "fill-opacity": 0,
+                          "fill-color": "#06b6d4",
+                          "fill-opacity": showBoundaries ? 0.4 : 0,
+                        },
+                      },
+                      {
+                        id: "area-borders",
+                        type: "line",
+                        source: "areas",
+                        paint: {
+                          "line-color": "#0891b2",
+                          "line-width": 2,
+                          "line-opacity": showBoundaries ? 1 : 0,
                         },
                       },
                     ],
