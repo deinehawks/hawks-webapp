@@ -18,6 +18,7 @@ import {
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -210,6 +211,34 @@ function InitializeMapImages() {
   }, [orthomap]);
 
   return null;
+}
+
+function BoundariesToggle({ showBoundaries, setShowBoundaries }) {
+  return (
+    <div className="absolute top-4 right-4 z-10">
+      <Button
+        onClick={() => setShowBoundaries(!showBoundaries)}
+        variant="outline"
+        size="sm"
+        className="shadow-lg flex items-center gap-2 px-3 py-2 min-w-[120px]"
+      >
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+          />
+        </svg>
+        <span>{showBoundaries ? "Hide" : "Show"} Boundaries</span>
+      </Button>
+    </div>
+  );
 }
 
 function MapLegend() {
@@ -677,6 +706,63 @@ function FeaturesOfInterest({
   );
 }
 
+function BoundaryLayers({ showBoundaries }) {
+  const { orthomap } = useMap();
+
+  useEffect(() => {
+    if (!orthomap) return;
+
+    // Update layer visibility without recreating layers
+    if (orthomap.getLayer("boundary-glow")) {
+      orthomap.setLayoutProperty(
+        "boundary-glow",
+        "visibility",
+        showBoundaries ? "visible" : "none"
+      );
+    }
+    if (orthomap.getLayer("boundary-borders")) {
+      orthomap.setLayoutProperty(
+        "boundary-borders",
+        "visibility",
+        showBoundaries ? "visible" : "none"
+      );
+    }
+  }, [orthomap, showBoundaries]);
+
+  return (
+    <>
+      <Layer
+        id="boundary-glow"
+        type="line"
+        source="areas"
+        paint={{
+          "line-color": "#0ea5e9",
+          "line-width": 5,
+          "line-blur": 3,
+          "line-opacity": 0.4,
+        }}
+        layout={{
+          visibility: showBoundaries ? "visible" : "none",
+        }}
+      />
+
+      <Layer
+        id="boundary-borders"
+        type="line"
+        source="areas"
+        paint={{
+          "line-color": "#0ea5e9",
+          "line-width": 2.5,
+          "line-opacity": 0.9,
+        }}
+        layout={{
+          visibility: showBoundaries ? "visible" : "none",
+        }}
+      />
+    </>
+  );
+}
+
 export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
   const [flightYear, setFlightYear] = useState("");
   const [showBoundaries, setShowBoundaries] = useState(false);
@@ -730,14 +816,16 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
               Orthomap
             </TabsTrigger>
           </TabsList>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowBoundaries(!showBoundaries)}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm text-sm"
+          <div className="flex items-center gap-2">
+            <OrthomapFoiSelector detectedObjects={detectedObjects} />
+
+            <Button
+              size="sm"
+              variant={showBoundaries ? "default" : "outline"}
+              onClick={() => setShowBoundaries((v) => !v)}
             >
               {showBoundaries ? "Hide" : "Show"} Boundaries
-            </button>
-            <OrthomapFoiSelector detectedObjects={detectedObjects} />
+            </Button>
           </div>
         </div>
       </Tabs>
@@ -813,18 +901,8 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                         type: "fill",
                         source: "areas",
                         paint: {
-                          "fill-color": "#06b6d4",
-                          "fill-opacity": showBoundaries ? 0.4 : 0,
-                        },
-                      },
-                      {
-                        id: "area-borders",
-                        type: "line",
-                        source: "areas",
-                        paint: {
-                          "line-color": "#0891b2",
-                          "line-width": 2,
-                          "line-opacity": showBoundaries ? 1 : 0,
+                          "fill-color": "#fff",
+                          "fill-opacity": 0,
                         },
                       },
                     ],
@@ -860,12 +938,10 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                     code={surveys.at(0).code}
                     detectedObjects={detectedObjects}
                   />
+                  <BoundaryLayers showBoundaries={showBoundaries} />
                   <MapEvents surveys={surveys} />
-
                   <MapPopup />
                 </Map>
-
-                {/* Legend positioned over the map */}
                 <MapLegend />
               </div>
             </CardContent>
