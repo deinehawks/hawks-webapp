@@ -140,6 +140,20 @@ function calculateOptimalZoomLevels(features: any[]) {
   };
 }
 
+// Calculate polygon centroid
+function calculateCentroid(coordinates) {
+  let sumX = 0;
+  let sumY = 0;
+  const points = coordinates[0]; // First ring of polygon
+
+  for (let i = 0; i < points.length; i++) {
+    sumX += points[i][0];
+    sumY += points[i][1];
+  }
+
+  return [sumX / points.length, sumY / points.length];
+}
+
 function MapEvents({ surveys }) {
   const { orthomap } = useMap();
   const { setPopupInfo } = useOrthoMapStore((state) => state);
@@ -153,23 +167,27 @@ function MapEvents({ surveys }) {
       );
 
       if (clickedAreaData) {
-        const lng = e.lngLat.lng;
-        const lat = e.lngLat.lat;
+        // 1. Calculate centroid
+        const coordinates = [
+          transformCoordinatesToLonLatFormat(clickedAreaData.boundaries),
+        ];
 
-        // 1Update popup state
+        const [centroidLng, centroidLat] = calculateCentroid(coordinates);
+
+        // 2. Update popup state
         setPopupInfo({
           ...clickedAreaData,
-          lat,
-          lng,
+          lat: centroidLat,
+          lng: centroidLng,
         });
 
-        // 2 Auto–center the map
+        // 3. Auto–center the map on centroid
         if (orthomap) {
           orthomap.flyTo({
-            center: [lng, lat],
+            center: [centroidLng, centroidLat],
             zoom: Math.max(orthomap.getZoom(), 16),
             padding: { top: 250, bottom: 25, left: 50, right: 50 },
-            speed: 0.5,
+            duration: 800,
             curve: 1.4,
             essential: true,
           });
@@ -1005,8 +1023,18 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                         type: "fill",
                         source: "areas",
                         paint: {
-                          "fill-color": "#fff",
-                          "fill-opacity": 0,
+                          "fill-color": [
+                            "case",
+                            ["boolean", ["feature-state", "hover"], false],
+                            "#0ea5e9",
+                            "#06b6d4",
+                          ],
+                          "fill-opacity": [
+                            "case",
+                            ["boolean", ["feature-state", "hover"], false],
+                            0.7,
+                            0.4,
+                          ],
                         },
                       },
                     ],
