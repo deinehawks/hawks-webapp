@@ -134,15 +134,7 @@ function calculateCentersWithOffset(
   const centerLng = (min_lon + max_lon) / 2;
   const centerLat = (min_lat + max_lat) / 2;
 
-  // For banana plants, offset toward bottom (base of plant)
-  if (objectType && objectType.includes("Banana")) {
-    const latOffset = (max_lat - min_lat) * 0.15; // 15% offset toward bottom
-    return {
-      centerLng,
-      centerLat: centerLat - latOffset,
-    };
-  }
-
+  // Use true center - no offset needed since bbox shows detection area
   return { centerLng, centerLat };
 }
 
