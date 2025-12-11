@@ -16,6 +16,7 @@ import {
   useMap,
 } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateFeatureCollection } from "@/lib/helpers/geometry";
 import { GeometryType, type ComputerVisionObject } from "@/lib/types";
@@ -325,25 +327,138 @@ function MapPopup() {
   if (!popupInfo) return null;
 
   return (
-    <Popup
-      anchor="bottom"
-      longitude={popupInfo?.lng}
-      latitude={popupInfo?.lat}
-      onClose={() => setPopupInfo(null)}
-      closeOnClick={false}
-      closeOnMove={false}
-    >
-      <div className="rounded-none p-1.5">
-        <div className="flex flex-col">
-          <div className="text-muted-foreground">{popupInfo.id}</div>
-          <Link href={`/dashboard/surveys/${popupInfo.id}`}>
-            <button className="text-primary font-medium underline-offset-4 hover:underline">
-              View
-            </button>
-          </Link>
-        </div>
-      </div>
-    </Popup>
+    <AnimatePresence mode="wait">
+      {popupInfo && (
+        <Popup
+          key={popupInfo.id}
+          anchor="bottom"
+          longitude={popupInfo?.lng}
+          latitude={popupInfo?.lat}
+          onClose={() => setPopupInfo(null)}
+          closeOnClick={false}
+          closeOnMove={false}
+          maxWidth="none"
+        >
+          <motion.div
+            key={`popup-${popupInfo.id}`}
+            initial={{ opacity: 0, y: 12, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.95 }}
+            transition={{ duration: 0.23, ease: "easeOut" }}
+            className="rounded-xl overflow-hidden shadow-xl border border-border bg-card w-full max-w-[340px]"
+          >
+            {/* Header */}
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.07 }}
+              className="bg-primary px-4 py-3.5 border-b"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="text-[11px] uppercase tracking-wider text-primary-foreground/70 font-medium mb-1">
+                    Survey Area
+                  </div>
+                  <div className="text-lg font-semibold text-primary-foreground">
+                    {`${popupInfo.access_code}-${popupInfo.area_code}`}
+                  </div>
+                </div>
+                <div className="text-xs px-2.5 py-1 bg-primary-foreground/20 text-primary-foreground rounded-md font-medium">
+                  #{popupInfo.id}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Body content */}
+            <div className="bg-card px-4 py-3.5 space-y-3">
+              {/* Area information */}
+              <motion.div
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.11 }}
+              >
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border/50">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-2 h-2 rounded-full bg-primary"></div>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Area
+                    </span>
+                  </div>
+                  <span className="text-base font-bold text-foreground">
+                    {popupInfo.area.toFixed(2)} ha
+                  </span>
+                </div>
+              </motion.div>
+
+              {/* Additional Details */}
+              {(popupInfo.flight_date ||
+                popupInfo.location ||
+                popupInfo.tags) && (
+                <>
+                  <Separator />
+                  <motion.div
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="space-y-2"
+                  >
+                    {popupInfo.flight_date && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">
+                          Flight date
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {new Date(popupInfo.flight_date).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
+
+                    {popupInfo.location && (
+                      <div className="flex justify-between items-center gap-3">
+                        <span className="text-sm text-muted-foreground">
+                          Location
+                        </span>
+                        <span
+                          className="text-sm font-semibold text-foreground truncate max-w-[180px]"
+                          title={popupInfo.location}
+                        >
+                          {popupInfo.location}
+                        </span>
+                      </div>
+                    )}
+
+                    {popupInfo.tags && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">
+                          Type
+                        </span>
+                        <span className="text-xs font-semibold text-foreground uppercase px-2 py-0.5 bg-muted rounded">
+                          {popupInfo.tags}
+                        </span>
+                      </div>
+                    )}
+                  </motion.div>
+                </>
+              )}
+
+              {/* View details button */}
+              <motion.div
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.18 }}
+                className="pt-1"
+              >
+                <Link href={`/dashboard/surveys/${popupInfo.id}`}>
+                  <button className="w-full px-4 py-2.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold shadow-sm">
+                    View Details →
+                  </button>
+                </Link>
+              </motion.div>
+            </div>
+          </motion.div>
+        </Popup>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -712,22 +827,26 @@ function BoundaryLayers({ showBoundaries }) {
   useEffect(() => {
     if (!orthomap) return;
 
-    // Update layer visibility without recreating layers
-    if (orthomap.getLayer("boundary-glow")) {
-      orthomap.setLayoutProperty(
-        "boundary-glow",
-        "visibility",
-        showBoundaries ? "visible" : "none"
-      );
-    }
-    if (orthomap.getLayer("boundary-borders")) {
-      orthomap.setLayoutProperty(
-        "boundary-borders",
-        "visibility",
-        showBoundaries ? "visible" : "none"
-      );
-    }
-  }, [orthomap, showBoundaries]);
+    // Simple interval-based approach to keep boundaries on top
+    const intervalId = setInterval(() => {
+      try {
+        const glowLayer = orthomap.getLayer("boundary-glow");
+        const borderLayer = orthomap.getLayer("boundary-borders");
+
+        if (glowLayer && borderLayer) {
+          // Move layers to top repeatedly
+          orthomap.moveLayer("boundary-glow");
+          orthomap.moveLayer("boundary-borders");
+        }
+      } catch (e) {
+        // Silently handle any errors
+      }
+    }, 1000); // Check every second
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [orthomap]);
 
   return (
     <>
@@ -871,9 +990,6 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                                 survey_id: survey.id,
                                 latitude: Number(
                                   (survey.max_y + survey.min_y) / 2
-                                ),
-                                longitude: Number(
-                                  (survey.max_x + survey.min_x) / 2
                                 ),
                               },
                               geometry: {
