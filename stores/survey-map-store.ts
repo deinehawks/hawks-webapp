@@ -9,6 +9,7 @@ export type SurveyMapState = {
     centerLng: number;
     centerLat: number;
   } | null;
+  hoveredPairId: string | null;
   selectedVegetationIndex: string;
   selectedDemType: string;
   selectedDemColor: string;
@@ -28,6 +29,7 @@ export type SurveyMapActions = {
       centerLat: number;
     } | null
   ) => void;
+  setHoveredPairId: (hoveredPairId: string | null) => void;
   setSelectedVegetationIndex: (selectedVegetationIndex: string) => void;
   setSelectedDemType: (selectedDemType: string) => void;
   setSelectedDemColor: (selectedDemColor: string) => void;
@@ -43,6 +45,7 @@ export const initSurveyMapStore = (): SurveyMapState => {
     activeTab: "",
     selectedFoi: "",
     popupInfo: null,
+    hoveredPairId: null,
     selectedVegetationIndex: "",
     selectedDemType: "",
     selectedDemColor: "",
@@ -56,6 +59,7 @@ export const defaultInitState: SurveyMapState = {
   activeTab: "ortho",
   selectedFoi: "none",
   popupInfo: null,
+  hoveredPairId: null, // ADD THIS LINE
   selectedVegetationIndex: "ndvi",
   selectedDemType: "dsm",
   selectedDemColor: "viridis",
@@ -79,6 +83,8 @@ export const createSurveyMapStore = (
         centerLat: number;
       } | null
     ) => set(() => ({ popupInfo })),
+    setHoveredPairId: (hoveredPairId: string | null) =>
+      set(() => ({ hoveredPairId })),
     setSelectedVegetationIndex: (selectedVegetationIndex: string) =>
       set(() => ({ selectedVegetationIndex })),
     setSelectedDemType: (selectedDemType: string) =>

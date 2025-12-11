@@ -156,18 +156,18 @@ function MapEvents({ surveys }) {
         const lng = e.lngLat.lng;
         const lat = e.lngLat.lat;
 
-        // 1️⃣ Update popup state
+        // 1Update popup state
         setPopupInfo({
           ...clickedAreaData,
           lat,
           lng,
         });
 
-        // 2️⃣ Auto–center the map
+        // 2 Auto–center the map
         if (orthomap) {
           orthomap.flyTo({
             center: [lng, lat],
-            zoom: Math.max(orthomap.getZoom(), 16), // keep or increase zoom
+            zoom: Math.max(orthomap.getZoom(), 16),
             padding: { top: 250, bottom: 25, left: 50, right: 50 },
             speed: 0.5,
             curve: 1.4,
@@ -954,8 +954,8 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                     bounds: bounds,
                     fitBoundsOptions: { padding: 15 },
                   }}
-                  minZoom={10}
-                  maxZoom={24}
+                  minZoom={13}
+                  maxZoom={23}
                   mapStyle={{
                     version: 8,
                     sources: {

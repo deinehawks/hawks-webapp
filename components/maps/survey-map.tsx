@@ -121,6 +121,69 @@ function calculateOptimalZoomLevels(features: any[]) {
   };
 }
 
+/**
+ * Calculate centers with smart offset for better pin positioning
+ */
+function calculateCentersWithOffset(
+  min_lon: number,
+  max_lon: number,
+  min_lat: number,
+  max_lat: number,
+  objectType?: string
+) {
+  const centerLng = (min_lon + max_lon) / 2;
+  const centerLat = (min_lat + max_lat) / 2;
+
+  // For banana plants, offset toward bottom (base of plant)
+  if (objectType && objectType.includes("Banana")) {
+    const latOffset = (max_lat - min_lat) * 0.15; // 15% offset toward bottom
+    return {
+      centerLng,
+      centerLat: centerLat - latOffset,
+    };
+  }
+
+  return { centerLng, centerLat };
+}
+
+/**
+ * Generate point feature collection with smart offset
+ */
+function generatePointsWithOffset(
+  detectedObjects: ComputerVisionObject[],
+  label: string
+) {
+  const filteredObjects = detectedObjects.filter((obj) => obj.label === label);
+
+  const features = filteredObjects.map((obj) => {
+    const { centerLng, centerLat } = calculateCentersWithOffset(
+      obj.bbox.min_lon,
+      obj.bbox.max_lon,
+      obj.bbox.min_lat,
+      obj.bbox.max_lat,
+      obj.label
+    );
+
+    return {
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: [centerLng, centerLat],
+      },
+      properties: {
+        pairId: obj.pairId,
+        areaPairId: obj.areaPairId,
+        label: obj.label,
+      },
+    };
+  });
+
+  return {
+    type: "FeatureCollection",
+    features,
+  };
+}
+
 function SurveyMapEvents({
   survey,
   detectedObjects,
@@ -129,7 +192,9 @@ function SurveyMapEvents({
   detectedObjects: ComputerVisionObject[];
 }) {
   const { current: map } = useMap();
-  const { setPopupInfo } = useSurveyMapStore((state) => state);
+  const { setPopupInfo, setHoveredPairId } = useSurveyMapStore(
+    (state) => state
+  );
 
   const handleBboxClick = useCallback(
     (e: MapMouseEvent) => {
@@ -149,11 +214,12 @@ function SurveyMapEvents({
         bbox: { max_lat, max_lon, min_lat, min_lon },
       } = clickedObject;
 
-      const { centerLng, centerLat } = calculateCentersUsingMinMaxXY(
+      const { centerLng, centerLat } = calculateCentersWithOffset(
         min_lon,
         max_lon,
         min_lat,
-        max_lat
+        max_lat,
+        clickedObject.label
       );
 
       setPopupInfo({ pairId, areaId, centerLng, centerLat });
@@ -161,15 +227,63 @@ function SurveyMapEvents({
     [detectedObjects, setPopupInfo]
   );
 
+  const handlePinHover = useCallback(
+    (e: MapMouseEvent) => {
+      if (!e.features?.length) return;
+      const pairId = e.features[0]?.properties?.pairId;
+      setHoveredPairId(pairId || null);
+
+      if (pairId && map) {
+        map.getCanvas().style.cursor = "pointer";
+      }
+    },
+    [map, setHoveredPairId]
+  );
+
+  const handlePinLeave = useCallback(() => {
+    setHoveredPairId(null);
+    if (map) {
+      map.getCanvas().style.cursor = "";
+    }
+  }, [map, setHoveredPairId]);
+
   useEffect(() => {
     if (!map) return;
 
+    // Click handlers
     map.on("click", `${survey.id}-unhealthy-fill`, handleBboxClick);
+    map.on("click", `${survey.id}-unhealthy-pin`, handleBboxClick);
+    map.on("click", `${survey.id}-healthy-pin`, handleBboxClick);
+    map.on("click", `${survey.id}-unhealthy-circle`, handleBboxClick);
+    map.on("click", `${survey.id}-healthy-circle`, handleBboxClick);
+
+    // Hover handlers
+    map.on("mouseenter", `${survey.id}-unhealthy-pin`, handlePinHover);
+    map.on("mouseleave", `${survey.id}-unhealthy-pin`, handlePinLeave);
+    map.on("mouseenter", `${survey.id}-healthy-pin`, handlePinHover);
+    map.on("mouseleave", `${survey.id}-healthy-pin`, handlePinLeave);
+    map.on("mouseenter", `${survey.id}-unhealthy-circle`, handlePinHover);
+    map.on("mouseleave", `${survey.id}-unhealthy-circle`, handlePinLeave);
+    map.on("mouseenter", `${survey.id}-healthy-circle`, handlePinHover);
+    map.on("mouseleave", `${survey.id}-healthy-circle`, handlePinLeave);
 
     return () => {
       map.off("click", `${survey.id}-unhealthy-fill`, handleBboxClick);
+      map.off("click", `${survey.id}-unhealthy-pin`, handleBboxClick);
+      map.off("click", `${survey.id}-healthy-pin`, handleBboxClick);
+      map.off("click", `${survey.id}-unhealthy-circle`, handleBboxClick);
+      map.off("click", `${survey.id}-healthy-circle`, handleBboxClick);
+
+      map.off("mouseenter", `${survey.id}-unhealthy-pin`, handlePinHover);
+      map.off("mouseleave", `${survey.id}-unhealthy-pin`, handlePinLeave);
+      map.off("mouseenter", `${survey.id}-healthy-pin`, handlePinHover);
+      map.off("mouseleave", `${survey.id}-healthy-pin`, handlePinLeave);
+      map.off("mouseenter", `${survey.id}-unhealthy-circle`, handlePinHover);
+      map.off("mouseleave", `${survey.id}-unhealthy-circle`, handlePinLeave);
+      map.off("mouseenter", `${survey.id}-healthy-circle`, handlePinHover);
+      map.off("mouseleave", `${survey.id}-healthy-circle`, handlePinLeave);
     };
-  }, [map, survey, handleBboxClick]);
+  }, [map, survey, handleBboxClick, handlePinHover, handlePinLeave]);
 
   return null;
 }
@@ -283,7 +397,7 @@ function MapLegend() {
           </div>
 
           <div className="text-xs text-gray-500 mt-3 italic">
-            Zoom in to see individual plants
+            Hover or click plants to see detection area
           </div>
         </div>
       )}
@@ -298,27 +412,63 @@ function FeaturesOfInterest({
   detectedObjects: ComputerVisionObject[];
   survey: any;
 }) {
-  const { selectedFoi } = useSurveyMapStore((state) => state);
+  const { selectedFoi, popupInfo, hoveredPairId } = useSurveyMapStore(
+    (state) => state
+  );
 
   const id = survey.id;
 
   const healthyBananas = useMemo(() => {
     if (!detectedObjects) return "";
-    return generateFeatureCollection(
-      GeometryType.Point,
-      "Banana Plant (Healthy-looking)",
-      detectedObjects
+    return generatePointsWithOffset(
+      detectedObjects,
+      "Banana Plant (Healthy-looking)"
     );
   }, [detectedObjects]);
 
   const unhealthyBananas = useMemo(() => {
     if (!detectedObjects) return "";
-    return generateFeatureCollection(
-      GeometryType.Point,
-      "Banana Plant (Infected)",
-      detectedObjects
-    );
+    return generatePointsWithOffset(detectedObjects, "Banana Plant (Infected)");
   }, [detectedObjects]);
+
+  // Generate bbox for selected/hovered plant only
+  const selectedPlantBbox = useMemo(() => {
+    if (!popupInfo && !hoveredPairId) return null;
+
+    const selectedId = popupInfo?.pairId || hoveredPairId;
+    const selectedObject = detectedObjects.find(
+      (obj) => obj.pairId === selectedId
+    );
+
+    if (!selectedObject) return null;
+
+    const { min_lon, max_lon, min_lat, max_lat } = selectedObject.bbox;
+
+    return {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: {
+            type: "Polygon",
+            coordinates: [
+              [
+                [min_lon, min_lat],
+                [max_lon, min_lat],
+                [max_lon, max_lat],
+                [min_lon, max_lat],
+                [min_lon, min_lat],
+              ],
+            ],
+          },
+          properties: {
+            pairId: selectedObject.pairId,
+            label: selectedObject.label,
+          },
+        },
+      ],
+    };
+  }, [detectedObjects, popupInfo, hoveredPairId]);
 
   const healthyZoomLevels = useMemo(() => {
     if (!healthyBananas || healthyBananas === "")
@@ -344,8 +494,39 @@ function FeaturesOfInterest({
     };
   }, [unhealthyBananas]);
 
+  const isHealthy =
+    selectedPlantBbox?.features[0]?.properties?.label?.includes("Healthy");
+
   return (
     <>
+      {/* SELECTED/HOVERED PLANT BOUNDING BOX */}
+      {selectedPlantBbox && (
+        <Source
+          id={`${id}-selected-bbox`}
+          type="geojson"
+          data={selectedPlantBbox}
+        >
+          <Layer
+            id={`${id}-selected-bbox-fill`}
+            type="fill"
+            paint={{
+              "fill-color": isHealthy ? "#fbbf24" : "#ff0000",
+              "fill-opacity": 0.15,
+            }}
+          />
+          <Layer
+            id={`${id}-selected-bbox-outline`}
+            type="line"
+            paint={{
+              "line-color": isHealthy ? "#fbbf24" : "#ff0000",
+              "line-width": 2,
+              "line-opacity": 0.8,
+              "line-dasharray": [2, 2],
+            }}
+          />
+        </Source>
+      )}
+
       {/* HEALTHY HEATMAP */}
       {(selectedFoi === "healthy" || selectedFoi === "all") && (
         <Source id={`${id}-healthy`} type="geojson" data={healthyBananas}>
@@ -454,7 +635,81 @@ function FeaturesOfInterest({
         </Source>
       )}
 
-      {/* HEALTHY PINS */}
+      {/* HEALTHY CIRCLES (Medium Zoom) */}
+      {(selectedFoi === "healthy" || selectedFoi === "all") && (
+        <Source
+          id={`${id}-healthy-circles`}
+          type="geojson"
+          data={healthyBananas}
+        >
+          <Layer
+            id={`${id}-healthy-circle`}
+            type="circle"
+            source={`${id}-healthy-circles`}
+            minzoom={13}
+            maxzoom={healthyZoomLevels.pinMinZoom}
+            paint={{
+              "circle-radius": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                13,
+                6,
+                14,
+                8,
+                15,
+                10,
+                16,
+                12,
+              ],
+              "circle-color": "#fbbf24",
+              "circle-opacity": 0.4,
+              "circle-stroke-color": "#fbbf24",
+              "circle-stroke-width": 2,
+              "circle-stroke-opacity": 0.8,
+            }}
+          />
+        </Source>
+      )}
+
+      {/* UNHEALTHY CIRCLES (Medium Zoom) */}
+      {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
+        <Source
+          id={`${id}-unhealthy-circles`}
+          type="geojson"
+          data={unhealthyBananas}
+        >
+          <Layer
+            id={`${id}-unhealthy-circle`}
+            type="circle"
+            source={`${id}-unhealthy-circles`}
+            minzoom={13}
+            maxzoom={unhealthyZoomLevels.pinMinZoom}
+            paint={{
+              "circle-radius": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                13,
+                6,
+                14,
+                8,
+                15,
+                10,
+                16,
+                12,
+              ],
+              "circle-color": "#ff0000",
+              "circle-opacity": 0.4,
+              "circle-stroke-color": "#ff0000",
+              "circle-stroke-width": 2,
+              "circle-stroke-opacity": 0.8,
+            }}
+          />
+        </Source>
+      )}
+
+      {/* HEALTHY PINS (High Zoom) */}
       {(selectedFoi === "healthy" || selectedFoi === "all") && (
         <Source id={`${id}-healthy-pins`} type="geojson" data={healthyBananas}>
           <Layer
@@ -492,7 +747,7 @@ function FeaturesOfInterest({
         </Source>
       )}
 
-      {/* UNHEALTHY PINS */}
+      {/* UNHEALTHY PINS (High Zoom) */}
       {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
         <Source
           id={`${id}-unhealthy-pins`}
@@ -707,7 +962,7 @@ export default function SurveyMap({
                           fitBoundsOptions: { padding: 15 },
                         }}
                         minZoom={15}
-                        maxZoom={24}
+                        maxZoom={23}
                         mapStyle={{
                           version: 8,
                           sources: {

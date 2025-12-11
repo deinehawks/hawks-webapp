@@ -318,6 +318,8 @@ export default function MapLibre({ data: surveys }) {
   return (
     <Map
       initialViewState={initialViewState}
+      minZoom={12}
+      maxZoom={23}
       mapStyle={{
         version: 8,
         glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
