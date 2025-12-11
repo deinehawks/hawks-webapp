@@ -153,14 +153,30 @@ function MapEvents({ surveys }) {
       );
 
       if (clickedAreaData) {
+        const lng = e.lngLat.lng;
+        const lat = e.lngLat.lat;
+
+        // 1️⃣ Update popup state
         setPopupInfo({
           ...clickedAreaData,
-          lat: e.lngLat.lat,
-          lng: e.lngLat.lng,
+          lat,
+          lng,
         });
+
+        // 2️⃣ Auto–center the map
+        if (orthomap) {
+          orthomap.flyTo({
+            center: [lng, lat],
+            zoom: Math.max(orthomap.getZoom(), 16), // keep or increase zoom
+            padding: { top: 250, bottom: 25, left: 50, right: 50 },
+            speed: 0.5,
+            curve: 1.4,
+            essential: true,
+          });
+        }
       }
     },
-    [surveys, setPopupInfo]
+    [surveys, setPopupInfo, orthomap]
   );
 
   useEffect(() => {
@@ -213,34 +229,6 @@ function InitializeMapImages() {
   }, [orthomap]);
 
   return null;
-}
-
-function BoundariesToggle({ showBoundaries, setShowBoundaries }) {
-  return (
-    <div className="absolute top-4 right-4 z-10">
-      <Button
-        onClick={() => setShowBoundaries(!showBoundaries)}
-        variant="outline"
-        size="sm"
-        className="shadow-lg flex items-center gap-2 px-3 py-2 min-w-[120px]"
-      >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-          />
-        </svg>
-        <span>{showBoundaries ? "Hide" : "Show"} Boundaries</span>
-      </Button>
-    </div>
-  );
 }
 
 function MapLegend() {
