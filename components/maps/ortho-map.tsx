@@ -46,26 +46,20 @@ import { useOrthoMapStore } from "@/providers/ortho-map-store-provider";
 import { getYear } from "date-fns";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-// CSS animations for pin drop effect
-const pinAnimationStyles = `
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const PIN_ANIMATION_STYLES = `
   @keyframes dropPin {
-    0% {
-      opacity: 0;
-      transform: translateY(-30px);
-    }
-    100% {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    0% { opacity: 0; transform: translateY(-30px); }
+    100% { opacity: 1; transform: translateY(0); }
   }
-  
-  .pin-drop {
-    animation: dropPin 0.6s ease-out forwards;
-  }
+  .pin-drop { animation: dropPin 0.6s ease-out forwards; }
 `;
 
-// Pin SVG images with slight shadow for depth
 const PIN_IMAGES = {
   yellow: `<svg width="32" height="48" viewBox="0 0 32 48" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -87,124 +81,89 @@ const PIN_IMAGES = {
   </svg>`,
 };
 
-/**
- * Calculate optimal zoom levels based on data density
- */
+const DEFAULT_ZOOM_LEVELS = { heatmapMaxZoom: 15, pinMinZoom: 15 };
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
 function calculateOptimalZoomLevels(features: any[]) {
-  if (!features || features.length === 0) {
-    return { heatmapMaxZoom: 15, pinMinZoom: 15 };
-  }
+  if (!features?.length) return DEFAULT_ZOOM_LEVELS;
 
   const coords = features
     .filter((f) => f.geometry?.coordinates)
     .map((f) => f.geometry.coordinates);
 
-  if (coords.length === 0) {
-    return { heatmapMaxZoom: 15, pinMinZoom: 15 };
-  }
+  if (!coords.length) return DEFAULT_ZOOM_LEVELS;
 
   const lons = coords.map((c) => c[0]);
   const lats = coords.map((c) => c[1]);
-  const minLon = Math.min(...lons);
-  const maxLon = Math.max(...lons);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-
-  const lonSpan = maxLon - minLon;
-  const latSpan = maxLat - minLat;
+  const lonSpan = Math.max(...lons) - Math.min(...lons);
+  const latSpan = Math.max(...lats) - Math.min(...lats);
   const avgSpan = (lonSpan + latSpan) / 2;
 
   let zoomThreshold = 15;
-
-  if (avgSpan > 0.1) {
-    zoomThreshold = 17;
-  } else if (avgSpan > 0.01) {
-    zoomThreshold = 16;
-  } else if (avgSpan > 0.01) {
-    zoomThreshold = 18;
-  } else {
-    zoomThreshold = 19;
-  }
+  if (avgSpan > 0.1) zoomThreshold = 17;
+  else if (avgSpan > 0.01) zoomThreshold = 16;
+  else if (avgSpan > 0.001) zoomThreshold = 18;
+  else zoomThreshold = 19;
 
   const density = features.length / (avgSpan * avgSpan || 1);
+  if (density > 1000) zoomThreshold = Math.min(19, zoomThreshold + 1);
+  else if (density < 10) zoomThreshold = Math.max(13, zoomThreshold - 2);
 
-  if (density > 1000) {
-    zoomThreshold = Math.min(19, zoomThreshold + 1);
-  } else if (density < 10) {
-    zoomThreshold = Math.max(13, zoomThreshold - 2);
-  }
-
-  return {
-    heatmapMaxZoom: zoomThreshold,
-    pinMinZoom: zoomThreshold,
-  };
+  return { heatmapMaxZoom: zoomThreshold, pinMinZoom: zoomThreshold };
 }
 
-// Calculate polygon centroid
-function calculateCentroid(coordinates) {
-  let sumX = 0;
-  let sumY = 0;
-  const points = coordinates[0]; // First ring of polygon
-
-  for (let i = 0; i < points.length; i++) {
-    sumX += points[i][0];
-    sumY += points[i][1];
-  }
-
-  return [sumX / points.length, sumY / points.length];
+function calculateCentroid(coordinates: number[][][]) {
+  const points = coordinates[0];
+  const sum = points.reduce(
+    (acc, point) => ({ x: acc.x + point[0], y: acc.y + point[1] }),
+    { x: 0, y: 0 }
+  );
+  return [sum.x / points.length, sum.y / points.length];
 }
 
-function MapEvents({ surveys }) {
+// ============================================================================
+// MAP COMPONENTS
+// ============================================================================
+
+function MapEvents({ surveys, showBoundaries }) {
   const { orthomap } = useMap();
   const { setPopupInfo } = useOrthoMapStore((state) => state);
 
   const handleMapClick = useCallback(
     (e: MapMouseEvent) => {
-      if (!surveys || !e.features?.length) return;
+      if (!showBoundaries || !surveys || !e.features?.length) return;
 
-      const clickedAreaData = surveys.find(
-        (survey) => survey.id === e.features.at(0)?.properties.survey_id
-      );
+      const surveyId = e.features[0]?.properties.survey_id;
+      const clickedSurvey = surveys.find((s) => s.id === surveyId);
 
-      if (clickedAreaData) {
-        // 1. Calculate centroid
+      if (clickedSurvey) {
         const coordinates = [
-          transformCoordinatesToLonLatFormat(clickedAreaData.boundaries),
+          transformCoordinatesToLonLatFormat(clickedSurvey.boundaries),
         ];
+        const [lng, lat] = calculateCentroid(coordinates);
 
-        const [centroidLng, centroidLat] = calculateCentroid(coordinates);
+        setPopupInfo({ ...clickedSurvey, lat, lng });
 
-        // 2. Update popup state
-        setPopupInfo({
-          ...clickedAreaData,
-          lat: centroidLat,
-          lng: centroidLng,
+        orthomap?.flyTo({
+          center: [lng, lat],
+          zoom: Math.max(orthomap.getZoom(), 16),
+          padding: { top: 250, bottom: 25, left: 50, right: 50 },
+          duration: 800,
+          curve: 1.4,
+          essential: true,
         });
-
-        // 3. Auto–center the map on centroid
-        if (orthomap) {
-          orthomap.flyTo({
-            center: [centroidLng, centroidLat],
-            zoom: Math.max(orthomap.getZoom(), 16),
-            padding: { top: 250, bottom: 25, left: 50, right: 50 },
-            duration: 800,
-            curve: 1.4,
-            essential: true,
-          });
-        }
       }
     },
-    [surveys, setPopupInfo, orthomap]
+    [surveys, setPopupInfo, orthomap, showBoundaries]
   );
 
   useEffect(() => {
     if (!orthomap) return;
-
     orthomap.on("click", "area-fills", handleMapClick);
-
-    return () => {
-      orthomap.off("click", "area-fills", handleMapClick);
-    };
+    return () => orthomap.off("click", "area-fills", handleMapClick);
   }, [orthomap, handleMapClick]);
 
   return null;
@@ -224,21 +183,17 @@ function InitializeMapImages() {
         canvas.height = img.height;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
-        ctx.drawImage(img, 0, 0);
 
+        ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
         try {
-          if (!orthomap.hasImage(id)) {
-            orthomap.addImage(id, imageData);
-          }
+          if (!orthomap.hasImage(id)) orthomap.addImage(id, imageData);
         } catch (error) {
           console.warn(`Failed to add image ${id}:`, error);
         }
       };
-      img.onerror = () => {
-        console.error(`Failed to load SVG image for ${id}`);
-      };
+      img.onerror = () => console.error(`Failed to load SVG image for ${id}`);
       img.src = `data:image/svg+xml;base64,${btoa(svgString)}`;
     };
 
@@ -249,80 +204,118 @@ function InitializeMapImages() {
   return null;
 }
 
-function MapLegend() {
+function MapLegend({ selectedFoi }) {
   const [isOpen, setIsOpen] = useState(true);
 
+  if (!selectedFoi || selectedFoi === "none") return null;
+
   return (
-    <div className="absolute bottom-8 left-8 z-10">
-      {/* Toggle Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="mb-2 p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-        title={isOpen ? "Hide legend" : "Show legend"}
+    <div className="absolute bottom-8 left-8 z-10 flex items-end gap-2">
+      <div
+        className={`bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden transition-all duration-300 ease-in-out ${
+          isOpen
+            ? "opacity-100 translate-x-0 w-80"
+            : "opacity-0 -translate-x-4 w-0 pointer-events-none"
+        }`}
       >
-        <svg
-          className={`w-5 h-5 text-gray-700 transition-transform ${
-            isOpen ? "rotate-0" : "rotate-180"
-          }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M13 5l7 7m0 0l-7 7m7-7H6"
-          />
-        </svg>
-      </button>
+        <div className="p-5">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="w-1 h-4 bg-blue-500 rounded-full" />
+            Map Legend
+          </h3>
 
-      {/* Legend Content */}
-      {isOpen && (
-        <div className="bg-white rounded-lg shadow-lg p-4 max-w-xs border border-gray-200 animate-in fade-in slide-in-from-left-2 duration-200">
-          <div className="text-sm font-semibold text-gray-800 mb-3">Legend</div>
-
-          <div className="space-y-3">
+          <div className="flex flex-col gap-4">
             {/* Healthy Plants */}
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 bg-yellow-400 rounded-full border-2 border-white shadow-md"></div>
-              <div className="text-xs text-gray-700">
-                <div className="font-medium">Healthy Plants</div>
-                <div className="text-gray-500">No signs of disease</div>
+            <div className="flex items-start gap-3 group">
+              <div className="w-8 h-8 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full border-2 border-white shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900">
+                  Healthy Plants
+                </div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  No signs of disease detected
+                </div>
               </div>
             </div>
 
             {/* Infected Plants */}
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-md"></div>
-              <div className="text-xs text-gray-700">
-                <div className="font-medium">Infected Plants</div>
-                <div className="text-gray-500">Disease detected</div>
+            <div className="flex items-start gap-3 group">
+              <div className="w-8 h-8 bg-gradient-to-br from-red-400 to-red-600 rounded-full border-2 border-white shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900">
+                  Infected Plants
+                </div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  Disease or pest detected
+                </div>
               </div>
             </div>
+
+            <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
 
             {/* Heatmap */}
-            <div className="pt-2 border-t border-gray-200">
-              <div className="text-xs font-medium text-gray-700 mb-2">
-                Heatmap (Zoomed Out)
+            <div className="flex flex-col gap-2">
+              <div className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
+                Heatmap View
               </div>
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  <div className="w-3 h-3 bg-yellow-200"></div>
-                  <div className="w-3 h-3 bg-yellow-300"></div>
-                  <div className="w-3 h-3 bg-yellow-400"></div>
-                  <div className="w-3 h-3 bg-yellow-500"></div>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-0.5 rounded overflow-hidden shadow-sm">
+                    {[
+                      "bg-yellow-200",
+                      "bg-yellow-300",
+                      "bg-yellow-400",
+                      "bg-yellow-500",
+                      "bg-yellow-600",
+                    ].map((color, i) => (
+                      <div key={i} className={`w-6 h-6 ${color}`} />
+                    ))}
+                  </div>
+                  <span className="text-xs text-gray-600 flex-1">
+                    Plant Density
+                  </span>
                 </div>
-                <span className="text-gray-600">Low → High Density</span>
+                <div className="flex justify-between text-[10px] text-gray-400 px-0.5">
+                  <span>Low</span>
+                  <span>High</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="text-xs text-gray-500 mt-3 italic">
-            Zoom in to see individual plants
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <svg
+                className="w-3.5 h-3.5 text-blue-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span>Zoom in to see individual plant markers</span>
+            </div>
           </div>
         </div>
-      )}
+      </div>
+
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex-shrink-0 p-3 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 hover:shadow-xl hover:border-gray-300 transition-all duration-200 group"
+        title={isOpen ? "Hide legend" : "Show legend"}
+        aria-label={isOpen ? "Hide legend" : "Show legend"}
+      >
+        {isOpen ? (
+          <ChevronLeft className="w-5 h-5 text-gray-700 transition-transform duration-200 group-hover:-translate-x-0.5" />
+        ) : (
+          <ChevronRight className="w-5 h-5 text-gray-700 transition-transform duration-200 group-hover:translate-x-0.5" />
+        )}
+      </button>
     </div>
   );
 }
@@ -334,167 +327,148 @@ function MapPopup() {
 
   return (
     <AnimatePresence mode="wait">
-      {popupInfo && (
-        <Popup
-          key={popupInfo.id}
-          anchor="bottom"
-          longitude={popupInfo?.lng}
-          latitude={popupInfo?.lat}
-          onClose={() => setPopupInfo(null)}
-          closeOnClick={false}
-          closeOnMove={false}
-          maxWidth="none"
+      <Popup
+        key={popupInfo.id}
+        anchor="bottom"
+        longitude={popupInfo.lng}
+        latitude={popupInfo.lat}
+        onClose={() => setPopupInfo(null)}
+        closeOnClick={false}
+        closeOnMove={false}
+        maxWidth="none"
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 12, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 12, scale: 0.95 }}
+          transition={{ duration: 0.23, ease: "easeOut" }}
+          className="rounded-xl overflow-hidden shadow-xl border border-border bg-card w-full max-w-[340px]"
         >
           <motion.div
-            key={`popup-${popupInfo.id}`}
-            initial={{ opacity: 0, y: 12, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.95 }}
-            transition={{ duration: 0.23, ease: "easeOut" }}
-            className="rounded-xl overflow-hidden shadow-xl border border-border bg-card w-full max-w-[340px]"
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.07 }}
+            className="bg-primary px-4 py-3.5 border-b"
           >
-            {/* Header */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <div className="text-[11px] uppercase tracking-wider text-primary-foreground/70 font-medium mb-1">
+                  Survey Area
+                </div>
+                <div className="text-lg font-semibold text-primary-foreground">
+                  {`${popupInfo.access_code}-${popupInfo.area_code}`}
+                </div>
+              </div>
+              <div className="text-xs px-2.5 py-1 bg-primary-foreground/20 text-primary-foreground rounded-md font-medium">
+                #{popupInfo.id}
+              </div>
+            </div>
+          </motion.div>
+
+          <div className="bg-card px-4 py-3.5 space-y-3">
             <motion.div
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.07 }}
-              className="bg-primary px-4 py-3.5 border-b"
+              transition={{ delay: 0.11 }}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <div className="text-[11px] uppercase tracking-wider text-primary-foreground/70 font-medium mb-1">
-                    Survey Area
-                  </div>
-                  <div className="text-lg font-semibold text-primary-foreground">
-                    {`${popupInfo.access_code}-${popupInfo.area_code}`}
-                  </div>
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border/50">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Area
+                  </span>
                 </div>
-                <div className="text-xs px-2.5 py-1 bg-primary-foreground/20 text-primary-foreground rounded-md font-medium">
-                  #{popupInfo.id}
-                </div>
+                <span className="text-base font-bold text-foreground">
+                  {popupInfo.area.toFixed(2)} ha
+                </span>
               </div>
             </motion.div>
 
-            {/* Body content */}
-            <div className="bg-card px-4 py-3.5 space-y-3">
-              {/* Area information */}
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.11 }}
-              >
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border/50">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-2 h-2 rounded-full bg-primary"></div>
-                    <span className="text-sm font-medium text-muted-foreground">
-                      Area
-                    </span>
-                  </div>
-                  <span className="text-base font-bold text-foreground">
-                    {popupInfo.area.toFixed(2)} ha
-                  </span>
-                </div>
-              </motion.div>
+            {(popupInfo.flight_date ||
+              popupInfo.location ||
+              popupInfo.tags) && (
+              <>
+                <Separator />
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="space-y-2"
+                >
+                  {popupInfo.flight_date && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">
+                        Flight date
+                      </span>
+                      <span className="text-sm font-semibold text-foreground">
+                        {new Date(popupInfo.flight_date).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                  {popupInfo.location && (
+                    <div className="flex justify-between items-center gap-3">
+                      <span className="text-sm text-muted-foreground">
+                        Location
+                      </span>
+                      <span
+                        className="text-sm font-semibold text-foreground truncate max-w-[180px]"
+                        title={popupInfo.location}
+                      >
+                        {popupInfo.location}
+                      </span>
+                    </div>
+                  )}
+                  {popupInfo.tags && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">
+                        Type
+                      </span>
+                      <span className="text-xs font-semibold text-foreground uppercase px-2 py-0.5 bg-muted rounded">
+                        {popupInfo.tags}
+                      </span>
+                    </div>
+                  )}
+                </motion.div>
+              </>
+            )}
 
-              {/* Additional Details */}
-              {(popupInfo.flight_date ||
-                popupInfo.location ||
-                popupInfo.tags) && (
-                <>
-                  <Separator />
-                  <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 }}
-                    className="space-y-2"
-                  >
-                    {popupInfo.flight_date && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">
-                          Flight date
-                        </span>
-                        <span className="text-sm font-semibold text-foreground">
-                          {new Date(popupInfo.flight_date).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-
-                    {popupInfo.location && (
-                      <div className="flex justify-between items-center gap-3">
-                        <span className="text-sm text-muted-foreground">
-                          Location
-                        </span>
-                        <span
-                          className="text-sm font-semibold text-foreground truncate max-w-[180px]"
-                          title={popupInfo.location}
-                        >
-                          {popupInfo.location}
-                        </span>
-                      </div>
-                    )}
-
-                    {popupInfo.tags && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">
-                          Type
-                        </span>
-                        <span className="text-xs font-semibold text-foreground uppercase px-2 py-0.5 bg-muted rounded">
-                          {popupInfo.tags}
-                        </span>
-                      </div>
-                    )}
-                  </motion.div>
-                </>
-              )}
-
-              {/* View details button */}
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.18 }}
-                className="pt-1"
-              >
-                <Link href={`/dashboard/surveys/${popupInfo.id}`}>
-                  <button className="w-full px-4 py-2.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold shadow-sm">
-                    View Details →
-                  </button>
-                </Link>
-              </motion.div>
-            </div>
-          </motion.div>
-        </Popup>
-      )}
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18 }}
+              className="pt-1"
+            >
+              <Link href={`/dashboard/surveys/${popupInfo.id}`}>
+                <button className="w-full px-4 py-2.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold shadow-sm">
+                  View Details →
+                </button>
+              </Link>
+            </motion.div>
+          </div>
+        </motion.div>
+      </Popup>
     </AnimatePresence>
   );
 }
 
 function SourceLoadingStatus({ idList }: { idList: string[] }) {
-  const {
-    currentLoadingSource,
-    setCurrentLoadingSource,
-    areAllSourcesLoaded,
-    setAreAllSourcesLoaded,
-  } = useOrthoMapStore((state) => state);
-
+  const { areAllSourcesLoaded, setAreAllSourcesLoaded } = useOrthoMapStore(
+    (state) => state
+  );
   const { orthomap } = useMap();
 
   useEffect(() => {
     if (!orthomap) return;
-    orthomap.on("idle", () => {
-      setAreAllSourcesLoaded(true);
-    });
 
-    return () => {
-      orthomap.off("idle", () => {
-        setAreAllSourcesLoaded(false);
-      });
-    };
-  }, [orthomap]);
+    const handleIdle = () => setAreAllSourcesLoaded(true);
+    orthomap.on("idle", handleIdle);
+
+    return () => orthomap.off("idle", handleIdle);
+  }, [orthomap, setAreAllSourcesLoaded]);
 
   return (
     <div className="text-sm text-muted-foreground">
-      {" "}
-      {areAllSourcesLoaded ? "All sources loaded." : `Loading map sources...`}
+      {areAllSourcesLoaded ? "All sources loaded." : "Loading map sources..."}
     </div>
   );
 }
@@ -505,71 +479,59 @@ function OrthomapFoiSelector({
   detectedObjects: ComputerVisionObject[];
 }) {
   const { selectedFoi, setSelectedFoi } = useOrthoMapStore((state) => state);
-  const [inputPlaceholder, setInputPlaceholder] = useState("");
+  const [placeholder, setPlaceholder] = useState("feature of interest");
 
   useEffect(() => {
-    const handleWindowResize = () => {
-      if (window.innerWidth < 768) {
-        setInputPlaceholder("FOI");
-      } else {
-        setInputPlaceholder("feature of interest");
-      }
+    const updatePlaceholder = () =>
+      setPlaceholder(window.innerWidth < 768 ? "FOI" : "feature of interest");
+    updatePlaceholder();
+    window.addEventListener("resize", updatePlaceholder);
+    return () => window.removeEventListener("resize", updatePlaceholder);
+  }, []);
+
+  const counts = useMemo(() => {
+    if (!detectedObjects) return { healthy: 0, unhealthy: 0 };
+    return {
+      healthy: detectedObjects.filter(
+        (obj) => obj.label === "Banana Plant (Healthy-looking)"
+      ).length,
+      unhealthy: detectedObjects.filter(
+        (obj) => obj.label === "Banana Plant (Infected)"
+      ).length,
     };
-
-    handleWindowResize();
-
-    window.addEventListener("resize", handleWindowResize);
-
-    return () => window.removeEventListener("resize", handleWindowResize);
-  });
-
-  const numHealthyBananas = useMemo(() => {
-    if (!detectedObjects) return 0;
-    return detectedObjects.filter(
-      (object: ComputerVisionObject) =>
-        object.label === "Banana Plant (Healthy-looking)"
-    ).length;
-  }, [detectedObjects]);
-
-  const numUnhealthyBananas = useMemo(() => {
-    if (!detectedObjects) return 0;
-    return detectedObjects.filter(
-      (object: ComputerVisionObject) =>
-        object.label === "Banana Plant (Infected)"
-    ).length;
   }, [detectedObjects]);
 
   return (
     <Select value={selectedFoi} onValueChange={setSelectedFoi}>
       <SelectTrigger className="w-fit" id="foi-selector">
         <Label>Crop Status:</Label>
-        <SelectValue placeholder={`Select ${inputPlaceholder}`} />
+        <SelectValue placeholder={`Select ${placeholder}`} />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
           <SelectLabel>Feature of Interest</SelectLabel>
           <SelectItem value="none">None</SelectItem>
-          <SelectItem value="healthy" className="flex gap-2">
-            <span> Healthy Banana </span>
+          <SelectItem value="healthy">
+            Healthy Banana
             {selectedFoi === "healthy" && (
-              <Badge variant="secondary" className="rounded-full">
-                {numHealthyBananas}
+              <Badge variant="secondary" className="ml-2 rounded-full">
+                {counts.healthy}
               </Badge>
             )}
           </SelectItem>
-          <SelectItem value="unhealthy" className="flex gap-2">
-            <span> Unhealthy Banana </span>
+          <SelectItem value="unhealthy">
+            Unhealthy Banana
             {selectedFoi === "unhealthy" && (
-              <Badge variant="secondary" className="rounded-full">
-                {numUnhealthyBananas}
+              <Badge variant="secondary" className="ml-2 rounded-full">
+                {counts.unhealthy}
               </Badge>
             )}
           </SelectItem>
-          <SelectItem value="all" className="flex gap-2">
-            <span> All </span>
+          <SelectItem value="all">
+            All
             {selectedFoi === "all" && (
-              <Badge variant="secondary" className="rounded-full">
-                {numUnhealthyBananas + numHealthyBananas}
+              <Badge variant="secondary" className="ml-2 rounded-full">
+                {counts.healthy + counts.unhealthy}
               </Badge>
             )}
           </SelectItem>
@@ -588,240 +550,153 @@ function FeaturesOfInterest({
 }) {
   const { selectedFoi } = useOrthoMapStore((state) => state);
 
-  const healthyBananas = useMemo(() => {
-    if (!detectedObjects) return "";
-    return generateFeatureCollection(
-      GeometryType.Point,
-      "Banana Plant (Healthy-looking)",
-      detectedObjects
-    );
-  }, [detectedObjects]);
-
-  const unhealthyBananas = useMemo(() => {
-    if (!detectedObjects) return "";
-    return generateFeatureCollection(
-      GeometryType.Point,
-      "Banana Plant (Infected)",
-      detectedObjects
-    );
+  const { healthyBananas, unhealthyBananas } = useMemo(() => {
+    if (!detectedObjects) return { healthyBananas: "", unhealthyBananas: "" };
+    return {
+      healthyBananas: generateFeatureCollection(
+        GeometryType.Point,
+        "Banana Plant (Healthy-looking)",
+        detectedObjects
+      ),
+      unhealthyBananas: generateFeatureCollection(
+        GeometryType.Point,
+        "Banana Plant (Infected)",
+        detectedObjects
+      ),
+    };
   }, [detectedObjects]);
 
   const healthyZoomLevels = useMemo(() => {
-    if (!healthyBananas || healthyBananas === "")
-      return { heatmapMaxZoom: 15, pinMinZoom: 15 };
+    if (!healthyBananas) return DEFAULT_ZOOM_LEVELS;
     const levels = calculateOptimalZoomLevels(
       (healthyBananas as any).features || []
     );
-    return {
-      heatmapMaxZoom: levels.heatmapMaxZoom,
-      pinMinZoom: Math.max(13, levels.pinMinZoom - 1.5),
-    };
+    return { ...levels, pinMinZoom: Math.max(13, levels.pinMinZoom - 1.5) };
   }, [healthyBananas]);
 
   const unhealthyZoomLevels = useMemo(() => {
-    if (!unhealthyBananas || unhealthyBananas === "")
-      return { heatmapMaxZoom: 15, pinMinZoom: 15 };
+    if (!unhealthyBananas) return DEFAULT_ZOOM_LEVELS;
     const levels = calculateOptimalZoomLevels(
       (unhealthyBananas as any).features || []
     );
-    return {
-      heatmapMaxZoom: levels.heatmapMaxZoom,
-      pinMinZoom: Math.max(13, levels.pinMinZoom - 1.5),
-    };
+    return { ...levels, pinMinZoom: Math.max(13, levels.pinMinZoom - 1.5) };
   }, [unhealthyBananas]);
+
+  const heatmapPaint = (color: string) => ({
+    "heatmap-weight": ["interpolate", ["linear"], ["get", "mag"], 0, 0, 6, 1],
+    "heatmap-color": [
+      "interpolate",
+      ["linear"],
+      ["heatmap-density"],
+      0,
+      `rgba(${color}, 0)`,
+      0.2,
+      `rgba(${color}, 0.3)`,
+      0.5,
+      `rgba(${color}, 0.6)`,
+      1,
+      `rgba(${color}, 0.9)`,
+    ],
+    "heatmap-radius": [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      10,
+      8,
+      12,
+      10,
+      14,
+      12,
+      16,
+      15,
+      18,
+      20,
+      20,
+      25,
+    ],
+    "heatmap-opacity": 0.7,
+  });
+
+  const pinLayout = (iconImage: string) => ({
+    "icon-image": iconImage,
+    "icon-size": [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      13,
+      0.1,
+      14,
+      0.2,
+      15,
+      0.2,
+      16,
+      0.3,
+      17,
+      0.3,
+      18,
+      0.4,
+      20,
+      0.5,
+    ],
+    "icon-allow-overlap": true,
+  });
 
   return (
     <>
-      {/* HEALTHY HEATMAP */}
       {(selectedFoi === "healthy" || selectedFoi === "all") && (
-        <Source id={`${code}-healthy`} type="geojson" data={healthyBananas}>
-          <Layer
-            id={`${code}-healthy-heatmap`}
-            type="heatmap"
-            source={`${code}-healthy`}
-            maxzoom={healthyZoomLevels.heatmapMaxZoom}
-            paint={{
-              "heatmap-weight": [
-                "interpolate",
-                ["linear"],
-                ["get", "mag"],
-                0,
-                0,
-                6,
-                1,
-              ],
-              "heatmap-color": [
-                "interpolate",
-                ["linear"],
-                ["heatmap-density"],
-                0,
-                "rgba(251, 192, 45, 0)",
-                0.2,
-                "rgba(251, 192, 45, 0.3)",
-                0.5,
-                "rgba(251, 192, 45, 0.6)",
-                1,
-                "rgba(251, 192, 45, 0.9)",
-              ],
-              "heatmap-radius": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                10,
-                8,
-                12,
-                10,
-                14,
-                12,
-                16,
-                15,
-                18,
-                20,
-                20,
-                25,
-              ],
-              "heatmap-opacity": 0.7,
-            }}
-          />
-        </Source>
+        <>
+          <Source id={`${code}-healthy`} type="geojson" data={healthyBananas}>
+            <Layer
+              id={`${code}-healthy-heatmap`}
+              type="heatmap"
+              maxzoom={healthyZoomLevels.heatmapMaxZoom}
+              paint={heatmapPaint("251, 192, 45")}
+            />
+          </Source>
+          <Source
+            id={`${code}-healthy-pins`}
+            type="geojson"
+            data={healthyBananas}
+          >
+            <Layer
+              id={`${code}-healthy-pin`}
+              type="symbol"
+              minzoom={healthyZoomLevels.pinMinZoom}
+              layout={pinLayout("pin-yellow")}
+              paint={{ "icon-opacity": 0.75 }}
+            />
+          </Source>
+        </>
       )}
 
-      {/* UNHEALTHY HEATMAP */}
       {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
-        <Source id={`${code}-unhealthy`} type="geojson" data={unhealthyBananas}>
-          <Layer
-            id={`${code}-unhealthy-heatmap`}
-            type="heatmap"
-            source={`${code}-unhealthy`}
-            maxzoom={unhealthyZoomLevels.heatmapMaxZoom}
-            paint={{
-              "heatmap-weight": [
-                "interpolate",
-                ["linear"],
-                ["get", "mag"],
-                0,
-                0,
-                6,
-                1,
-              ],
-              "heatmap-color": [
-                "interpolate",
-                ["linear"],
-                ["heatmap-density"],
-                0,
-                "rgba(255, 0, 0, 0)",
-                0.2,
-                "rgba(255, 0, 0, 0.3)",
-                0.5,
-                "rgba(255, 0, 0, 0.6)",
-                1,
-                "rgba(150, 0, 0, 0.9)",
-              ],
-              "heatmap-radius": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                10,
-                8,
-                12,
-                10,
-                14,
-                12,
-                16,
-                15,
-                18,
-                20,
-                20,
-                25,
-              ],
-              "heatmap-opacity": 0.7,
-            }}
-          />
-        </Source>
-      )}
-
-      {/* HEALTHY PINS */}
-      {(selectedFoi === "healthy" || selectedFoi === "all") && (
-        <Source
-          id={`${code}-healthy-pins`}
-          type="geojson"
-          data={healthyBananas}
-        >
-          <Layer
-            id={`${code}-healthy-pin`}
-            type="symbol"
-            source={`${code}-healthy-pins`}
-            minzoom={healthyZoomLevels.pinMinZoom}
-            layout={{
-              "icon-image": "pin-yellow",
-              "icon-size": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                13,
-                0.1,
-                14,
-                0.2,
-                15,
-                0.2,
-                16,
-                0.3,
-                17,
-                0.3,
-                18,
-                0.4,
-                20,
-                0.5,
-              ],
-              "icon-allow-overlap": true,
-            }}
-            paint={{
-              "icon-opacity": 0.75,
-            }}
-          />
-        </Source>
-      )}
-
-      {/* UNHEALTHY PINS */}
-      {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
-        <Source
-          id={`${code}-unhealthy-pins`}
-          type="geojson"
-          data={unhealthyBananas}
-        >
-          <Layer
-            id={`${code}-unhealthy-pin`}
-            type="symbol"
-            source={`${code}-unhealthy-pins`}
-            minzoom={unhealthyZoomLevels.pinMinZoom}
-            layout={{
-              "icon-image": "pin-red",
-              "icon-size": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                13,
-                0.1,
-                14,
-                0.2,
-                15,
-                0.2,
-                16,
-                0.3,
-                17,
-                0.4,
-                18,
-                0.5,
-                20,
-                0.6,
-              ],
-              "icon-allow-overlap": true,
-            }}
-            paint={{
-              "icon-opacity": 0.75,
-            }}
-          />
-        </Source>
+        <>
+          <Source
+            id={`${code}-unhealthy`}
+            type="geojson"
+            data={unhealthyBananas}
+          >
+            <Layer
+              id={`${code}-unhealthy-heatmap`}
+              type="heatmap"
+              maxzoom={unhealthyZoomLevels.heatmapMaxZoom}
+              paint={heatmapPaint("255, 0, 0")}
+            />
+          </Source>
+          <Source
+            id={`${code}-unhealthy-pins`}
+            type="geojson"
+            data={unhealthyBananas}
+          >
+            <Layer
+              id={`${code}-unhealthy-pin`}
+              type="symbol"
+              minzoom={unhealthyZoomLevels.pinMinZoom}
+              layout={pinLayout("pin-red")}
+              paint={{ "icon-opacity": 0.75 }}
+            />
+          </Source>
+        </>
       )}
     </>
   );
@@ -831,28 +706,26 @@ function BoundaryLayers({ showBoundaries }) {
   const { orthomap } = useMap();
 
   useEffect(() => {
-    if (!orthomap) return;
+    if (!orthomap || !showBoundaries) return;
 
-    // Simple interval-based approach to keep boundaries on top
-    const intervalId = setInterval(() => {
+    const moveLayersToTop = () => {
       try {
-        const glowLayer = orthomap.getLayer("boundary-glow");
-        const borderLayer = orthomap.getLayer("boundary-borders");
-
-        if (glowLayer && borderLayer) {
-          // Move layers to top repeatedly
+        if (
+          orthomap.getLayer("boundary-glow") &&
+          orthomap.getLayer("boundary-borders")
+        ) {
           orthomap.moveLayer("boundary-glow");
           orthomap.moveLayer("boundary-borders");
         }
       } catch (e) {
-        // Silently handle any errors
+        console.warn("Error moving boundary layers:", e);
       }
-    }, 1000); // Check every second
-
-    return () => {
-      clearInterval(intervalId);
     };
-  }, [orthomap]);
+
+    moveLayersToTop();
+    orthomap.on("styledata", moveLayersToTop);
+    return () => orthomap.off("styledata", moveLayersToTop);
+  }, [orthomap, showBoundaries]);
 
   return (
     <>
@@ -866,11 +739,8 @@ function BoundaryLayers({ showBoundaries }) {
           "line-blur": 3,
           "line-opacity": 0.4,
         }}
-        layout={{
-          visibility: showBoundaries ? "visible" : "none",
-        }}
+        layout={{ visibility: showBoundaries ? "visible" : "none" }}
       />
-
       <Layer
         id="boundary-borders"
         type="line"
@@ -880,70 +750,56 @@ function BoundaryLayers({ showBoundaries }) {
           "line-width": 2.5,
           "line-opacity": 0.9,
         }}
-        layout={{
-          visibility: showBoundaries ? "visible" : "none",
-        }}
+        layout={{ visibility: showBoundaries ? "visible" : "none" }}
       />
     </>
   );
 }
 
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
 export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
-  const [flightYear, setFlightYear] = useState("");
   const [showBoundaries, setShowBoundaries] = useState(false);
+  const { selectedFoi, setPopupInfo } = useOrthoMapStore((state) => state);
 
-  const surveyIds = useMemo(() => {
-    if (!surveys) return null;
-    return surveys.map((survey) => survey.id);
-  }, [surveys]);
+  const surveyIds = useMemo(() => surveys?.map((s) => s.id) || [], [surveys]);
 
-  const uniqueFlightYears = useMemo(() => {
-    if (!surveys) return [];
-    return getUniqueYears(
-      surveys.map((survey) => survey.flight_date as Date) || []
-    );
-  }, [surveys]);
+  const { global_x, global_y } = useMemo(
+    () =>
+      surveys
+        ? calculateGlobalCenters(surveys)
+        : { global_x: 125.58147596772221, global_y: 7.0763840759644 },
+    [surveys]
+  );
 
-  const { global_x, global_y } = useMemo(() => {
-    if (!surveys)
-      return { global_x: 125.58147596772221, global_y: 7.0763840759644 };
-    return calculateGlobalCenters(surveys);
-  }, [surveys]);
+  const bounds = useMemo(
+    () =>
+      surveys &&
+      findExtremeCoordinates(surveys.map((s) => s.geojson_boundaries)),
+    [surveys]
+  );
 
-  const bounds = useMemo(() => {
-    if (!surveys) return null;
-    return findExtremeCoordinates(
-      surveys.map((survey) => survey.geojson_boundaries)
-    );
-  }, [surveys]);
-
+  // Close popup when boundaries are hidden
   useEffect(() => {
-    setFlightYear(uniqueFlightYears.at(uniqueFlightYears.length - 1) || "");
-  }, [uniqueFlightYears]);
+    if (!showBoundaries) setPopupInfo(null);
+  }, [showBoundaries, setPopupInfo]);
 
   return (
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
-      <style>{pinAnimationStyles}</style>
+      <style>{PIN_ANIMATION_STYLES}</style>
 
       <Tabs
         defaultValue="orthomap"
         className="flex w-full flex-col justify-start gap-6"
       >
         <div className="flex items-center justify-between px-4 lg:px-6">
-          <Label htmlFor="year-selector" className="sr-only">
-            Year
-          </Label>
-          <TabsList className="@4xl/main:flex">
-            <TabsTrigger
-              value="orthomap"
-              className="gap-1 :first-child:gap-0 :last-child:gap-0"
-            >
-              Orthomap
-            </TabsTrigger>
+          <TabsList>
+            <TabsTrigger value="orthomap">Orthomap</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
             <OrthomapFoiSelector detectedObjects={detectedObjects} />
-
             <Button
               size="sm"
               variant={showBoundaries ? "default" : "outline"}
@@ -959,7 +815,7 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
         <div className="flex flex-1 h-full px-4 lg:px-6">
           <Card className="@container/card flex flex-1 flex-col h-full relative">
             <CardHeader>
-              <CardTitle> {userProfile.organization.code} </CardTitle>
+              <CardTitle>{userProfile.organization.code}</CardTitle>
               <CardDescription>{userProfile.organization.name}</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 relative">
@@ -989,35 +845,29 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                         type: "geojson",
                         data: {
                           type: "FeatureCollection",
-                          features: surveys?.map((survey) => {
-                            return {
-                              type: "Feature",
-                              properties: {
-                                survey_id: survey.id,
-                                latitude: Number(
-                                  (survey.max_y + survey.min_y) / 2
+                          features: surveys?.map((survey) => ({
+                            type: "Feature",
+                            properties: {
+                              survey_id: survey.id,
+                              latitude: Number(
+                                (survey.max_y + survey.min_y) / 2
+                              ),
+                            },
+                            geometry: {
+                              type: "Polygon",
+                              coordinates: [
+                                transformCoordinatesToLonLatFormat(
+                                  survey.boundaries
                                 ),
-                              },
-                              geometry: {
-                                type: "Polygon",
-                                coordinates: [
-                                  transformCoordinatesToLonLatFormat(
-                                    survey.boundaries
-                                  ),
-                                ],
-                              },
-                            };
-                          }),
+                              ],
+                            },
+                          })),
                         },
                         generateId: true,
                       },
                     },
                     layers: [
-                      {
-                        id: "osm",
-                        type: "raster",
-                        source: "osm",
-                      },
+                      { id: "osm", type: "raster", source: "osm" },
                       {
                         id: "area-fills",
                         type: "fill",
@@ -1066,15 +916,19 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                       />
                     </Source>
                   ))}
+
                   <FeaturesOfInterest
-                    code={surveys.at(0).code}
+                    code={surveys[0].code}
                     detectedObjects={detectedObjects}
                   />
                   <BoundaryLayers showBoundaries={showBoundaries} />
-                  <MapEvents surveys={surveys} />
+                  <MapEvents
+                    surveys={surveys}
+                    showBoundaries={showBoundaries}
+                  />
                   <MapPopup />
                 </Map>
-                <MapLegend />
+                <MapLegend selectedFoi={selectedFoi} />
               </div>
             </CardContent>
             <CardFooter>
