@@ -225,7 +225,6 @@ function MapLegend({ selectedFoi }) {
           </h3>
 
           <div className="flex flex-col gap-4">
-            {/* Healthy Plants */}
             <div className="flex items-start gap-3 group">
               <div className="w-8 h-8 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full border-2 border-white shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5" />
               <div className="flex-1 min-w-0">
@@ -238,7 +237,6 @@ function MapLegend({ selectedFoi }) {
               </div>
             </div>
 
-            {/* Infected Plants */}
             <div className="flex items-start gap-3 group">
               <div className="w-8 h-8 bg-gradient-to-br from-red-400 to-red-600 rounded-full border-2 border-white shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5" />
               <div className="flex-1 min-w-0">
@@ -253,7 +251,6 @@ function MapLegend({ selectedFoi }) {
 
             <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
 
-            {/* Heatmap */}
             <div className="flex flex-col gap-2">
               <div className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
                 Heatmap View
@@ -490,7 +487,8 @@ function OrthomapFoiSelector({
   }, []);
 
   const counts = useMemo(() => {
-    if (!detectedObjects) return { healthy: 0, unhealthy: 0 };
+    if (!detectedObjects || !Array.isArray(detectedObjects))
+      return { healthy: 0, unhealthy: 0 };
     return {
       healthy: detectedObjects.filter(
         (obj) => obj.label === "Banana Plant (Healthy-looking)"
@@ -551,7 +549,8 @@ function FeaturesOfInterest({
   const { selectedFoi } = useOrthoMapStore((state) => state);
 
   const { healthyBananas, unhealthyBananas } = useMemo(() => {
-    if (!detectedObjects) return { healthyBananas: "", unhealthyBananas: "" };
+    if (!detectedObjects || !Array.isArray(detectedObjects))
+      return { healthyBananas: "", unhealthyBananas: "" };
     return {
       healthyBananas: generateFeatureCollection(
         GeometryType.Point,
@@ -760,35 +759,56 @@ function BoundaryLayers({ showBoundaries }) {
 // MAIN COMPONENT
 // ============================================================================
 
-// Key fixes applied:
-// 1. Memoize mapStyle to prevent recreation on every render
-// 2. Memoize bounds properly to prevent reference changes
-// 3. Add dependencies to useMemo hooks
-
 export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
   const [showBoundaries, setShowBoundaries] = useState(false);
   const { selectedFoi, setPopupInfo } = useOrthoMapStore((state) => state);
 
-  const surveyIds = useMemo(() => surveys?.map((s) => s.id) || [], [surveys]);
+  // ✅ ADD: Filter out invalid surveys at the start
+  const validSurveys = useMemo(() => {
+    if (!surveys || !Array.isArray(surveys)) return [];
+    return surveys.filter(
+      (survey) =>
+        survey.geojson_boundaries &&
+        survey.boundaries &&
+        Array.isArray(survey.geojson_boundaries) &&
+        Array.isArray(survey.boundaries)
+    );
+  }, [surveys]);
+
+  // ✅ ADD: Handle empty surveys
+  if (validSurveys.length === 0) {
+    return (
+      <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center text-muted-foreground">
+            <p className="text-sm font-medium">No valid surveys to display</p>
+            <p className="text-xs mt-1">
+              Surveys need boundary data to show on map
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const surveyIds = useMemo(
+    () => validSurveys.map((s) => s.id),
+    [validSurveys]
+  );
 
   const { global_x, global_y } = useMemo(
-    () =>
-      surveys
-        ? calculateGlobalCenters(surveys)
-        : { global_x: 125.58147596772221, global_y: 7.0763840759644 },
-    [surveys]
+    () => calculateGlobalCenters(validSurveys),
+    [validSurveys]
   );
 
   const bounds = useMemo(() => {
-    if (!surveys) return undefined;
     const extremes = findExtremeCoordinates(
-      surveys.map((s) => s.geojson_boundaries)
+      validSurveys.map((s) => s.geojson_boundaries)
     );
-    // Return undefined if no valid bounds to prevent map reinitialization
     return extremes;
-  }, [surveys]);
+  }, [validSurveys]);
 
-  // CRITICAL FIX: Memoize the entire mapStyle object
+  // Memoize mapStyle to prevent recreation on every render
   const mapStyle = useMemo(
     () => ({
       version: 8,
@@ -803,20 +823,19 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
           type: "geojson",
           data: {
             type: "FeatureCollection",
-            features:
-              surveys?.map((survey) => ({
-                type: "Feature",
-                properties: {
-                  survey_id: survey.id,
-                  latitude: Number((survey.max_y + survey.min_y) / 2),
-                },
-                geometry: {
-                  type: "Polygon",
-                  coordinates: [
-                    transformCoordinatesToLonLatFormat(survey.boundaries),
-                  ],
-                },
-              })) || [],
+            features: validSurveys.map((survey) => ({
+              type: "Feature",
+              properties: {
+                survey_id: survey.id,
+                latitude: Number((survey.max_y + survey.min_y) / 2),
+              },
+              geometry: {
+                type: "Polygon",
+                coordinates: [
+                  transformCoordinatesToLonLatFormat(survey.boundaries),
+                ],
+              },
+            })),
           },
           generateId: true,
         },
@@ -844,10 +863,10 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
         },
       ],
     }),
-    [surveys]
-  ); // Only recreate when surveys change
+    [validSurveys]
+  );
 
-  // Memoize initialViewState as well
+  // Memoize initialViewState
   const initialViewState = useMemo(
     () => ({
       latitude: global_y,

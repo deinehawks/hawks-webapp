@@ -833,29 +833,53 @@ export default function SurveyMap({
   survey,
   detectedObjects,
 }: {
+  survey: any;
   detectedObjects: ComputerVisionObject[];
 }) {
   const [activeTab, setActiveTab] = useState("ortho");
 
+  // ADD: Early return if no survey data
+  if (!survey) {
+    return (
+      <div className="flex flex-1 flex-col h-full items-center justify-center">
+        <div className="text-center text-muted-foreground">
+          <p className="text-sm font-medium">No survey data available</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ADD: Safe detectedObjects handling
+  const safeDetectedObjects = detectedObjects || [];
+
   const { centerLng, centerLat } = useMemo(() => {
-    if (!survey) return { centerLat: 0, centerLng: 0 };
     const { min_x, max_x, min_y, max_y } = survey;
+    // ADD: Check if coordinates exist
+    if (min_x == null || max_x == null || min_y == null || max_y == null) {
+      return { centerLat: 0, centerLng: 0 };
+    }
     return calculateCentersUsingMinMaxXY(min_x, max_x, min_y, max_y);
   }, [survey]);
 
   const bounds = useMemo(() => {
-    if (!survey) return null;
+    // ADD: Check if geojson_boundaries exists
+    if (
+      !survey.geojson_boundaries ||
+      !Array.isArray(survey.geojson_boundaries)
+    ) {
+      return null;
+    }
     return findExtremeCoordinates(survey.geojson_boundaries);
   }, [survey]);
 
   const numBananas = useMemo(() => {
-    if (!detectedObjects) return null;
-    return detectedObjects.filter((object) => object.label.includes("Banana"))
-      .length;
-  }, [detectedObjects]);
+    if (!safeDetectedObjects || safeDetectedObjects.length === 0) return 0;
+    return safeDetectedObjects.filter((object) =>
+      object.label?.includes("Banana")
+    ).length;
+  }, [safeDetectedObjects]);
 
   const tileUrl = useMemo(() => {
-    if (!survey) return null;
     if (survey.code === "DIFCO") {
       return `pmtiles://asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
         survey.flight_date
@@ -865,35 +889,24 @@ export default function SurveyMap({
         survey.flight_date
       )}/${survey.id}/${activeTab}/sharp-corners/{z}/{x}/{y}.png`;
     }
-  }, [survey]);
+  }, [survey, activeTab]);
 
   const source = useMemo(() => {
-    if (!survey)
-      return {
-        type: "",
-        url: "",
-      };
     return {
       type: "raster",
       url: `pmtiles://asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
         survey.flight_date
       )}/${survey.id}/${activeTab}/sharp-corners/ortho.pmtiles`,
     };
-  }, [survey]);
+  }, [survey, activeTab]);
 
   const layer = useMemo(() => {
-    if (!survey)
-      return {
-        id: "",
-        type: "",
-        source: "",
-      };
     return {
       id: survey.id,
       type: "raster",
       source: source,
     };
-  }, [survey]);
+  }, [survey, source]);
 
   return (
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
@@ -905,8 +918,7 @@ export default function SurveyMap({
       >
         <div className="flex items-center justify-between px-4 lg:px-6">
           <Label htmlFor="view-selector" className="sr-only">
-            {" "}
-            View{" "}
+            View
           </Label>
           <Select value={activeTab} onValueChange={setActiveTab}>
             <SelectTrigger
@@ -924,7 +936,7 @@ export default function SurveyMap({
           </Select>
           <TabsList className="@4xl/main:flex hidden">
             <TabsTrigger value="ortho">Orthomosaic</TabsTrigger>
-            {survey.tags.includes("rgb") && survey.code !== "DIFCO" && (
+            {survey.tags?.includes("rgb") && survey.code !== "DIFCO" && (
               <TabsTrigger value="3d">3D Model</TabsTrigger>
             )}
           </TabsList>
@@ -934,12 +946,15 @@ export default function SurveyMap({
             <div className="flex flex-1 h-full">
               <Card className="container/card flex flex-1 flex-col h-full relative">
                 <CardHeader>
-                  <CardTitle> {survey.id} </CardTitle>
+                  <CardTitle>{survey.id}</CardTitle>
                   <CardDescription>
-                    {`${survey.code} | ${survey.area_code} | ${format(
-                      survey.flight_date,
-                      "dd MMMM yyyy"
-                    )} | ${survey.location}`}
+                    {`${survey.code || "N/A"} | ${
+                      survey.area_code || "N/A"
+                    } | ${
+                      survey.flight_date
+                        ? format(survey.flight_date, "dd MMMM yyyy")
+                        : "N/A"
+                    } | ${survey.location || "N/A"}`}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 relative">
@@ -980,7 +995,7 @@ export default function SurveyMap({
                         <InitializeMapImages />
                         <SurveyMapEvents
                           survey={survey}
-                          detectedObjects={detectedObjects}
+                          detectedObjects={safeDetectedObjects}
                         />
                         {activeTab === "ortho" && (
                           <>
@@ -1008,7 +1023,7 @@ export default function SurveyMap({
                               />
                             </Source>
                             <FeaturesOfInterest
-                              detectedObjects={detectedObjects}
+                              detectedObjects={safeDetectedObjects}
                               survey={survey}
                             />
                             <ObjectPopup />
@@ -1018,11 +1033,10 @@ export default function SurveyMap({
                     )}
                     {activeTab === "3d" && (
                       <div className="flex h-full w-full min-w-0 bg-primary">
-                        <ThreeDimensionalModelCaller survey={survey} />{" "}
+                        <ThreeDimensionalModelCaller survey={survey} />
                       </div>
                     )}
 
-                    {/* Legend positioned over the map */}
                     {activeTab === "ortho" && <MapLegend />}
                   </div>
                 </CardContent>
@@ -1032,7 +1046,7 @@ export default function SurveyMap({
             <TabsContent value="ortho">
               <Card className="container/card flex flex-1 flex-col lg:h-full">
                 <CardHeader>
-                  <CardTitle> Orthomosaic </CardTitle>
+                  <CardTitle>Orthomosaic</CardTitle>
                   <CardDescription>{survey.id}</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1044,17 +1058,19 @@ export default function SurveyMap({
                     </div>
                     <div>
                       Orthomosaics provide detailed top-down view of an area,
-                      free from disttortions and perspective errors.
+                      free from distortions and perspective errors.
                     </div>
                     <Table className="w-full table-auto text-left">
                       <TableBody>
                         <TableRow>
-                          <TableCell> Area </TableCell>
-                          <TableCell> {survey.area?.toFixed(2)} ha</TableCell>
+                          <TableCell>Area</TableCell>
+                          <TableCell>
+                            {survey.area?.toFixed(2) || "N/A"} ha
+                          </TableCell>
                         </TableRow>
                         {survey.ortho?.num_images && (
                           <TableRow>
-                            <TableCell> No. of Images </TableCell>
+                            <TableCell>No. of Images</TableCell>
                             <TableCell>{survey.ortho.num_images}</TableCell>
                           </TableRow>
                         )}
@@ -1067,7 +1083,7 @@ export default function SurveyMap({
                   </div>
                 </CardContent>
                 <CardHeader>
-                  <CardTitle> Plant Disease Detection </CardTitle>
+                  <CardTitle>Plant Disease Detection</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-col gap-4">
@@ -1080,7 +1096,7 @@ export default function SurveyMap({
                       Timely detection allows for prompt intervention,
                       minimizing damage and ensuring healthier crops.
                     </div>
-                    <FoiSelector detectedObjects={detectedObjects} />
+                    <FoiSelector detectedObjects={safeDetectedObjects} />
                   </div>
                 </CardContent>
               </Card>
@@ -1089,7 +1105,7 @@ export default function SurveyMap({
             <TabsContent value="3d">
               <Card className="container/card flex flex-1 flex-col gap-4 lg:h-full">
                 <CardHeader>
-                  <CardTitle> 3D Model </CardTitle>
+                  <CardTitle>3D Model</CardTitle>
                   <CardDescription>{survey.id}</CardDescription>
                 </CardHeader>
                 <CardContent>

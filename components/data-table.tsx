@@ -502,6 +502,23 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
 }
 
 function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
+  // ADD: Check if survey has valid boundary data
+  const hasValidBoundaries =
+    survey.geojson_boundaries &&
+    Array.isArray(survey.geojson_boundaries) &&
+    survey.geojson_boundaries.length > 0;
+
+  // ADD: Calculate bounds safely
+  const bounds = hasValidBoundaries
+    ? findExtremeCoordinates(survey.geojson_boundaries)
+    : null;
+
+  // ADD: Calculate center coordinates safely
+  const centerLng =
+    survey.min_x && survey.max_x ? (survey.min_x + survey.max_x) / 2 : 0;
+  const centerLat =
+    survey.min_y && survey.max_y ? (survey.min_y + survey.max_y) / 2 : 0;
+
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -513,72 +530,88 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
         <SheetHeader className="gap-1">
           <SheetTitle>{survey.id}</SheetTitle>
           <SheetDescription>Showing survey area extent</SheetDescription>
-          {/* <SheetDescription>{`${survey.code}-${survey.area_code}`}</SheetDescription> */}
         </SheetHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 text-sm">
-          <div className="w-full h-56">
-            <Map
-              initialViewState={{
-                longitude: (survey.min_x + survey.max_x) / 2,
-                latitude: (survey.min_y + survey.max_y) / 2,
-                bounds: findExtremeCoordinates(survey.geojson_boundaries),
-                fitBoundsOptions: { padding: 25 },
-              }}
-              mapStyle={{
-                version: 8,
-                sources: {
-                  osm: {
-                    type: "raster",
-                    tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-                    tileSize: 256,
-                    attribution: "&copy; OpenStreetMap Contributors",
-                  },
-                },
-                layers: [{ id: "osm", type: "raster", source: "osm" }],
-              }}
-              doubleClickZoom={false}
-              attributionControl={false}
-            >
-              <Source
-                id={survey.id}
-                type="geojson"
-                data={{
-                  type: "FeatureCollection",
-                  features: [
-                    {
-                      type: "Feature",
-                      properties: {},
-                      geometry: {
-                        type: "Polygon",
-                        coordinates: [
-                          survey.geojson_boundaries.map((pair) => [
-                            parseFloat(pair[0]),
-                            parseFloat(pair[1]),
-                          ]),
-                        ],
-                      },
-                    },
-                  ],
+          {/* CHANGED: Only show map if boundaries exist */}
+          {hasValidBoundaries ? (
+            <div className="w-full h-56">
+              <Map
+                initialViewState={{
+                  longitude: centerLng,
+                  latitude: centerLat,
+                  bounds: bounds,
+                  fitBoundsOptions: { padding: 25 },
                 }}
+                mapStyle={{
+                  version: 8,
+                  sources: {
+                    osm: {
+                      type: "raster",
+                      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+                      tileSize: 256,
+                      attribution: "&copy; OpenStreetMap Contributors",
+                    },
+                  },
+                  layers: [{ id: "osm", type: "raster", source: "osm" }],
+                }}
+                doubleClickZoom={false}
+                attributionControl={false}
               >
-                <Layer
-                  id={`${survey.id}-fill`}
-                  type="fill"
-                  source={survey.id}
-                  paint={{ "fill-color": "#088", "fill-opacity": 0.5 }}
+                <Source
+                  id={survey.id}
+                  type="geojson"
+                  data={{
+                    type: "FeatureCollection",
+                    features: [
+                      {
+                        type: "Feature",
+                        properties: {},
+                        geometry: {
+                          type: "Polygon",
+                          coordinates: [
+                            survey.geojson_boundaries.map((pair) => [
+                              parseFloat(pair[0]),
+                              parseFloat(pair[1]),
+                            ]),
+                          ],
+                        },
+                      },
+                    ],
+                  }}
+                >
+                  <Layer
+                    id={`${survey.id}-fill`}
+                    type="fill"
+                    source={survey.id}
+                    paint={{ "fill-color": "#088", "fill-opacity": 0.5 }}
+                  />
+                </Source>
+                <Marker
+                  longitude={centerLng}
+                  latitude={centerLat}
+                  anchor="center"
                 />
-              </Source>
-              <Marker
-                longitude={(survey.min_x + survey.max_x) / 2}
-                latitude={(survey.min_y + survey.max_y) / 2}
-                anchor="center"
-              />
-            </Map>
-          </div>
+              </Map>
+            </div>
+          ) : (
+            // ADD: Show placeholder when no boundaries
+            <div className="w-full h-56 bg-muted rounded-lg flex items-center justify-center">
+              <div className="text-center text-muted-foreground">
+                <p className="text-sm font-medium">
+                  No boundary data available
+                </p>
+                <p className="text-xs mt-1">
+                  Upload survey boundaries to view map
+                </p>
+              </div>
+            </div>
+          )}
+
           <Separator />
           <div className="grid gap-2">
             <div className="flex gap-2 font-medium leading-none">
-              Land Area: {survey.area.toFixed(2)} ha
+              {/* ADD: Handle null area */}
+              Land Area: {survey.area ? survey.area.toFixed(2) : "N/A"} ha
             </div>
             <div className="text-muted-foreground">
               Shown here is the boundary of the drone survey area. This outlines
@@ -594,47 +627,40 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
               </TableRow>
               <TableRow>
                 <TableCell> Client: </TableCell>
-                <TableCell>{survey.code}</TableCell>
-                {/* <TableCell>HAWKS</TableCell> */}
+                <TableCell>{survey.code || "N/A"}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell> Area Code: </TableCell>
-                <TableCell>{survey.area_code}</TableCell>
+                <TableCell>{survey.area_code || "N/A"}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>Orthomap:</TableCell>
                 <TableCell>
                   <DataAvailabilityIndicator
-                    availability={survey.tags.includes("rgb")}
+                    availability={survey.tags?.includes("rgb") || false}
                   />
                 </TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>Plant Health Data:</TableCell>
                 <TableCell>
-                  {/* <DataAvailabilityIndicator
-                    availability={survey.tags.includes("multispectral")}
-                  /> */}
                   <CircleXIcon className="size-4 text-destructive" />
                 </TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>Elevation Models:</TableCell>
                 <TableCell>
-                  {/* <DataAvailabilityIndicator
-                    availability={survey.tags.includes("lidar")}
-                  /> */}
                   <CircleXIcon className="size-4 text-destructive" />
                 </TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>3D Model:</TableCell>
                 <TableCell>
-                  {/* <CircleCheckIcon className="size-4 text-success" /> */}
                   <DataAvailabilityIndicator
                     availability={
-                      survey.tags.includes("rgb") ||
-                      survey.tags.includes("lidar")
+                      survey.tags?.includes("rgb") ||
+                      survey.tags?.includes("lidar") ||
+                      false
                     }
                   />
                 </TableCell>
@@ -654,15 +680,11 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
           <Link href={`/dashboard/surveys/${survey.id}`}>
             <Button className="w-full"> View {survey.id} </Button>
           </Link>
-          <Link href={`/dashboard/orthomap/${survey.code}`}>
+          <Link href={`/dashboard/orthomap/${survey.code || ""}`}>
             <Button variant="outline" className="w-full">
               {" "}
-              View {survey.code}
+              View {survey.code || "Orthomap"}
             </Button>
-            {/* <Button variant="outline" className="w-full">
-              {" "}
-              View orthomap
-            </Button> */}
           </Link>
         </SheetFooter>
       </SheetContent>

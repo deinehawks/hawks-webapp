@@ -68,15 +68,27 @@ export function transformCoordinatesToLonLatFormat(
 }
 
 export function getEarliestandLatestDates(data, dateField) {
-  if (data.length === 0) {
-    return null;
+  // FIXED: Check if data exists AND is an array before checking length
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return { earliest: null, latest: null };
   }
 
-  let earliest = parseISO(data.at(0)[dateField]);
-  let latest = parseISO(data.at(0)[dateField]);
+  // ADD: Check if first item has the date field
+  if (!data[0]?.[dateField]) {
+    return { earliest: null, latest: null };
+  }
+
+  let earliest = parseISO(data[0][dateField]);
+  let latest = parseISO(data[0][dateField]);
 
   data.forEach((item) => {
+    // ADD: Skip items without the date field
+    if (!item?.[dateField]) return;
+
     const currentDate = parseISO(item[dateField]);
+
+    // ADD: Skip invalid dates
+    if (isNaN(currentDate.getTime())) return;
 
     if (isBefore(currentDate, earliest)) {
       earliest = currentDate;
@@ -172,20 +184,31 @@ export function getEarliestandLatestDates(data, dateField) {
 
 export function findExtremeCoordinates(
   data: LngLatLike[][] | LngLatLike[]
-): LngLatBoundsLike {
+): LngLatBoundsLike | null {
+  // ADD: Check if data is null/undefined/empty
+  if (!data || data.length === 0) {
+    return null;
+  }
+
   let north: LngLatLike | null = null;
   let south: LngLatLike | null = null;
   let east: LngLatLike | null = null;
   let west: LngLatLike | null = null;
 
-  // Normalize input to always be an array of arrays
+  // FIXED: Add null checks before accessing data[0]
   const normalizedData: LngLatLike[][] =
-    Array.isArray(data[0]) && Array.isArray(data[0][0])
+    data[0] && Array.isArray(data[0]) && Array.isArray(data[0][0])
       ? (data as LngLatLike[][])
       : [data as LngLatLike[]];
 
   normalizedData.forEach((ring) => {
+    // ADD: Skip null/undefined rings
+    if (!ring || !Array.isArray(ring)) return;
+
     ring.forEach((coordinate) => {
+      // ADD: Skip null/undefined coordinates
+      if (!coordinate) return;
+
       let lon: number;
       let lat: number;
 
@@ -208,7 +231,14 @@ export function findExtremeCoordinates(
         lon = coordinate.lon;
         lat = coordinate.lat;
       } else {
-        throw new Error("Invalid coordinate format.");
+        console.warn("Invalid coordinate format:", coordinate);
+        return; // Skip invalid coordinates instead of throwing
+      }
+
+      // ADD: Check for valid numbers (not NaN)
+      if (isNaN(lon) || isNaN(lat)) {
+        console.warn("Invalid coordinate values:", { lon, lat });
+        return;
       }
 
       if (
@@ -253,8 +283,10 @@ export function findExtremeCoordinates(
     });
   });
 
+  // CHANGED: Return null instead of throwing error
   if (!north || !south || !east || !west) {
-    throw new Error("No valid coordinates provided.");
+    console.warn("No valid coordinates found in data");
+    return null;
   }
 
   return [
