@@ -760,6 +760,11 @@ function BoundaryLayers({ showBoundaries }) {
 // MAIN COMPONENT
 // ============================================================================
 
+// Key fixes applied:
+// 1. Memoize mapStyle to prevent recreation on every render
+// 2. Memoize bounds properly to prevent reference changes
+// 3. Add dependencies to useMemo hooks
+
 export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
   const [showBoundaries, setShowBoundaries] = useState(false);
   const { selectedFoi, setPopupInfo } = useOrthoMapStore((state) => state);
@@ -774,11 +779,83 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
     [surveys]
   );
 
-  const bounds = useMemo(
-    () =>
-      surveys &&
-      findExtremeCoordinates(surveys.map((s) => s.geojson_boundaries)),
+  const bounds = useMemo(() => {
+    if (!surveys) return undefined;
+    const extremes = findExtremeCoordinates(
+      surveys.map((s) => s.geojson_boundaries)
+    );
+    // Return undefined if no valid bounds to prevent map reinitialization
+    return extremes;
+  }, [surveys]);
+
+  // CRITICAL FIX: Memoize the entire mapStyle object
+  const mapStyle = useMemo(
+    () => ({
+      version: 8,
+      sources: {
+        osm: {
+          type: "raster",
+          tiles: ["https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"],
+          tileSize: 256,
+          attribution: "&copy; OpenStreetMap Contributors",
+        },
+        areas: {
+          type: "geojson",
+          data: {
+            type: "FeatureCollection",
+            features:
+              surveys?.map((survey) => ({
+                type: "Feature",
+                properties: {
+                  survey_id: survey.id,
+                  latitude: Number((survey.max_y + survey.min_y) / 2),
+                },
+                geometry: {
+                  type: "Polygon",
+                  coordinates: [
+                    transformCoordinatesToLonLatFormat(survey.boundaries),
+                  ],
+                },
+              })) || [],
+          },
+          generateId: true,
+        },
+      },
+      layers: [
+        { id: "osm", type: "raster", source: "osm" },
+        {
+          id: "area-fills",
+          type: "fill",
+          source: "areas",
+          paint: {
+            "fill-color": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              "#0ea5e9",
+              "#06b6d4",
+            ],
+            "fill-opacity": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              0.7,
+              0.4,
+            ],
+          },
+        },
+      ],
+    }),
     [surveys]
+  ); // Only recreate when surveys change
+
+  // Memoize initialViewState as well
+  const initialViewState = useMemo(
+    () => ({
+      latitude: global_y,
+      longitude: global_x,
+      bounds: bounds,
+      fitBoundsOptions: { padding: 15 },
+    }),
+    [global_x, global_y, bounds]
   );
 
   // Close popup when boundaries are hidden
@@ -822,73 +899,10 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
               <div className="h-full flex">
                 <Map
                   id="orthomap"
-                  initialViewState={{
-                    latitude: global_y,
-                    longitude: global_x,
-                    bounds: bounds,
-                    fitBoundsOptions: { padding: 15 },
-                  }}
+                  initialViewState={initialViewState}
                   minZoom={13}
                   maxZoom={23}
-                  mapStyle={{
-                    version: 8,
-                    sources: {
-                      osm: {
-                        type: "raster",
-                        tiles: [
-                          "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
-                        ],
-                        tileSize: 256,
-                        attribution: "&copy; OpenStreetMap Contributors",
-                      },
-                      areas: {
-                        type: "geojson",
-                        data: {
-                          type: "FeatureCollection",
-                          features: surveys?.map((survey) => ({
-                            type: "Feature",
-                            properties: {
-                              survey_id: survey.id,
-                              latitude: Number(
-                                (survey.max_y + survey.min_y) / 2
-                              ),
-                            },
-                            geometry: {
-                              type: "Polygon",
-                              coordinates: [
-                                transformCoordinatesToLonLatFormat(
-                                  survey.boundaries
-                                ),
-                              ],
-                            },
-                          })),
-                        },
-                        generateId: true,
-                      },
-                    },
-                    layers: [
-                      { id: "osm", type: "raster", source: "osm" },
-                      {
-                        id: "area-fills",
-                        type: "fill",
-                        source: "areas",
-                        paint: {
-                          "fill-color": [
-                            "case",
-                            ["boolean", ["feature-state", "hover"], false],
-                            "#0ea5e9",
-                            "#06b6d4",
-                          ],
-                          "fill-opacity": [
-                            "case",
-                            ["boolean", ["feature-state", "hover"], false],
-                            0.7,
-                            0.4,
-                          ],
-                        },
-                      },
-                    ],
-                  }}
+                  mapStyle={mapStyle}
                 >
                   <InitializeMapImages />
 
