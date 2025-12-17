@@ -180,7 +180,10 @@ function MapEvents({ data, setPopupInfo }) {
       if (clickedAreaData) {
         // Calculate the centroid of the clicked polygon
         const coordinates = [
-          transformCoordinatesToLonLatFormat(clickedAreaData.boundaries),
+          clickedAreaData.geojson_boundaries.map((pair) => [
+            parseFloat(pair[0]),
+            parseFloat(pair[1]),
+          ]),
         ];
         const [lng, lat] = calculateCentroid(coordinates);
 
@@ -284,7 +287,12 @@ export default function MapLibre({ data: surveys }) {
 
   // Create polygon features
   const polygonFeatures = surveys.map((survey) => {
-    const coordinates = [transformCoordinatesToLonLatFormat(survey.boundaries)];
+    const coordinates = [
+      survey.geojson_boundaries.map((pair) => [
+        parseFloat(pair[0]),
+        parseFloat(pair[1]),
+      ]),
+    ];
     return {
       type: "Feature",
       properties: {
@@ -299,7 +307,12 @@ export default function MapLibre({ data: surveys }) {
 
   // Create separate point features for labels at polygon centroids
   const labelFeatures = surveys.map((survey) => {
-    const coordinates = [transformCoordinatesToLonLatFormat(survey.boundaries)];
+    const coordinates = [
+      survey.geojson_boundaries.map((pair) => [
+        parseFloat(pair[0]),
+        parseFloat(pair[1]),
+      ]),
+    ];
     const centroid = calculateCentroid(coordinates);
 
     return {

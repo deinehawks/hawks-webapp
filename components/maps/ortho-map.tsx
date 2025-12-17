@@ -759,56 +759,34 @@ function BoundaryLayers({ showBoundaries }) {
 // MAIN COMPONENT
 // ============================================================================
 
+// Key fixes applied:
+// 1. Memoize mapStyle to prevent recreation on every render
+// 2. Memoize bounds properly to prevent reference changes
+// 3. Add dependencies to useMemo hooks
+
 export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
   const [showBoundaries, setShowBoundaries] = useState(false);
   const { selectedFoi, setPopupInfo } = useOrthoMapStore((state) => state);
 
-  // ✅ ADD: Filter out invalid surveys at the start
-  const validSurveys = useMemo(() => {
-    if (!surveys || !Array.isArray(surveys)) return [];
-    return surveys.filter(
-      (survey) =>
-        survey.geojson_boundaries &&
-        survey.boundaries &&
-        Array.isArray(survey.geojson_boundaries) &&
-        Array.isArray(survey.boundaries)
-    );
-  }, [surveys]);
-
-  // ✅ ADD: Handle empty surveys
-  if (validSurveys.length === 0) {
-    return (
-      <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center text-muted-foreground">
-            <p className="text-sm font-medium">No valid surveys to display</p>
-            <p className="text-xs mt-1">
-              Surveys need boundary data to show on map
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const surveyIds = useMemo(
-    () => validSurveys.map((s) => s.id),
-    [validSurveys]
-  );
+  const surveyIds = useMemo(() => surveys?.map((s) => s.id) || [], [surveys]);
 
   const { global_x, global_y } = useMemo(
-    () => calculateGlobalCenters(validSurveys),
-    [validSurveys]
+    () =>
+      surveys
+        ? calculateGlobalCenters(surveys)
+        : { global_x: 125.58147596772221, global_y: 7.0763840759644 },
+    [surveys]
   );
 
   const bounds = useMemo(() => {
+    if (!surveys) return undefined;
     const extremes = findExtremeCoordinates(
-      validSurveys.map((s) => s.geojson_boundaries)
+      surveys.map((s) => transformCoordinatesToLonLatFormat(s.boundaries))
     );
     return extremes;
-  }, [validSurveys]);
+  }, [surveys]);
 
-  // Memoize mapStyle to prevent recreation on every render
+  // CRITICAL FIX: Memoize the entire mapStyle object
   const mapStyle = useMemo(
     () => ({
       version: 8,
@@ -823,19 +801,20 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
           type: "geojson",
           data: {
             type: "FeatureCollection",
-            features: validSurveys.map((survey) => ({
-              type: "Feature",
-              properties: {
-                survey_id: survey.id,
-                latitude: Number((survey.max_y + survey.min_y) / 2),
-              },
-              geometry: {
-                type: "Polygon",
-                coordinates: [
-                  transformCoordinatesToLonLatFormat(survey.boundaries),
-                ],
-              },
-            })),
+            features:
+              surveys?.map((survey) => ({
+                type: "Feature",
+                properties: {
+                  survey_id: survey.id,
+                  latitude: Number((survey.max_y + survey.min_y) / 2),
+                },
+                geometry: {
+                  type: "Polygon",
+                  coordinates: [
+                    transformCoordinatesToLonLatFormat(survey.boundaries),
+                  ],
+                },
+              })) || [],
           },
           generateId: true,
         },
@@ -863,10 +842,10 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
         },
       ],
     }),
-    [validSurveys]
-  );
+    [surveys]
+  ); // Only recreate when surveys change
 
-  // Memoize initialViewState
+  // Memoize initialViewState as well
   const initialViewState = useMemo(
     () => ({
       latitude: global_y,

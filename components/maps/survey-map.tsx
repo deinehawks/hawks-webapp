@@ -829,6 +829,8 @@ function ObjectPopup() {
   );
 }
 
+// Add these checks at the beginning of the SurveyMap component:
+
 export default function SurveyMap({
   survey,
   detectedObjects,
@@ -867,9 +869,12 @@ export default function SurveyMap({
       !survey.geojson_boundaries ||
       !Array.isArray(survey.geojson_boundaries)
     ) {
+      console.warn("No geojson_boundaries found for survey");
       return null;
     }
-    return findExtremeCoordinates(survey.geojson_boundaries);
+    const extremes = findExtremeCoordinates(survey.geojson_boundaries);
+    console.log("Calculated bounds:", extremes);
+    return extremes;
   }, [survey]);
 
   const numBananas = useMemo(() => {
@@ -965,10 +970,11 @@ export default function SurveyMap({
                         initialViewState={{
                           longitude: centerLng,
                           latitude: centerLat,
+                          zoom: bounds ? undefined : 17, // ✅ CHANGED: Higher default zoom (was 16)
                           bounds: bounds,
-                          fitBoundsOptions: { padding: 15 },
+                          fitBoundsOptions: { padding: 50 }, // ✅ CHANGED: More padding
                         }}
-                        minZoom={15}
+                        minZoom={13} // ✅ CHANGED: Lower minZoom (was 15)
                         maxZoom={23}
                         mapStyle={{
                           version: 8,
@@ -991,6 +997,7 @@ export default function SurveyMap({
                           ],
                         }}
                         doubleClickZoom={false}
+                        onLoad={() => console.log("Map loaded")} // ADD: Debug log
                       >
                         <InitializeMapImages />
                         <SurveyMapEvents
@@ -1013,6 +1020,15 @@ export default function SurveyMap({
                               scheme="tms"
                               minzoom={15}
                               maxzoom={24}
+                              onSourceData={(e) => {
+                                // ADD: Debug tile loading
+                                if (
+                                  e.isSourceLoaded &&
+                                  e.sourceId === "ortho"
+                                ) {
+                                  console.log("Ortho tiles loaded");
+                                }
+                              }}
                             >
                               <Layer
                                 id="ortho"
@@ -1020,6 +1036,9 @@ export default function SurveyMap({
                                 source="ortho"
                                 minzoom={15}
                                 maxzoom={24}
+                                paint={{
+                                  "raster-opacity": 1, // ADD: Ensure visible
+                                }}
                               />
                             </Source>
                             <FeaturesOfInterest
