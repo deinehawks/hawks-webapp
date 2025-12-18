@@ -11,13 +11,28 @@ import loadingAnimation from "@/public/loading_blue_dots.json";
 const queryClient = new QueryClient();
 
 export default function OrthoMapCaller(props) {
-  // useEffect(() => {
-  //   let protocol = new Protocol();
-  //   maplibregl.addProtocol("pmtiles", protocol.tile);
-  //   return () => {
-  //     maplibregl.removeProtocol("pmtiles");
-  //   };
-  // }, []);
+  const { surveys, detectedObjects, userProfile } = props;
+
+  // Add validation checks
+  if (!surveys || !Array.isArray(surveys) || surveys.length === 0) {
+    return (
+      <div className="flex flex-1 items-center justify-center h-full py-10">
+        <div className="text-center">
+          <p className="text-muted-foreground">No survey data available</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!detectedObjects || !Array.isArray(detectedObjects)) {
+    return (
+      <div className="flex flex-1 items-center justify-center h-full py-10">
+        <div className="text-center">
+          <p className="text-muted-foreground">No detected objects available</p>
+        </div>
+      </div>
+    );
+  }
 
   const OrthoMap = dynamic(() => import("@/components/maps/ortho-map"), {
     ssr: false,

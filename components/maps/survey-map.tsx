@@ -970,11 +970,11 @@ export default function SurveyMap({
                         initialViewState={{
                           longitude: centerLng,
                           latitude: centerLat,
-                          zoom: bounds ? undefined : 17, // ✅ CHANGED: Higher default zoom (was 16)
+                          zoom: bounds ? undefined : 17, // CHANGED: Higher default zoom (was 16)
                           bounds: bounds,
-                          fitBoundsOptions: { padding: 50 }, // ✅ CHANGED: More padding
+                          fitBoundsOptions: { padding: 50 }, // CHANGED: More padding
                         }}
-                        minZoom={13} // ✅ CHANGED: Lower minZoom (was 15)
+                        minZoom={13} // CHANGED: Lower minZoom (was 15)
                         maxZoom={23}
                         mapStyle={{
                           version: 8,

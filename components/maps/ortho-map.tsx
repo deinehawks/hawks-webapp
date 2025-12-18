@@ -139,7 +139,7 @@ function MapEvents({ surveys, showBoundaries }) {
       const surveyId = e.features[0]?.properties.survey_id;
       const clickedSurvey = surveys.find((s) => s.id === surveyId);
 
-      if (clickedSurvey) {
+      if (clickedSurvey && clickedSurvey.boundaries) {
         const coordinates = [
           transformCoordinatesToLonLatFormat(clickedSurvey.boundaries),
         ];
@@ -759,12 +759,31 @@ function BoundaryLayers({ showBoundaries }) {
 // MAIN COMPONENT
 // ============================================================================
 
-// Key fixes applied:
-// 1. Memoize mapStyle to prevent recreation on every render
-// 2. Memoize bounds properly to prevent reference changes
-// 3. Add dependencies to useMemo hooks
-
 export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
+  // Comprehensive null checks at the top
+  if (!surveys || !Array.isArray(surveys) || surveys.length === 0) {
+    return (
+      <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
+        <div className="flex flex-1 h-full px-4 lg:px-6">
+          <Card className="flex flex-1 flex-col h-full items-center justify-center">
+            <CardContent className="text-center py-10">
+              <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+                No Survey Data Available
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Please add surveys to view the orthomap.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!detectedObjects) {
+    detectedObjects = []; // Set to empty array if null
+  }
+
   const [showBoundaries, setShowBoundaries] = useState(false);
   const { selectedFoi, setPopupInfo } = useOrthoMapStore((state) => state);
 
@@ -779,14 +798,41 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
   );
 
   const bounds = useMemo(() => {
-    if (!surveys) return undefined;
-    const extremes = findExtremeCoordinates(
-      surveys.map((s) => transformCoordinatesToLonLatFormat(s.boundaries))
-    );
-    return extremes;
+    if (!surveys || !Array.isArray(surveys)) return undefined;
+
+    try {
+      // Filter out surveys without boundaries
+      const validSurveys = surveys.filter(
+        (s) =>
+          s.boundaries && Array.isArray(s.boundaries) && s.boundaries.length > 0
+      );
+
+      if (validSurveys.length === 0) return undefined;
+
+      const transformedBoundaries = validSurveys
+        .map((s) => {
+          try {
+            return transformCoordinatesToLonLatFormat(s.boundaries);
+          } catch (error) {
+            console.warn(
+              `Failed to transform boundaries for survey ${s.id}:`,
+              error
+            );
+            return null;
+          }
+        })
+        .filter((b) => b !== null);
+
+      if (transformedBoundaries.length === 0) return undefined;
+
+      const extremes = findExtremeCoordinates(transformedBoundaries);
+      return extremes;
+    } catch (error) {
+      console.error("Error calculating bounds:", error);
+      return undefined;
+    }
   }, [surveys]);
 
-  // CRITICAL FIX: Memoize the entire mapStyle object
   const mapStyle = useMemo(
     () => ({
       version: 8,
@@ -802,19 +848,35 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
           data: {
             type: "FeatureCollection",
             features:
-              surveys?.map((survey) => ({
-                type: "Feature",
-                properties: {
-                  survey_id: survey.id,
-                  latitude: Number((survey.max_y + survey.min_y) / 2),
-                },
-                geometry: {
-                  type: "Polygon",
-                  coordinates: [
-                    transformCoordinatesToLonLatFormat(survey.boundaries),
-                  ],
-                },
-              })) || [],
+              surveys
+                ?.filter(
+                  (survey) =>
+                    survey.boundaries && Array.isArray(survey.boundaries)
+                )
+                .map((survey) => {
+                  try {
+                    return {
+                      type: "Feature",
+                      properties: {
+                        survey_id: survey.id,
+                        latitude: Number((survey.max_y + survey.min_y) / 2),
+                      },
+                      geometry: {
+                        type: "Polygon",
+                        coordinates: [
+                          transformCoordinatesToLonLatFormat(survey.boundaries),
+                        ],
+                      },
+                    };
+                  } catch (error) {
+                    console.warn(
+                      `Failed to create feature for survey ${survey.id}:`,
+                      error
+                    );
+                    return null;
+                  }
+                })
+                .filter((f) => f !== null) || [],
           },
           generateId: true,
         },
@@ -843,9 +905,8 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
       ],
     }),
     [surveys]
-  ); // Only recreate when surveys change
+  );
 
-  // Memoize initialViewState as well
   const initialViewState = useMemo(
     () => ({
       latitude: global_y,
@@ -856,7 +917,6 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
     [global_x, global_y, bounds]
   );
 
-  // Close popup when boundaries are hidden
   useEffect(() => {
     if (!showBoundaries) setPopupInfo(null);
   }, [showBoundaries, setPopupInfo]);
@@ -890,8 +950,12 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
         <div className="flex flex-1 h-full px-4 lg:px-6">
           <Card className="@container/card flex flex-1 flex-col h-full relative">
             <CardHeader>
-              <CardTitle>{userProfile.organization.code}</CardTitle>
-              <CardDescription>{userProfile.organization.name}</CardDescription>
+              <CardTitle>
+                {userProfile?.organization?.code || "Organization"}
+              </CardTitle>
+              <CardDescription>
+                {userProfile?.organization?.name || "Loading..."}
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 relative">
               <div className="h-full flex">
@@ -904,35 +968,39 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                 >
                   <InitializeMapImages />
 
-                  {surveys.map((survey) => (
-                    <Source
-                      key={survey.id}
-                      id={survey.id}
-                      type="raster"
-                      tiles={[
-                        `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
-                          survey.flight_date
-                        )}/${survey.id}/ortho/sharp-corners/{z}/{x}/{y}.png`,
-                      ]}
-                      scheme="tms"
-                      tileSize={256}
-                      minzoom={10}
-                      maxzoom={24}
-                    >
-                      <Layer
+                  {surveys
+                    .filter((survey) => survey.code && survey.flight_date)
+                    .map((survey) => (
+                      <Source
+                        key={survey.id}
                         id={survey.id}
                         type="raster"
-                        source={survey.id}
+                        tiles={[
+                          `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
+                            survey.flight_date
+                          )}/${survey.id}/ortho/sharp-corners/{z}/{x}/{y}.png`,
+                        ]}
+                        scheme="tms"
+                        tileSize={256}
                         minzoom={10}
                         maxzoom={24}
-                      />
-                    </Source>
-                  ))}
+                      >
+                        <Layer
+                          id={survey.id}
+                          type="raster"
+                          source={survey.id}
+                          minzoom={10}
+                          maxzoom={24}
+                        />
+                      </Source>
+                    ))}
 
-                  <FeaturesOfInterest
-                    code={surveys[0].code}
-                    detectedObjects={detectedObjects}
-                  />
+                  {surveys.length > 0 && surveys[0].code && (
+                    <FeaturesOfInterest
+                      code={surveys[0].code}
+                      detectedObjects={detectedObjects}
+                    />
+                  )}
                   <BoundaryLayers showBoundaries={showBoundaries} />
                   <MapEvents
                     surveys={surveys}
