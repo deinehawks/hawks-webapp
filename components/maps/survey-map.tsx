@@ -952,112 +952,109 @@ function MapView({
   const { current: map } = useMap();
   const [hasZoomed, setHasZoomed] = useState(false);
 
-  // Auto-zoom to orthomosaic tiles when they load and coordinates are missing
   useEffect(() => {
     if (!map || !hasOrthoTiles || hasValidCoordinates || hasZoomed) return;
 
-    // First, zoom to the minimum ortho level to trigger tile loading
-    map.setZoom(MAP_CONFIG.orthoMinZoom);
+    const attemptZoomToTiles = () => {
+      // Wait for the map to be idle (tiles loaded)
+      map.once("idle", () => {
+        const canvas = map.getCanvas();
+        const gl = canvas.getContext("webgl") || canvas.getContext("webgl2");
 
-    let attempts = 0;
-    const maxAttempts = 15;
-    let hasFoundTiles = false;
-
-    const tryToZoomToTiles = () => {
-      attempts++;
-
-      const source = map.getSource("ortho") as any;
-      if (!source) {
-        if (attempts < maxAttempts) {
-          setTimeout(tryToZoomToTiles, 500);
+        if (!gl) {
+          console.warn("WebGL context not available");
+          return;
         }
-        return;
-      }
 
-      // Get the loaded tiles to determine the extent
-      const sourceCaches = (map.style as any)?._sourceCaches;
-      const orthoCache = sourceCaches?.ortho;
-
-      if (!orthoCache) {
-        if (attempts < maxAttempts) {
-          setTimeout(tryToZoomToTiles, 500);
+        // Get the source and check if tiles are loaded
+        const source = map.getSource("ortho") as any;
+        if (!source) {
+          console.warn("Ortho source not found");
+          return;
         }
-        return;
-      }
 
-      const tiles = orthoCache._tiles || {};
-      const tileKeys = Object.keys(tiles);
+        // Access the tile cache
+        const sourceCaches = (map.style as any)?._sourceCaches;
+        const orthoCache = sourceCaches?.ortho;
 
-      if (tileKeys.length > 0) {
-        // Calculate bounds from loaded tiles
+        if (!orthoCache) {
+          console.warn("Ortho cache not found");
+          return;
+        }
+
+        const tiles = orthoCache._tiles || {};
+        const tileKeys = Object.keys(tiles).filter((key) => {
+          const tile = tiles[key];
+          return tile?.state === "loaded" && tile?.tileID?.canonical;
+        });
+
+        if (tileKeys.length === 0) {
+          console.warn("No loaded tiles found yet");
+          return;
+        }
+
+        // Calculate bounds from all loaded tiles
         let minLng = Infinity,
           maxLng = -Infinity;
         let minLat = Infinity,
           maxLat = -Infinity;
-        let validTilesFound = 0;
 
         tileKeys.forEach((key) => {
           const tile = tiles[key];
-          if (tile?.tileID?.canonical) {
-            const bounds = tileToBounds(
-              tile.tileID.canonical.x,
-              tile.tileID.canonical.y,
-              tile.tileID.canonical.z
-            );
-            minLng = Math.min(minLng, bounds[0]);
-            minLat = Math.min(minLat, bounds[1]);
-            maxLng = Math.max(maxLng, bounds[2]);
-            maxLat = Math.max(maxLat, bounds[3]);
-            validTilesFound++;
-          }
+          const { x, y, z } = tile.tileID.canonical;
+          const bounds = tileToBounds(x, y, z);
+
+          minLng = Math.min(minLng, bounds[0]);
+          minLat = Math.min(minLat, bounds[1]);
+          maxLng = Math.max(maxLng, bounds[2]);
+          maxLat = Math.max(maxLat, bounds[3]);
         });
 
+        // Validate bounds
         if (
-          validTilesFound > 0 &&
-          isFinite(minLng) &&
-          isFinite(maxLng) &&
-          isFinite(minLat) &&
-          isFinite(maxLat)
+          !isFinite(minLng) ||
+          !isFinite(maxLng) ||
+          !isFinite(minLat) ||
+          !isFinite(maxLat)
         ) {
-          hasFoundTiles = true;
-
-          // Add a small buffer to the bounds
-          const lngBuffer = (maxLng - minLng) * 0.1;
-          const latBuffer = (maxLat - minLat) * 0.1;
-
-          map.fitBounds(
-            [
-              [minLng - lngBuffer, minLat - latBuffer],
-              [maxLng + lngBuffer, maxLat + latBuffer],
-            ],
-            {
-              padding: 50,
-              duration: 1500,
-              maxZoom: 19,
-            }
-          );
-          setHasZoomed(true);
-        } else if (attempts < maxAttempts) {
-          setTimeout(tryToZoomToTiles, 500);
+          console.warn("Invalid bounds calculated");
+          return;
         }
-      } else if (attempts < maxAttempts) {
-        // No tiles yet, keep trying
-        setTimeout(tryToZoomToTiles, 500);
-      }
-    };
 
-    // Wait for map to be fully loaded before starting
-    if (map.loaded()) {
-      setTimeout(tryToZoomToTiles, 500);
-    } else {
-      map.once("load", () => {
-        setTimeout(tryToZoomToTiles, 500);
+        // Add padding (10% buffer)
+        const lngBuffer = (maxLng - minLng) * 0.1;
+        const latBuffer = (maxLat - minLat) * 0.1;
+
+        console.log("Fitting to bounds:", {
+          minLng: minLng - lngBuffer,
+          minLat: minLat - latBuffer,
+          maxLng: maxLng + lngBuffer,
+          maxLat: maxLat + latBuffer,
+        });
+
+        // Fit the map to the calculated bounds
+        map.fitBounds(
+          [
+            [minLng - lngBuffer, minLat - latBuffer],
+            [maxLng + lngBuffer, maxLat + latBuffer],
+          ],
+          {
+            padding: { top: 50, bottom: 50, left: 50, right: 50 },
+            duration: 1500,
+            maxZoom: 19,
+          }
+        );
+
+        setHasZoomed(true);
       });
-    }
-
-    return () => {
-      // Cleanup if needed
     };
+
+    // Start the zoom attempt
+    if (map.loaded() && map.isStyleLoaded()) {
+      attemptZoomToTiles();
+    } else {
+      map.once("load", attemptZoomToTiles);
+    }
   }, [map, hasOrthoTiles, hasValidCoordinates, survey.id, hasZoomed]);
 
   // Reset hasZoomed when survey changes
