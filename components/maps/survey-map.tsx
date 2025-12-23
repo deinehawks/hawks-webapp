@@ -21,9 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   calculateCentersUsingMinMaxXY,
   findExtremeCoordinates,
-  generateFeatureCollectionByFoi,
 } from "@/lib/helpers";
-import { GeometryType, type ComputerVisionObject } from "@/lib/types";
+import { type ComputerVisionObject } from "@/lib/types";
 import { useSurveyMapStore } from "@/providers/survey-map-store-provider";
 import {
   Layer,
@@ -37,14 +36,9 @@ import { format, getYear } from "date-fns";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ThreeDimensionalModelCard } from "@/components/3d-model-card";
-import { ElevationModelCard } from "@/components/elevation-model-card";
 import { ThreeDimensionalModelSelector } from "@/components/selectors/3d-model-selector";
-import { DemSelector } from "@/components/selectors/dem-selectors";
 import { FoiSelector } from "@/components/selectors/foi-selector";
-import { VegetationIndexSelector } from "@/components/selectors/vegetation-index-selector";
-import { VegetationIndexCard } from "@/components/vegetation-index-card";
 import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
-import { generateFeatureCollection } from "@/lib/helpers/geometry";
 
 // Pin SVG images with shadow for depth
 const PIN_IMAGES = {
@@ -66,6 +60,13 @@ const PIN_IMAGES = {
     <path d="M16 2C8.27 2 2 8.27 2 16c0 8 14 28 14 28s14-20 14-28c0-7.73-6.27-14-14-14z" fill="#ff0000" stroke="#fff" stroke-width="2" filter="url(#shadow)"/>
     <circle cx="16" cy="16" r="5" fill="#fff"/>
   </svg>`,
+};
+
+// Default center (Mindanao, Philippines - matches your global center)
+const DEFAULT_CENTER = {
+  lng: 125.58147596772221,
+  lat: 7.0763840759644,
+  zoom: 12,
 };
 
 /**
@@ -101,8 +102,6 @@ function calculateOptimalZoomLevels(features: any[]) {
     zoomThreshold = 17;
   } else if (avgSpan > 0.01) {
     zoomThreshold = 16;
-  } else if (avgSpan > 0.01) {
-    zoomThreshold = 15;
   } else {
     zoomThreshold = 19;
   }
@@ -133,8 +132,6 @@ function calculateCentersWithOffset(
 ) {
   const centerLng = (min_lon + max_lon) / 2;
   const centerLat = (min_lat + max_lat) / 2;
-
-  // Use true center - no offset needed since bbox shows detection area
   return { centerLng, centerLat };
 }
 
@@ -145,6 +142,13 @@ function generatePointsWithOffset(
   detectedObjects: ComputerVisionObject[],
   label: string
 ) {
+  if (!detectedObjects || !Array.isArray(detectedObjects)) {
+    return {
+      type: "FeatureCollection",
+      features: [],
+    };
+  }
+
   const filteredObjects = detectedObjects.filter((obj) => obj.label === label);
 
   const features = filteredObjects.map((obj) => {
@@ -240,16 +244,14 @@ function SurveyMapEvents({
   }, [map, setHoveredPairId]);
 
   useEffect(() => {
-    if (!map) return;
+    if (!map || !survey?.id) return;
 
-    // Click handlers
     map.on("click", `${survey.id}-unhealthy-fill`, handleBboxClick);
     map.on("click", `${survey.id}-unhealthy-pin`, handleBboxClick);
     map.on("click", `${survey.id}-healthy-pin`, handleBboxClick);
     map.on("click", `${survey.id}-unhealthy-circle`, handleBboxClick);
     map.on("click", `${survey.id}-healthy-circle`, handleBboxClick);
 
-    // Hover handlers
     map.on("mouseenter", `${survey.id}-unhealthy-pin`, handlePinHover);
     map.on("mouseleave", `${survey.id}-unhealthy-pin`, handlePinLeave);
     map.on("mouseenter", `${survey.id}-healthy-pin`, handlePinHover);
@@ -324,7 +326,6 @@ function MapLegend() {
 
   return (
     <div className="absolute bottom-8 left-8 z-10">
-      {/* Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="mb-2 p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
@@ -347,13 +348,11 @@ function MapLegend() {
         </svg>
       </button>
 
-      {/* Legend Content */}
       {isOpen && (
         <div className="bg-white rounded-lg shadow-lg p-4 max-w-xs border border-gray-200 animate-in fade-in slide-in-from-left-2 duration-200">
           <div className="text-sm font-semibold text-gray-800 mb-3">Legend</div>
 
           <div className="space-y-3">
-            {/* Healthy Plants */}
             <div className="flex items-center gap-3">
               <div className="w-6 h-6 bg-yellow-400 rounded-full border-2 border-white shadow-md"></div>
               <div className="text-xs text-gray-700">
@@ -362,7 +361,6 @@ function MapLegend() {
               </div>
             </div>
 
-            {/* Infected Plants */}
             <div className="flex items-center gap-3">
               <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-md"></div>
               <div className="text-xs text-gray-700">
@@ -371,7 +369,6 @@ function MapLegend() {
               </div>
             </div>
 
-            {/* Heatmap */}
             <div className="pt-2 border-t border-gray-200">
               <div className="text-xs font-medium text-gray-700 mb-2">
                 Heatmap (Zoomed Out)
@@ -383,7 +380,9 @@ function MapLegend() {
                   <div className="w-3 h-3 bg-yellow-400"></div>
                   <div className="w-3 h-3 bg-yellow-500"></div>
                 </div>
-                <span className="text-gray-600">Low → High Density</span>
+                <span className="text-gray-600 text-xs">
+                  Low → High Density
+                </span>
               </div>
             </div>
           </div>
@@ -408,10 +407,11 @@ function FeaturesOfInterest({
     (state) => state
   );
 
-  const id = survey.id;
+  const id = survey?.id;
+  if (!id) return null;
 
   const healthyBananas = useMemo(() => {
-    if (!detectedObjects) return "";
+    if (!detectedObjects) return { type: "FeatureCollection", features: [] };
     return generatePointsWithOffset(
       detectedObjects,
       "Banana Plant (Healthy-looking)"
@@ -419,11 +419,10 @@ function FeaturesOfInterest({
   }, [detectedObjects]);
 
   const unhealthyBananas = useMemo(() => {
-    if (!detectedObjects) return "";
+    if (!detectedObjects) return { type: "FeatureCollection", features: [] };
     return generatePointsWithOffset(detectedObjects, "Banana Plant (Infected)");
   }, [detectedObjects]);
 
-  // Generate bbox for selected/hovered plant only
   const selectedPlantBbox = useMemo(() => {
     if (!popupInfo && !hoveredPairId) return null;
 
@@ -463,8 +462,6 @@ function FeaturesOfInterest({
   }, [detectedObjects, popupInfo, hoveredPairId]);
 
   const healthyZoomLevels = useMemo(() => {
-    if (!healthyBananas || healthyBananas === "")
-      return { heatmapMaxZoom: 15, pinMinZoom: 15 };
     const levels = calculateOptimalZoomLevels(
       (healthyBananas as any).features || []
     );
@@ -475,8 +472,6 @@ function FeaturesOfInterest({
   }, [healthyBananas]);
 
   const unhealthyZoomLevels = useMemo(() => {
-    if (!unhealthyBananas || unhealthyBananas === "")
-      return { heatmapMaxZoom: 15, pinMinZoom: 15 };
     const levels = calculateOptimalZoomLevels(
       (unhealthyBananas as any).features || []
     );
@@ -491,7 +486,6 @@ function FeaturesOfInterest({
 
   return (
     <>
-      {/* SELECTED/HOVERED PLANT BOUNDING BOX */}
       {selectedPlantBbox && (
         <Source
           id={`${id}-selected-bbox`}
@@ -519,7 +513,6 @@ function FeaturesOfInterest({
         </Source>
       )}
 
-      {/* HEALTHY HEATMAP */}
       {(selectedFoi === "healthy" || selectedFoi === "all") && (
         <Source id={`${id}-healthy`} type="geojson" data={healthyBananas}>
           <Layer
@@ -573,7 +566,6 @@ function FeaturesOfInterest({
         </Source>
       )}
 
-      {/* UNHEALTHY HEATMAP */}
       {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
         <Source id={`${id}-unhealthy`} type="geojson" data={unhealthyBananas}>
           <Layer
@@ -627,7 +619,6 @@ function FeaturesOfInterest({
         </Source>
       )}
 
-      {/* HEALTHY CIRCLES (Medium Zoom) */}
       {(selectedFoi === "healthy" || selectedFoi === "all") && (
         <Source
           id={`${id}-healthy-circles`}
@@ -664,7 +655,6 @@ function FeaturesOfInterest({
         </Source>
       )}
 
-      {/* UNHEALTHY CIRCLES (Medium Zoom) */}
       {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
         <Source
           id={`${id}-unhealthy-circles`}
@@ -701,7 +691,6 @@ function FeaturesOfInterest({
         </Source>
       )}
 
-      {/* HEALTHY PINS (High Zoom) */}
       {(selectedFoi === "healthy" || selectedFoi === "all") && (
         <Source id={`${id}-healthy-pins`} type="geojson" data={healthyBananas}>
           <Layer
@@ -739,7 +728,6 @@ function FeaturesOfInterest({
         </Source>
       )}
 
-      {/* UNHEALTHY PINS (High Zoom) */}
       {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
         <Source
           id={`${id}-unhealthy-pins`}
@@ -800,25 +788,25 @@ function ObjectPopup() {
       closeOnClick={false}
     >
       <div className="flex flex-col w-fit gap-1">
-        <div className=" font-semibold">Object Information</div>
+        <div className="font-semibold">Object Information</div>
         <Separator />
         <div className="flex flex-col">
           <div className="grid grid-cols-2 gap-2">
-            <span className="">Object ID:</span>
+            <span>Object ID:</span>
             <span className="text-muted-foreground">{pairId}</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <span className="">Area ID:</span>
+            <span>Area ID:</span>
             <span className="text-muted-foreground">{areaId}</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <span className="">Longitude:</span>
+            <span>Longitude:</span>
             <span className="text-muted-foreground">
               {centerLng.toFixed(6)}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <span className="">Latitude:</span>
+            <span>Latitude:</span>
             <span className="text-muted-foreground">
               {centerLat.toFixed(6)}
             </span>
@@ -829,89 +817,231 @@ function ObjectPopup() {
   );
 }
 
-// Add these checks at the beginning of the SurveyMap component:
-
 export default function SurveyMap({
   survey,
   detectedObjects,
+  fallbackCenter,
 }: {
   survey: any;
   detectedObjects: ComputerVisionObject[];
+  fallbackCenter?: { lng: number; lat: number };
 }) {
   const [activeTab, setActiveTab] = useState("ortho");
 
-  // ADD: Early return if no survey data
-  if (!survey) {
+  // Use provided fallback or default
+  const globalCenter = fallbackCenter || DEFAULT_CENTER;
+
+  // Basic null checks
+  if (!survey || typeof survey !== "object") {
     return (
-      <div className="flex flex-1 flex-col h-full items-center justify-center">
-        <div className="text-center text-muted-foreground">
-          <p className="text-sm font-medium">No survey data available</p>
-        </div>
+      <div className="flex flex-1 flex-col h-full items-center justify-center p-8">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>No Survey Data</CardTitle>
+            <CardDescription>
+              Survey information is not available.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Please select a survey from the list.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  // ADD: Safe detectedObjects handling
-  const safeDetectedObjects = detectedObjects || [];
+  if (!survey.id) {
+    return (
+      <div className="flex flex-1 flex-col h-full items-center justify-center p-8">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>Invalid Survey</CardTitle>
+            <CardDescription>
+              Survey is missing required information.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              This survey is missing required identification fields.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-  const { centerLng, centerLat } = useMemo(() => {
-    const { min_x, max_x, min_y, max_y } = survey;
-    // ADD: Check if coordinates exist
-    if (min_x == null || max_x == null || min_y == null || max_y == null) {
-      return { centerLat: 0, centerLng: 0 };
+  const safeDetectedObjects = Array.isArray(detectedObjects)
+    ? detectedObjects
+    : [];
+
+  // Calculate center with proper null checks and NaN validation
+  const mapCenter = useMemo(() => {
+    // Try to use min/max coordinates if available
+    if (
+      survey.min_x != null &&
+      survey.max_x != null &&
+      survey.min_y != null &&
+      survey.max_y != null
+    ) {
+      try {
+        const { centerLng, centerLat } = calculateCentersUsingMinMaxXY(
+          survey.min_x,
+          survey.max_x,
+          survey.min_y,
+          survey.max_y
+        );
+
+        // Validate the result is not NaN
+        if (
+          !isNaN(centerLng) &&
+          !isNaN(centerLat) &&
+          isFinite(centerLng) &&
+          isFinite(centerLat)
+        ) {
+          return { lng: centerLng, lat: centerLat, zoom: 17 };
+        } else {
+          console.warn("Calculated center resulted in NaN or Infinity:", {
+            centerLng,
+            centerLat,
+          });
+        }
+      } catch (error) {
+        console.error("Error calculating center from min/max:", error);
+      }
     }
-    return calculateCentersUsingMinMaxXY(min_x, max_x, min_y, max_y);
-  }, [survey]);
 
-  const bounds = useMemo(() => {
-    // ADD: Check if geojson_boundaries exists
+    // Try to use geojson_boundaries if available
+    if (
+      survey.geojson_boundaries &&
+      Array.isArray(survey.geojson_boundaries) &&
+      survey.geojson_boundaries.length > 0
+    ) {
+      try {
+        const extremes = findExtremeCoordinates(survey.geojson_boundaries);
+        if (extremes) {
+          const centerLng = (extremes.minLng + extremes.maxLng) / 2;
+          const centerLat = (extremes.minLat + extremes.maxLat) / 2;
+
+          // Validate the result is not NaN
+          if (
+            !isNaN(centerLng) &&
+            !isNaN(centerLat) &&
+            isFinite(centerLng) &&
+            isFinite(centerLat)
+          ) {
+            return { lng: centerLng, lat: centerLat, zoom: 17 };
+          } else {
+            console.warn(
+              "Calculated center from boundaries resulted in NaN or Infinity:",
+              { centerLng, centerLat }
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error calculating center from boundaries:", error);
+      }
+    }
+
+    // Fallback to global center
+    console.warn("Using global fallback center - no valid coordinates found");
+    return { ...globalCenter, zoom: globalCenter.zoom || 12 };
+  }, [survey, globalCenter]);
+
+  // Calculate bounds with proper null checks and NaN validation
+  const mapBounds = useMemo(() => {
     if (
       !survey.geojson_boundaries ||
-      !Array.isArray(survey.geojson_boundaries)
+      !Array.isArray(survey.geojson_boundaries) ||
+      survey.geojson_boundaries.length === 0
     ) {
-      console.warn("No geojson_boundaries found for survey");
       return null;
     }
-    const extremes = findExtremeCoordinates(survey.geojson_boundaries);
-    console.log("Calculated bounds:", extremes);
-    return extremes;
-  }, [survey]);
+
+    try {
+      const extremes = findExtremeCoordinates(survey.geojson_boundaries);
+      if (!extremes) return null;
+
+      // Validate bounds are not NaN or Infinity
+      const { minLng, minLat, maxLng, maxLat } = extremes;
+      if (
+        isNaN(minLng) ||
+        isNaN(minLat) ||
+        isNaN(maxLng) ||
+        isNaN(maxLat) ||
+        !isFinite(minLng) ||
+        !isFinite(minLat) ||
+        !isFinite(maxLng) ||
+        !isFinite(maxLat)
+      ) {
+        console.warn(
+          "Calculated bounds resulted in NaN or Infinity:",
+          extremes
+        );
+        return null;
+      }
+
+      return [
+        [minLng, minLat],
+        [maxLng, maxLat],
+      ];
+    } catch (error) {
+      console.error("Error calculating bounds:", error);
+      return null;
+    }
+  }, [survey.geojson_boundaries]);
 
   const numBananas = useMemo(() => {
-    if (!safeDetectedObjects || safeDetectedObjects.length === 0) return 0;
-    return safeDetectedObjects.filter((object) =>
-      object.label?.includes("Banana")
-    ).length;
+    return safeDetectedObjects.filter((obj) => obj.label?.includes("Banana"))
+      .length;
   }, [safeDetectedObjects]);
 
-  const tileUrl = useMemo(() => {
-    if (survey.code === "DIFCO") {
-      return `pmtiles://asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
-        survey.flight_date
-      )}/${survey.id}/${activeTab}/sharp-corners/ortho.pmtiles`;
-    } else {
-      return `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
-        survey.flight_date
-      )}/${survey.id}/${activeTab}/sharp-corners/{z}/{x}/{y}.png`;
+  // Check if survey has valid map data (updated to check for NaN)
+  const hasValidCoordinates = useMemo(() => {
+    // Check min/max coordinates
+    if (
+      survey.min_x != null &&
+      survey.max_x != null &&
+      survey.min_y != null &&
+      survey.max_y != null
+    ) {
+      const hasValidMinMax =
+        !isNaN(survey.min_x) &&
+        !isNaN(survey.max_x) &&
+        !isNaN(survey.min_y) &&
+        !isNaN(survey.max_y) &&
+        isFinite(survey.min_x) &&
+        isFinite(survey.max_x) &&
+        isFinite(survey.min_y) &&
+        isFinite(survey.max_y);
+      if (hasValidMinMax) return true;
     }
-  }, [survey, activeTab]);
 
-  const source = useMemo(() => {
-    return {
-      type: "raster",
-      url: `pmtiles://asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
-        survey.flight_date
-      )}/${survey.id}/${activeTab}/sharp-corners/ortho.pmtiles`,
-    };
-  }, [survey, activeTab]);
+    // Check geojson_boundaries
+    if (
+      survey.geojson_boundaries &&
+      Array.isArray(survey.geojson_boundaries) &&
+      survey.geojson_boundaries.length > 0
+    ) {
+      // Validate that at least one coordinate pair is valid
+      const hasValidBoundary = survey.geojson_boundaries.some((coord: any) => {
+        if (!Array.isArray(coord) || coord.length < 2) return false;
+        const [lng, lat] = coord;
+        return !isNaN(lng) && !isNaN(lat) && isFinite(lng) && isFinite(lat);
+      });
+      if (hasValidBoundary) return true;
+    }
 
-  const layer = useMemo(() => {
-    return {
-      id: survey.id,
-      type: "raster",
-      source: source,
-    };
-  }, [survey, source]);
+    return false;
+  }, [survey]);
+
+  // Check if ortho tiles are available
+  const hasOrthoTiles =
+    survey.ortho !== null && survey.code && survey.id && survey.flight_date;
+
+  // Show map if we have coordinates OR if we have ortho tiles (will use fallback center)
+  const shouldShowMap = hasValidCoordinates || hasOrthoTiles;
 
   return (
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
@@ -934,7 +1064,7 @@ export default function SurveyMap({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ortho">Orthomosaic</SelectItem>
-              {survey.code !== "DIFCO" && (
+              {survey.tags?.includes("rgb") && survey.code !== "DIFCO" && (
                 <SelectItem value="3d">3D Model</SelectItem>
               )}
             </SelectContent>
@@ -946,6 +1076,7 @@ export default function SurveyMap({
             )}
           </TabsList>
         </div>
+
         <div className="flex flex-1 h-full px-4 lg:px-6">
           <div className="grid grid-cols-1 gap-4 h-full w-full lg:grid-cols-[3fr_1fr]">
             <div className="flex flex-1 h-full">
@@ -957,107 +1088,126 @@ export default function SurveyMap({
                       survey.area_code || "N/A"
                     } | ${
                       survey.flight_date
-                        ? format(survey.flight_date, "dd MMMM yyyy")
+                        ? format(new Date(survey.flight_date), "dd MMMM yyyy")
                         : "N/A"
                     } | ${survey.location || "N/A"}`}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 relative">
-                  <div className="flex h-96 lg:h-full">
-                    {activeTab !== "3d" && (
-                      <Map
-                        id="survey-map"
-                        initialViewState={{
-                          longitude: centerLng,
-                          latitude: centerLat,
-                          zoom: bounds ? undefined : 17, // CHANGED: Higher default zoom (was 16)
-                          bounds: bounds,
-                          fitBoundsOptions: { padding: 50 }, // CHANGED: More padding
-                        }}
-                        minZoom={13} // CHANGED: Lower minZoom (was 15)
-                        maxZoom={23}
-                        mapStyle={{
-                          version: 8,
-                          sources: {
-                            osm: {
-                              type: "raster",
-                              tiles: [
-                                "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
-                              ],
-                              tileSize: 256,
-                              attribution: "&copy; OpenStreetMap Contributors",
+                  {!shouldShowMap ? (
+                    <div className="flex h-96 lg:h-full items-center justify-center bg-muted/10 rounded-lg border-2 border-dashed">
+                      <div className="text-center p-8">
+                        <p className="font-semibold text-lg mb-2">
+                          No Map Data Available
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          This survey does not have coordinate data or
+                          orthomosaic tiles to display.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex h-96 lg:h-full">
+                      {activeTab !== "3d" ? (
+                        <Map
+                          id="survey-map"
+                          initialViewState={{
+                            longitude: mapCenter.lng,
+                            latitude: mapCenter.lat,
+                            zoom: mapBounds ? undefined : mapCenter.zoom,
+                            bounds: mapBounds || undefined,
+                            fitBoundsOptions: { padding: 50 },
+                          }}
+                          minZoom={13}
+                          maxZoom={23}
+                          mapStyle={{
+                            version: 8,
+                            sources: {
+                              osm: {
+                                type: "raster",
+                                tiles: [
+                                  "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+                                ],
+                                tileSize: 256,
+                                attribution:
+                                  "&copy; OpenStreetMap Contributors",
+                              },
                             },
-                          },
-                          layers: [
-                            {
-                              id: "osm",
-                              type: "raster",
-                              source: "osm",
-                            },
-                          ],
-                        }}
-                        doubleClickZoom={false}
-                        onLoad={() => console.log("Map loaded")} // ADD: Debug log
-                      >
-                        <InitializeMapImages />
-                        <SurveyMapEvents
-                          survey={survey}
-                          detectedObjects={safeDetectedObjects}
-                        />
-                        {activeTab === "ortho" && (
-                          <>
-                            <Source
-                              id="ortho"
-                              type="raster"
-                              tiles={[
-                                `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
-                                  survey.flight_date
-                                )}/${
-                                  survey.id
-                                }/${activeTab}/sharp-corners/{z}/{x}/{y}.png`,
-                              ]}
-                              tileSize={256}
-                              scheme="tms"
-                              minzoom={15}
-                              maxzoom={24}
-                              onSourceData={(e) => {
-                                // ADD: Debug tile loading
-                                if (
-                                  e.isSourceLoaded &&
-                                  e.sourceId === "ortho"
-                                ) {
-                                  console.log("Ortho tiles loaded");
-                                }
-                              }}
-                            >
-                              <Layer
+                            layers: [
+                              {
+                                id: "osm",
+                                type: "raster",
+                                source: "osm",
+                              },
+                            ],
+                          }}
+                          doubleClickZoom={false}
+                        >
+                          <InitializeMapImages />
+                          <SurveyMapEvents
+                            survey={survey}
+                            detectedObjects={safeDetectedObjects}
+                          />
+                          {activeTab === "ortho" && hasOrthoTiles && (
+                            <>
+                              <Source
                                 id="ortho"
                                 type="raster"
-                                source="ortho"
+                                tiles={[
+                                  `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
+                                    new Date(survey.flight_date)
+                                  )}/${
+                                    survey.id
+                                  }/${activeTab}/sharp-corners/{z}/{x}/{y}.png`,
+                                ]}
+                                tileSize={256}
+                                scheme="tms"
                                 minzoom={15}
                                 maxzoom={24}
-                                paint={{
-                                  "raster-opacity": 1, // ADD: Ensure visible
-                                }}
-                              />
-                            </Source>
-                            <FeaturesOfInterest
-                              detectedObjects={safeDetectedObjects}
-                              survey={survey}
-                            />
-                            <ObjectPopup />
-                          </>
-                        )}
-                      </Map>
-                    )}
-                    {activeTab === "3d" && (
-                      <div className="flex h-full w-full min-w-0 bg-primary">
-                        <ThreeDimensionalModelCaller survey={survey} />
-                      </div>
-                    )}
+                              >
+                                <Layer
+                                  id="ortho"
+                                  type="raster"
+                                  source="ortho"
+                                  minzoom={15}
+                                  maxzoom={24}
+                                  paint={{
+                                    "raster-opacity": 1,
+                                  }}
+                                />
+                              </Source>
+                              {safeDetectedObjects.length > 0 && (
+                                <FeaturesOfInterest
+                                  detectedObjects={safeDetectedObjects}
+                                  survey={survey}
+                                />
+                              )}
+                              <ObjectPopup />
+                            </>
+                          )}
 
-                    {activeTab === "ortho" && <MapLegend />}
-                  </div>
+                          {/* Show warning overlay when using fallback center */}
+                          {!hasValidCoordinates && hasOrthoTiles && (
+                            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
+                              <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-2 rounded-lg shadow-lg text-sm">
+                                <span className="font-semibold">
+                                  ⚠️ Approximate Location:
+                                </span>{" "}
+                                Survey coordinates unavailable, showing regional
+                                map
+                              </div>
+                            </div>
+                          )}
+
+                          <MapLegend />
+                        </Map>
+                      ) : (
+                        <div className="flex h-full w-full min-w-0 bg-primary">
+                          <ThreeDimensionalModelCaller survey={survey} />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -1079,45 +1229,58 @@ export default function SurveyMap({
                       Orthomosaics provide detailed top-down view of an area,
                       free from distortions and perspective errors.
                     </div>
-                    <Table className="w-full table-auto text-left">
-                      <TableBody>
-                        <TableRow>
-                          <TableCell>Area</TableCell>
-                          <TableCell>
-                            {survey.area?.toFixed(2) || "N/A"} ha
-                          </TableCell>
-                        </TableRow>
-                        {survey.ortho?.num_images && (
+
+                    {survey.ortho === null ? (
+                      <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
+                        <p className="text-sm text-muted-foreground text-center">
+                          Orthomosaic data is not available for this survey.
+                        </p>
+                      </div>
+                    ) : (
+                      <Table className="w-full table-auto text-left">
+                        <TableBody>
                           <TableRow>
-                            <TableCell>No. of Images</TableCell>
-                            <TableCell>{survey.ortho.num_images}</TableCell>
+                            <TableCell>Area</TableCell>
+                            <TableCell>
+                              {survey.area?.toFixed(2) || "N/A"} ha
+                            </TableCell>
                           </TableRow>
-                        )}
-                        <TableRow>
-                          <TableCell>Crop Inventory</TableCell>
-                          <TableCell>{numBananas?.toLocaleString()}</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                          {survey.ortho?.num_images && (
+                            <TableRow>
+                              <TableCell>No. of Images</TableCell>
+                              <TableCell>{survey.ortho.num_images}</TableCell>
+                            </TableRow>
+                          )}
+                          <TableRow>
+                            <TableCell>Crop Inventory</TableCell>
+                            <TableCell>{numBananas.toLocaleString()}</TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    )}
                   </div>
                 </CardContent>
-                <CardHeader>
-                  <CardTitle>Plant Disease Detection</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col gap-4">
-                    <div>
-                      Banana plant diseases pose significant threats to the
-                      country&apos;s banana industry and severely affects
-                      production.
-                    </div>
-                    <div>
-                      Timely detection allows for prompt intervention,
-                      minimizing damage and ensuring healthier crops.
-                    </div>
-                    <FoiSelector detectedObjects={safeDetectedObjects} />
-                  </div>
-                </CardContent>
+                {safeDetectedObjects.length > 0 && (
+                  <>
+                    <CardHeader>
+                      <CardTitle>Plant Disease Detection</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-col gap-4">
+                        <div>
+                          Banana plant diseases pose significant threats to the
+                          country&apos;s banana industry and severely affects
+                          production.
+                        </div>
+                        <div>
+                          Timely detection allows for prompt intervention,
+                          minimizing damage and ensuring healthier crops.
+                        </div>
+                        <FoiSelector detectedObjects={safeDetectedObjects} />
+                      </div>
+                    </CardContent>
+                  </>
+                )}
               </Card>
             </TabsContent>
 
@@ -1136,10 +1299,22 @@ export default function SurveyMap({
                       (i.e., color, texture, etc.) of a real world space and/or
                       object.
                     </div>
-                    <ThreeDimensionalModelSelector code={survey.code} />
+                    {survey.code && (
+                      <ThreeDimensionalModelSelector code={survey.code} />
+                    )}
                   </div>
                 </CardContent>
-                <ThreeDimensionalModelCard pcd={survey.point_cloud} />
+                {survey.point_cloud === null ? (
+                  <CardContent>
+                    <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
+                      <p className="text-sm text-muted-foreground text-center">
+                        3D point cloud data is not available for this survey.
+                      </p>
+                    </div>
+                  </CardContent>
+                ) : survey.point_cloud ? (
+                  <ThreeDimensionalModelCard pcd={survey.point_cloud} />
+                ) : null}
               </Card>
             </TabsContent>
           </div>
