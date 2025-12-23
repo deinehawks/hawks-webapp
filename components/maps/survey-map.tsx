@@ -40,7 +40,7 @@ import { ThreeDimensionalModelSelector } from "@/components/selectors/3d-model-s
 import { FoiSelector } from "@/components/selectors/foi-selector";
 import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
 
-// Pin SVG images with shadow for depth
+// Constants
 const PIN_IMAGES = {
   yellow: `<svg width="32" height="48" viewBox="0 0 32 48" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -62,124 +62,219 @@ const PIN_IMAGES = {
   </svg>`,
 };
 
-// Default center (Mindanao, Philippines - matches your global center)
 const DEFAULT_CENTER = {
   lng: 125.58147596772221,
   lat: 7.0763840759644,
   zoom: 12,
 };
 
-/**
- * Calculate optimal zoom levels based on data density
- */
-function calculateOptimalZoomLevels(features: any[]) {
-  if (!features || features.length === 0) {
-    return { heatmapMaxZoom: 15, pinMinZoom: 15 };
-  }
+const ZOOM_DEFAULTS = {
+  heatmapMaxZoom: 15,
+  pinMinZoom: 15,
+};
+
+const MAP_CONFIG = {
+  minZoom: 13,
+  maxZoom: 23,
+  tileSize: 256,
+  orthoMinZoom: 15,
+  orthoMaxZoom: 24,
+};
+
+// Utility functions
+const isValidNumber = (value: any): boolean => {
+  return value != null && !isNaN(value) && isFinite(value);
+};
+
+const isValidCoordinate = (lng: number, lat: number): boolean => {
+  return isValidNumber(lng) && isValidNumber(lat);
+};
+
+const hasValidMinMaxCoordinates = (survey: any): boolean => {
+  const { min_x, max_x, min_y, max_y } = survey;
+  return [min_x, max_x, min_y, max_y].every(isValidNumber);
+};
+
+const hasValidBoundaries = (boundaries: any[]): boolean => {
+  if (!Array.isArray(boundaries) || boundaries.length === 0) return false;
+
+  return boundaries.some((coord) => {
+    if (!Array.isArray(coord) || coord.length < 2) return false;
+    const [lng, lat] = coord;
+    return isValidCoordinate(lng, lat);
+  });
+};
+
+const hasOrthoTilesAvailable = (survey: any): boolean => {
+  return Boolean(
+    survey.ortho !== null && survey.code && survey.id && survey.flight_date
+  );
+};
+
+const calculateOptimalZoomLevels = (features: any[]) => {
+  if (!features?.length) return ZOOM_DEFAULTS;
 
   const coords = features
     .filter((f) => f.geometry?.coordinates)
     .map((f) => f.geometry.coordinates);
 
-  if (coords.length === 0) {
-    return { heatmapMaxZoom: 15, pinMinZoom: 15 };
-  }
+  if (!coords.length) return ZOOM_DEFAULTS;
 
   const lons = coords.map((c) => c[0]);
   const lats = coords.map((c) => c[1]);
-  const minLon = Math.min(...lons);
-  const maxLon = Math.max(...lons);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
 
-  const lonSpan = maxLon - minLon;
-  const latSpan = maxLat - minLat;
+  const lonSpan = Math.max(...lons) - Math.min(...lons);
+  const latSpan = Math.max(...lats) - Math.min(...lats);
   const avgSpan = (lonSpan + latSpan) / 2;
 
   let zoomThreshold = 15;
 
-  if (avgSpan > 0.1) {
-    zoomThreshold = 17;
-  } else if (avgSpan > 0.01) {
-    zoomThreshold = 16;
-  } else {
-    zoomThreshold = 19;
-  }
+  if (avgSpan > 0.1) zoomThreshold = 17;
+  else if (avgSpan > 0.01) zoomThreshold = 16;
+  else zoomThreshold = 19;
 
   const density = features.length / (avgSpan * avgSpan || 1);
 
-  if (density > 1000) {
-    zoomThreshold = Math.min(19, zoomThreshold + 1);
-  } else if (density < 10) {
-    zoomThreshold = Math.max(13, zoomThreshold - 2);
-  }
+  if (density > 1000) zoomThreshold = Math.min(19, zoomThreshold + 1);
+  else if (density < 10) zoomThreshold = Math.max(13, zoomThreshold - 2);
 
   return {
     heatmapMaxZoom: zoomThreshold,
     pinMinZoom: zoomThreshold,
   };
-}
+};
 
-/**
- * Calculate centers with smart offset for better pin positioning
- */
-function calculateCentersWithOffset(
+const calculateCentersWithOffset = (
   min_lon: number,
   max_lon: number,
   min_lat: number,
-  max_lat: number,
-  objectType?: string
-) {
-  const centerLng = (min_lon + max_lon) / 2;
-  const centerLat = (min_lat + max_lat) / 2;
-  return { centerLng, centerLat };
-}
+  max_lat: number
+) => {
+  return {
+    centerLng: (min_lon + max_lon) / 2,
+    centerLat: (min_lat + max_lat) / 2,
+  };
+};
 
-/**
- * Generate point feature collection with smart offset
- */
-function generatePointsWithOffset(
+const generatePointsWithOffset = (
   detectedObjects: ComputerVisionObject[],
   label: string
-) {
-  if (!detectedObjects || !Array.isArray(detectedObjects)) {
-    return {
-      type: "FeatureCollection",
-      features: [],
-    };
+) => {
+  if (!Array.isArray(detectedObjects)) {
+    return { type: "FeatureCollection", features: [] };
   }
 
-  const filteredObjects = detectedObjects.filter((obj) => obj.label === label);
+  const features = detectedObjects
+    .filter((obj) => obj.label === label)
+    .map((obj) => {
+      const { centerLng, centerLat } = calculateCentersWithOffset(
+        obj.bbox.min_lon,
+        obj.bbox.max_lon,
+        obj.bbox.min_lat,
+        obj.bbox.max_lat
+      );
 
-  const features = filteredObjects.map((obj) => {
-    const { centerLng, centerLat } = calculateCentersWithOffset(
-      obj.bbox.min_lon,
-      obj.bbox.max_lon,
-      obj.bbox.min_lat,
-      obj.bbox.max_lat,
-      obj.label
-    );
+      return {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [centerLng, centerLat],
+        },
+        properties: {
+          pairId: obj.pairId,
+          areaPairId: obj.areaPairId,
+          label: obj.label,
+        },
+      };
+    });
 
-    return {
-      type: "Feature",
-      geometry: {
-        type: "Point",
-        coordinates: [centerLng, centerLat],
-      },
-      properties: {
-        pairId: obj.pairId,
-        areaPairId: obj.areaPairId,
-        label: obj.label,
-      },
-    };
-  });
+  return { type: "FeatureCollection", features };
+};
 
-  return {
-    type: "FeatureCollection",
-    features,
-  };
-}
+// Hooks
+const useMapCenter = (survey: any, fallbackCenter: typeof DEFAULT_CENTER) => {
+  return useMemo(() => {
+    // Try min/max coordinates
+    if (hasValidMinMaxCoordinates(survey)) {
+      try {
+        const { centerLng, centerLat } = calculateCentersUsingMinMaxXY(
+          survey.min_x,
+          survey.max_x,
+          survey.min_y,
+          survey.max_y
+        );
 
+        if (isValidCoordinate(centerLng, centerLat)) {
+          return { lng: centerLng, lat: centerLat, zoom: 17 };
+        }
+      } catch (error) {
+        console.error("Error calculating center from min/max:", error);
+      }
+    }
+
+    // Try geojson boundaries
+    if (hasValidBoundaries(survey.geojson_boundaries)) {
+      try {
+        const extremes = findExtremeCoordinates(survey.geojson_boundaries);
+        if (extremes) {
+          const centerLng = (extremes.minLng + extremes.maxLng) / 2;
+          const centerLat = (extremes.minLat + extremes.maxLat) / 2;
+
+          if (isValidCoordinate(centerLng, centerLat)) {
+            return { lng: centerLng, lat: centerLat, zoom: 17 };
+          }
+        }
+      } catch (error) {
+        console.error("Error calculating center from boundaries:", error);
+      }
+    }
+
+    return { ...fallbackCenter, zoom: fallbackCenter.zoom || 12 };
+  }, [survey, fallbackCenter]);
+};
+
+const useMapBounds = (survey: any) => {
+  return useMemo(() => {
+    if (!hasValidBoundaries(survey.geojson_boundaries)) return null;
+
+    try {
+      const extremes = findExtremeCoordinates(survey.geojson_boundaries);
+      if (!extremes) return null;
+
+      const { minLng, minLat, maxLng, maxLat } = extremes;
+
+      if (
+        !isValidCoordinate(minLng, minLat) ||
+        !isValidCoordinate(maxLng, maxLat)
+      ) {
+        return null;
+      }
+
+      return [
+        [minLng, minLat],
+        [maxLng, maxLat],
+      ];
+    } catch (error) {
+      console.error("Error calculating bounds:", error);
+      return null;
+    }
+  }, [survey.geojson_boundaries]);
+};
+
+const useValidationState = (survey: any) => {
+  return useMemo(() => {
+    const hasValidCoordinates =
+      hasValidMinMaxCoordinates(survey) ||
+      hasValidBoundaries(survey.geojson_boundaries);
+
+    const hasOrthoTiles = hasOrthoTilesAvailable(survey);
+    const shouldShowMap = hasOrthoTiles || hasValidCoordinates;
+
+    return { hasValidCoordinates, hasOrthoTiles, shouldShowMap };
+  }, [survey]);
+};
+
+// Sub-components
 function SurveyMapEvents({
   survey,
   detectedObjects,
@@ -194,28 +289,20 @@ function SurveyMapEvents({
 
   const handleBboxClick = useCallback(
     (e: MapMouseEvent) => {
-      if (!e.features?.length) return;
-
-      const objectPairId = e.features[0]?.properties?.pairId;
+      const objectPairId = e.features?.[0]?.properties?.pairId;
       if (!objectPairId) return;
 
       const clickedObject = detectedObjects.find(
-        (object: ComputerVisionObject) => object.pairId === objectPairId
+        (object) => object.pairId === objectPairId
       );
       if (!clickedObject) return;
 
-      const {
-        pairId,
-        areaPairId: areaId,
-        bbox: { max_lat, max_lon, min_lat, min_lon },
-      } = clickedObject;
-
+      const { pairId, areaPairId: areaId, bbox } = clickedObject;
       const { centerLng, centerLat } = calculateCentersWithOffset(
-        min_lon,
-        max_lon,
-        min_lat,
-        max_lat,
-        clickedObject.label
+        bbox.min_lon,
+        bbox.max_lon,
+        bbox.min_lat,
+        bbox.max_lat
       );
 
       setPopupInfo({ pairId, areaId, centerLng, centerLat });
@@ -225,8 +312,7 @@ function SurveyMapEvents({
 
   const handlePinHover = useCallback(
     (e: MapMouseEvent) => {
-      if (!e.features?.length) return;
-      const pairId = e.features[0]?.properties?.pairId;
+      const pairId = e.features?.[0]?.properties?.pairId;
       setHoveredPairId(pairId || null);
 
       if (pairId && map) {
@@ -246,36 +332,39 @@ function SurveyMapEvents({
   useEffect(() => {
     if (!map || !survey?.id) return;
 
-    map.on("click", `${survey.id}-unhealthy-fill`, handleBboxClick);
-    map.on("click", `${survey.id}-unhealthy-pin`, handleBboxClick);
-    map.on("click", `${survey.id}-healthy-pin`, handleBboxClick);
-    map.on("click", `${survey.id}-unhealthy-circle`, handleBboxClick);
-    map.on("click", `${survey.id}-healthy-circle`, handleBboxClick);
+    const LAYER_TYPES = {
+      CLICK: [
+        "unhealthy-fill",
+        "unhealthy-pin",
+        "healthy-pin",
+        "unhealthy-circle",
+        "healthy-circle",
+      ],
+      HOVER: [
+        "unhealthy-pin",
+        "healthy-pin",
+        "unhealthy-circle",
+        "healthy-circle",
+      ],
+    };
 
-    map.on("mouseenter", `${survey.id}-unhealthy-pin`, handlePinHover);
-    map.on("mouseleave", `${survey.id}-unhealthy-pin`, handlePinLeave);
-    map.on("mouseenter", `${survey.id}-healthy-pin`, handlePinHover);
-    map.on("mouseleave", `${survey.id}-healthy-pin`, handlePinLeave);
-    map.on("mouseenter", `${survey.id}-unhealthy-circle`, handlePinHover);
-    map.on("mouseleave", `${survey.id}-unhealthy-circle`, handlePinLeave);
-    map.on("mouseenter", `${survey.id}-healthy-circle`, handlePinHover);
-    map.on("mouseleave", `${survey.id}-healthy-circle`, handlePinLeave);
+    const clickLayers = LAYER_TYPES.CLICK.map((id) => `${survey.id}-${id}`);
+    const hoverLayers = LAYER_TYPES.HOVER.map((id) => `${survey.id}-${id}`);
 
+    // Register event listeners
+    clickLayers.forEach((layer) => map.on("click", layer, handleBboxClick));
+    hoverLayers.forEach((layer) => {
+      map.on("mouseenter", layer, handlePinHover);
+      map.on("mouseleave", layer, handlePinLeave);
+    });
+
+    // Cleanup
     return () => {
-      map.off("click", `${survey.id}-unhealthy-fill`, handleBboxClick);
-      map.off("click", `${survey.id}-unhealthy-pin`, handleBboxClick);
-      map.off("click", `${survey.id}-healthy-pin`, handleBboxClick);
-      map.off("click", `${survey.id}-unhealthy-circle`, handleBboxClick);
-      map.off("click", `${survey.id}-healthy-circle`, handleBboxClick);
-
-      map.off("mouseenter", `${survey.id}-unhealthy-pin`, handlePinHover);
-      map.off("mouseleave", `${survey.id}-unhealthy-pin`, handlePinLeave);
-      map.off("mouseenter", `${survey.id}-healthy-pin`, handlePinHover);
-      map.off("mouseleave", `${survey.id}-healthy-pin`, handlePinLeave);
-      map.off("mouseenter", `${survey.id}-unhealthy-circle`, handlePinHover);
-      map.off("mouseleave", `${survey.id}-unhealthy-circle`, handlePinLeave);
-      map.off("mouseenter", `${survey.id}-healthy-circle`, handlePinHover);
-      map.off("mouseleave", `${survey.id}-healthy-circle`, handlePinLeave);
+      clickLayers.forEach((layer) => map.off("click", layer, handleBboxClick));
+      hoverLayers.forEach((layer) => {
+        map.off("mouseenter", layer, handlePinHover);
+        map.off("mouseleave", layer, handlePinLeave);
+      });
     };
   }, [map, survey, handleBboxClick, handlePinHover, handlePinLeave]);
 
@@ -296,8 +385,8 @@ function InitializeMapImages() {
         canvas.height = img.height;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
-        ctx.drawImage(img, 0, 0);
 
+        ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
         try {
@@ -308,9 +397,7 @@ function InitializeMapImages() {
           console.warn(`Failed to add image ${id}:`, error);
         }
       };
-      img.onerror = () => {
-        console.error(`Failed to load SVG image for ${id}`);
-      };
+      img.onerror = () => console.error(`Failed to load SVG image for ${id}`);
       img.src = `data:image/svg+xml;base64,${btoa(svgString)}`;
     };
 
@@ -351,7 +438,6 @@ function MapLegend() {
       {isOpen && (
         <div className="bg-white rounded-lg shadow-lg p-4 max-w-xs border border-gray-200 animate-in fade-in slide-in-from-left-2 duration-200">
           <div className="text-sm font-semibold text-gray-800 mb-3">Legend</div>
-
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-6 h-6 bg-yellow-400 rounded-full border-2 border-white shadow-md"></div>
@@ -360,7 +446,6 @@ function MapLegend() {
                 <div className="text-gray-500">No signs of disease</div>
               </div>
             </div>
-
             <div className="flex items-center gap-3">
               <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-md"></div>
               <div className="text-xs text-gray-700">
@@ -368,7 +453,6 @@ function MapLegend() {
                 <div className="text-gray-500">Disease detected</div>
               </div>
             </div>
-
             <div className="pt-2 border-t border-gray-200">
               <div className="text-xs font-medium text-gray-700 mb-2">
                 Heatmap (Zoomed Out)
@@ -386,7 +470,6 @@ function MapLegend() {
               </div>
             </div>
           </div>
-
           <div className="text-xs text-gray-500 mt-3 italic">
             Hover or click plants to see detection area
           </div>
@@ -406,31 +489,29 @@ function FeaturesOfInterest({
   const { selectedFoi, popupInfo, hoveredPairId } = useSurveyMapStore(
     (state) => state
   );
-
   const id = survey?.id;
-  if (!id) return null;
 
-  const healthyBananas = useMemo(() => {
-    if (!detectedObjects) return { type: "FeatureCollection", features: [] };
-    return generatePointsWithOffset(
-      detectedObjects,
-      "Banana Plant (Healthy-looking)"
-    );
-  }, [detectedObjects]);
+  const healthyBananas = useMemo(
+    () =>
+      generatePointsWithOffset(
+        detectedObjects,
+        "Banana Plant (Healthy-looking)"
+      ),
+    [detectedObjects]
+  );
 
-  const unhealthyBananas = useMemo(() => {
-    if (!detectedObjects) return { type: "FeatureCollection", features: [] };
-    return generatePointsWithOffset(detectedObjects, "Banana Plant (Infected)");
-  }, [detectedObjects]);
+  const unhealthyBananas = useMemo(
+    () => generatePointsWithOffset(detectedObjects, "Banana Plant (Infected)"),
+    [detectedObjects]
+  );
 
   const selectedPlantBbox = useMemo(() => {
-    if (!popupInfo && !hoveredPairId) return null;
-
     const selectedId = popupInfo?.pairId || hoveredPairId;
+    if (!selectedId) return null;
+
     const selectedObject = detectedObjects.find(
       (obj) => obj.pairId === selectedId
     );
-
     if (!selectedObject) return null;
 
     const { min_lon, max_lon, min_lat, max_lat } = selectedObject.bbox;
@@ -483,6 +564,10 @@ function FeaturesOfInterest({
 
   const isHealthy =
     selectedPlantBbox?.features[0]?.properties?.label?.includes("Healthy");
+  const showHealthy = selectedFoi === "healthy" || selectedFoi === "all";
+  const showUnhealthy = selectedFoi === "unhealthy" || selectedFoi === "all";
+
+  if (!id) return null;
 
   return (
     <>
@@ -513,260 +598,250 @@ function FeaturesOfInterest({
         </Source>
       )}
 
-      {(selectedFoi === "healthy" || selectedFoi === "all") && (
-        <Source id={`${id}-healthy`} type="geojson" data={healthyBananas}>
-          <Layer
-            id={`${id}-healthy-heatmap`}
-            type="heatmap"
-            source={`${id}-healthy`}
-            maxzoom={healthyZoomLevels.heatmapMaxZoom}
-            paint={{
-              "heatmap-weight": [
-                "interpolate",
-                ["linear"],
-                ["get", "mag"],
-                0,
-                0,
-                6,
-                1,
-              ],
-              "heatmap-color": [
-                "interpolate",
-                ["linear"],
-                ["heatmap-density"],
-                0,
-                "rgba(251, 192, 45, 0)",
-                0.2,
-                "rgba(251, 192, 45, 0.3)",
-                0.5,
-                "rgba(251, 192, 45, 0.6)",
-                1,
-                "rgba(251, 192, 45, 0.9)",
-              ],
-              "heatmap-radius": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                10,
-                8,
-                12,
-                10,
-                14,
-                12,
-                16,
-                15,
-                18,
-                20,
-                20,
-                25,
-              ],
-              "heatmap-opacity": 0.7,
-            }}
-          />
-        </Source>
+      {showHealthy && (
+        <>
+          <Source id={`${id}-healthy`} type="geojson" data={healthyBananas}>
+            <Layer
+              id={`${id}-healthy-heatmap`}
+              type="heatmap"
+              maxzoom={healthyZoomLevels.heatmapMaxZoom}
+              paint={{
+                "heatmap-weight": [
+                  "interpolate",
+                  ["linear"],
+                  ["get", "mag"],
+                  0,
+                  0,
+                  6,
+                  1,
+                ],
+                "heatmap-color": [
+                  "interpolate",
+                  ["linear"],
+                  ["heatmap-density"],
+                  0,
+                  "rgba(251, 192, 45, 0)",
+                  0.2,
+                  "rgba(251, 192, 45, 0.3)",
+                  0.5,
+                  "rgba(251, 192, 45, 0.6)",
+                  1,
+                  "rgba(251, 192, 45, 0.9)",
+                ],
+                "heatmap-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  10,
+                  8,
+                  12,
+                  10,
+                  14,
+                  12,
+                  16,
+                  15,
+                  18,
+                  20,
+                  20,
+                  25,
+                ],
+                "heatmap-opacity": 0.7,
+              }}
+            />
+          </Source>
+
+          <Source
+            id={`${id}-healthy-circles`}
+            type="geojson"
+            data={healthyBananas}
+          >
+            <Layer
+              id={`${id}-healthy-circle`}
+              type="circle"
+              minzoom={13}
+              maxzoom={healthyZoomLevels.pinMinZoom}
+              paint={{
+                "circle-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  13,
+                  6,
+                  14,
+                  8,
+                  15,
+                  10,
+                  16,
+                  12,
+                ],
+                "circle-color": "#fbbf24",
+                "circle-opacity": 0.4,
+                "circle-stroke-color": "#fbbf24",
+                "circle-stroke-width": 2,
+                "circle-stroke-opacity": 0.8,
+              }}
+            />
+          </Source>
+
+          <Source
+            id={`${id}-healthy-pins`}
+            type="geojson"
+            data={healthyBananas}
+          >
+            <Layer
+              id={`${id}-healthy-pin`}
+              type="symbol"
+              minzoom={healthyZoomLevels.pinMinZoom}
+              layout={{
+                "icon-image": "pin-yellow",
+                "icon-size": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  13,
+                  0.1,
+                  14,
+                  0.2,
+                  15,
+                  0.2,
+                  16,
+                  0.3,
+                  17,
+                  0.3,
+                  18,
+                  0.4,
+                  20,
+                  0.5,
+                ],
+                "icon-allow-overlap": true,
+              }}
+              paint={{ "icon-opacity": 0.75 }}
+            />
+          </Source>
+        </>
       )}
 
-      {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
-        <Source id={`${id}-unhealthy`} type="geojson" data={unhealthyBananas}>
-          <Layer
-            id={`${id}-unhealthy-heatmap`}
-            type="heatmap"
-            source={`${id}-unhealthy`}
-            maxzoom={unhealthyZoomLevels.heatmapMaxZoom}
-            paint={{
-              "heatmap-weight": [
-                "interpolate",
-                ["linear"],
-                ["get", "mag"],
-                0,
-                0,
-                6,
-                1,
-              ],
-              "heatmap-color": [
-                "interpolate",
-                ["linear"],
-                ["heatmap-density"],
-                0,
-                "rgba(255, 0, 0, 0)",
-                0.2,
-                "rgba(255, 0, 0, 0.3)",
-                0.5,
-                "rgba(255, 0, 0, 0.6)",
-                1,
-                "rgba(150, 0, 0, 0.9)",
-              ],
-              "heatmap-radius": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                10,
-                8,
-                12,
-                10,
-                14,
-                12,
-                16,
-                15,
-                18,
-                20,
-                20,
-                25,
-              ],
-              "heatmap-opacity": 0.7,
-            }}
-          />
-        </Source>
-      )}
+      {showUnhealthy && (
+        <>
+          <Source id={`${id}-unhealthy`} type="geojson" data={unhealthyBananas}>
+            <Layer
+              id={`${id}-unhealthy-heatmap`}
+              type="heatmap"
+              maxzoom={unhealthyZoomLevels.heatmapMaxZoom}
+              paint={{
+                "heatmap-weight": [
+                  "interpolate",
+                  ["linear"],
+                  ["get", "mag"],
+                  0,
+                  0,
+                  6,
+                  1,
+                ],
+                "heatmap-color": [
+                  "interpolate",
+                  ["linear"],
+                  ["heatmap-density"],
+                  0,
+                  "rgba(255, 0, 0, 0)",
+                  0.2,
+                  "rgba(255, 0, 0, 0.3)",
+                  0.5,
+                  "rgba(255, 0, 0, 0.6)",
+                  1,
+                  "rgba(150, 0, 0, 0.9)",
+                ],
+                "heatmap-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  10,
+                  8,
+                  12,
+                  10,
+                  14,
+                  12,
+                  16,
+                  15,
+                  18,
+                  20,
+                  20,
+                  25,
+                ],
+                "heatmap-opacity": 0.7,
+              }}
+            />
+          </Source>
 
-      {(selectedFoi === "healthy" || selectedFoi === "all") && (
-        <Source
-          id={`${id}-healthy-circles`}
-          type="geojson"
-          data={healthyBananas}
-        >
-          <Layer
-            id={`${id}-healthy-circle`}
-            type="circle"
-            source={`${id}-healthy-circles`}
-            minzoom={13}
-            maxzoom={healthyZoomLevels.pinMinZoom}
-            paint={{
-              "circle-radius": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                13,
-                6,
-                14,
-                8,
-                15,
-                10,
-                16,
-                12,
-              ],
-              "circle-color": "#fbbf24",
-              "circle-opacity": 0.4,
-              "circle-stroke-color": "#fbbf24",
-              "circle-stroke-width": 2,
-              "circle-stroke-opacity": 0.8,
-            }}
-          />
-        </Source>
-      )}
+          <Source
+            id={`${id}-unhealthy-circles`}
+            type="geojson"
+            data={unhealthyBananas}
+          >
+            <Layer
+              id={`${id}-unhealthy-circle`}
+              type="circle"
+              minzoom={13}
+              maxzoom={unhealthyZoomLevels.pinMinZoom}
+              paint={{
+                "circle-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  13,
+                  6,
+                  14,
+                  8,
+                  15,
+                  10,
+                  16,
+                  12,
+                ],
+                "circle-color": "#ff0000",
+                "circle-opacity": 0.4,
+                "circle-stroke-color": "#ff0000",
+                "circle-stroke-width": 2,
+                "circle-stroke-opacity": 0.8,
+              }}
+            />
+          </Source>
 
-      {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
-        <Source
-          id={`${id}-unhealthy-circles`}
-          type="geojson"
-          data={unhealthyBananas}
-        >
-          <Layer
-            id={`${id}-unhealthy-circle`}
-            type="circle"
-            source={`${id}-unhealthy-circles`}
-            minzoom={13}
-            maxzoom={unhealthyZoomLevels.pinMinZoom}
-            paint={{
-              "circle-radius": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                13,
-                6,
-                14,
-                8,
-                15,
-                10,
-                16,
-                12,
-              ],
-              "circle-color": "#ff0000",
-              "circle-opacity": 0.4,
-              "circle-stroke-color": "#ff0000",
-              "circle-stroke-width": 2,
-              "circle-stroke-opacity": 0.8,
-            }}
-          />
-        </Source>
-      )}
-
-      {(selectedFoi === "healthy" || selectedFoi === "all") && (
-        <Source id={`${id}-healthy-pins`} type="geojson" data={healthyBananas}>
-          <Layer
-            id={`${id}-healthy-pin`}
-            type="symbol"
-            source={`${id}-healthy-pins`}
-            minzoom={healthyZoomLevels.pinMinZoom}
-            layout={{
-              "icon-image": "pin-yellow",
-              "icon-size": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                13,
-                0.1,
-                14,
-                0.2,
-                15,
-                0.2,
-                16,
-                0.3,
-                17,
-                0.3,
-                18,
-                0.4,
-                20,
-                0.5,
-              ],
-              "icon-allow-overlap": true,
-            }}
-            paint={{
-              "icon-opacity": 0.75,
-            }}
-          />
-        </Source>
-      )}
-
-      {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
-        <Source
-          id={`${id}-unhealthy-pins`}
-          type="geojson"
-          data={unhealthyBananas}
-        >
-          <Layer
-            id={`${id}-unhealthy-pin`}
-            type="symbol"
-            source={`${id}-unhealthy-pins`}
-            minzoom={unhealthyZoomLevels.pinMinZoom}
-            layout={{
-              "icon-image": "pin-red",
-              "icon-size": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                13,
-                0.1,
-                14,
-                0.2,
-                15,
-                0.2,
-                16,
-                0.3,
-                17,
-                0.4,
-                18,
-                0.5,
-                20,
-                0.6,
-              ],
-              "icon-allow-overlap": true,
-            }}
-            paint={{
-              "icon-opacity": 0.75,
-            }}
-          />
-        </Source>
+          <Source
+            id={`${id}-unhealthy-pins`}
+            type="geojson"
+            data={unhealthyBananas}
+          >
+            <Layer
+              id={`${id}-unhealthy-pin`}
+              type="symbol"
+              minzoom={unhealthyZoomLevels.pinMinZoom}
+              layout={{
+                "icon-image": "pin-red",
+                "icon-size": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  13,
+                  0.1,
+                  14,
+                  0.2,
+                  15,
+                  0.2,
+                  16,
+                  0.3,
+                  17,
+                  0.4,
+                  18,
+                  0.5,
+                  20,
+                  0.6,
+                ],
+                "icon-allow-overlap": true,
+              }}
+              paint={{ "icon-opacity": 0.75 }}
+            />
+          </Source>
+        </>
       )}
     </>
   );
@@ -775,7 +850,7 @@ function FeaturesOfInterest({
 function ObjectPopup() {
   const { popupInfo, setPopupInfo } = useSurveyMapStore((state) => state);
 
-  if (popupInfo === null) return null;
+  if (!popupInfo) return null;
 
   const { pairId, areaId, centerLng, centerLat } = popupInfo;
 
@@ -791,14 +866,6 @@ function ObjectPopup() {
         <div className="font-semibold">Object Information</div>
         <Separator />
         <div className="flex flex-col">
-          <div className="grid grid-cols-2 gap-2">
-            <span>Object ID:</span>
-            <span className="text-muted-foreground">{pairId}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <span>Area ID:</span>
-            <span className="text-muted-foreground">{areaId}</span>
-          </div>
           <div className="grid grid-cols-2 gap-2">
             <span>Longitude:</span>
             <span className="text-muted-foreground">
@@ -817,6 +884,408 @@ function ObjectPopup() {
   );
 }
 
+function NoMapDataFallback() {
+  return (
+    <div className="flex h-96 lg:h-full items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200">
+      <div className="text-center p-8 max-w-md">
+        <div className="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-200">
+          <svg
+            className="w-8 h-8 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+            />
+          </svg>
+        </div>
+        <h3 className="font-semibold text-lg mb-2 text-slate-900">
+          No Map Data Available
+        </h3>
+        <p className="text-sm text-slate-600 leading-relaxed">
+          This survey does not have orthomosaic tiles or coordinate data to
+          display on the map.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function RegionalViewOverlay() {
+  return (
+    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
+      <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-2 rounded-lg shadow-lg text-sm flex items-center gap-2">
+        <svg
+          className="w-4 h-4 text-blue-600 flex-shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        <span>
+          <span className="font-semibold">Regional View:</span> Zoom in to see
+          orthomosaic imagery
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function MapView({
+  survey,
+  mapCenter,
+  mapBounds,
+  detectedObjects,
+  hasValidCoordinates,
+  hasOrthoTiles,
+}: any) {
+  const { current: map } = useMap();
+  const [hasZoomed, setHasZoomed] = useState(false);
+
+  // Auto-zoom to orthomosaic tiles when they load and coordinates are missing
+  useEffect(() => {
+    if (!map || !hasOrthoTiles || hasValidCoordinates || hasZoomed) return;
+
+    // First, zoom to the minimum ortho level to trigger tile loading
+    map.setZoom(MAP_CONFIG.orthoMinZoom);
+
+    let attempts = 0;
+    const maxAttempts = 15;
+    let hasFoundTiles = false;
+
+    const tryToZoomToTiles = () => {
+      attempts++;
+
+      const source = map.getSource("ortho") as any;
+      if (!source) {
+        if (attempts < maxAttempts) {
+          setTimeout(tryToZoomToTiles, 500);
+        }
+        return;
+      }
+
+      // Get the loaded tiles to determine the extent
+      const sourceCaches = (map.style as any)?._sourceCaches;
+      const orthoCache = sourceCaches?.ortho;
+
+      if (!orthoCache) {
+        if (attempts < maxAttempts) {
+          setTimeout(tryToZoomToTiles, 500);
+        }
+        return;
+      }
+
+      const tiles = orthoCache._tiles || {};
+      const tileKeys = Object.keys(tiles);
+
+      if (tileKeys.length > 0) {
+        // Calculate bounds from loaded tiles
+        let minLng = Infinity,
+          maxLng = -Infinity;
+        let minLat = Infinity,
+          maxLat = -Infinity;
+        let validTilesFound = 0;
+
+        tileKeys.forEach((key) => {
+          const tile = tiles[key];
+          if (tile?.tileID?.canonical) {
+            const bounds = tileToBounds(
+              tile.tileID.canonical.x,
+              tile.tileID.canonical.y,
+              tile.tileID.canonical.z
+            );
+            minLng = Math.min(minLng, bounds[0]);
+            minLat = Math.min(minLat, bounds[1]);
+            maxLng = Math.max(maxLng, bounds[2]);
+            maxLat = Math.max(maxLat, bounds[3]);
+            validTilesFound++;
+          }
+        });
+
+        if (
+          validTilesFound > 0 &&
+          isFinite(minLng) &&
+          isFinite(maxLng) &&
+          isFinite(minLat) &&
+          isFinite(maxLat)
+        ) {
+          hasFoundTiles = true;
+
+          // Add a small buffer to the bounds
+          const lngBuffer = (maxLng - minLng) * 0.1;
+          const latBuffer = (maxLat - minLat) * 0.1;
+
+          map.fitBounds(
+            [
+              [minLng - lngBuffer, minLat - latBuffer],
+              [maxLng + lngBuffer, maxLat + latBuffer],
+            ],
+            {
+              padding: 50,
+              duration: 1500,
+              maxZoom: 19,
+            }
+          );
+          setHasZoomed(true);
+        } else if (attempts < maxAttempts) {
+          setTimeout(tryToZoomToTiles, 500);
+        }
+      } else if (attempts < maxAttempts) {
+        // No tiles yet, keep trying
+        setTimeout(tryToZoomToTiles, 500);
+      }
+    };
+
+    // Wait for map to be fully loaded before starting
+    if (map.loaded()) {
+      setTimeout(tryToZoomToTiles, 500);
+    } else {
+      map.once("load", () => {
+        setTimeout(tryToZoomToTiles, 500);
+      });
+    }
+
+    return () => {
+      // Cleanup if needed
+    };
+  }, [map, hasOrthoTiles, hasValidCoordinates, survey.id, hasZoomed]);
+
+  // Reset hasZoomed when survey changes
+  useEffect(() => {
+    setHasZoomed(false);
+  }, [survey.id]);
+
+  return (
+    <Map
+      id="survey-map"
+      initialViewState={{
+        longitude: mapCenter.lng,
+        latitude: mapCenter.lat,
+        zoom: mapBounds
+          ? undefined
+          : hasValidCoordinates
+          ? mapCenter.zoom
+          : MAP_CONFIG.orthoMinZoom,
+        bounds: mapBounds || undefined,
+        fitBoundsOptions: { padding: 50 },
+      }}
+      minZoom={MAP_CONFIG.minZoom}
+      maxZoom={MAP_CONFIG.maxZoom}
+      mapStyle={{
+        version: 8,
+        sources: {
+          osm: {
+            type: "raster",
+            tiles: ["https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"],
+            tileSize: MAP_CONFIG.tileSize,
+            attribution: "&copy; OpenStreetMap Contributors",
+          },
+        },
+        layers: [{ id: "osm", type: "raster", source: "osm" }],
+      }}
+      doubleClickZoom={false}
+    >
+      <InitializeMapImages />
+      <SurveyMapEvents survey={survey} detectedObjects={detectedObjects} />
+
+      {hasOrthoTiles && (
+        <>
+          <Source
+            id="ortho"
+            type="raster"
+            tiles={[
+              `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
+                new Date(survey.flight_date)
+              )}/${survey.id}/ortho/sharp-corners/{z}/{x}/{y}.png`,
+            ]}
+            tileSize={MAP_CONFIG.tileSize}
+            scheme="tms"
+            minzoom={MAP_CONFIG.orthoMinZoom}
+            maxzoom={MAP_CONFIG.orthoMaxZoom}
+          >
+            <Layer
+              id="ortho"
+              type="raster"
+              minzoom={MAP_CONFIG.orthoMinZoom}
+              maxzoom={MAP_CONFIG.orthoMaxZoom}
+              paint={{ "raster-opacity": 1 }}
+            />
+          </Source>
+
+          {detectedObjects.length > 0 && (
+            <FeaturesOfInterest
+              detectedObjects={detectedObjects}
+              survey={survey}
+            />
+          )}
+          <ObjectPopup />
+        </>
+      )}
+
+      {!hasValidCoordinates && hasOrthoTiles && <RegionalViewOverlay />}
+      <MapLegend />
+    </Map>
+  );
+}
+
+// Utility function to convert tile coordinates to geographic bounds
+function tileToBounds(
+  x: number,
+  y: number,
+  z: number
+): [number, number, number, number] {
+  const n = Math.pow(2, z);
+  const lonMin = (x / n) * 360 - 180;
+  const lonMax = ((x + 1) / n) * 360 - 180;
+  const latMin =
+    (Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 1)) / n))) * 180) / Math.PI;
+  const latMax =
+    (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / n))) * 180) / Math.PI;
+  return [lonMin, latMin, lonMax, latMax];
+}
+
+function SurveyInfo({ survey }: { survey: any }) {
+  return (
+    <>
+      <CardTitle>{survey.id}</CardTitle>
+      <CardDescription>
+        {`${survey.code || "N/A"} | ${survey.area_code || "N/A"} | ${
+          survey.flight_date
+            ? format(new Date(survey.flight_date), "dd MMMM yyyy")
+            : "N/A"
+        } | ${survey.location || "N/A"}`}
+      </CardDescription>
+    </>
+  );
+}
+
+function OrthoTabContent({ survey, detectedObjects }: any) {
+  const numBananas = useMemo(
+    () =>
+      detectedObjects.filter((obj: any) => obj.label?.includes("Banana"))
+        .length,
+    [detectedObjects]
+  );
+
+  const hasOrthoData = survey.ortho !== null;
+
+  return (
+    <Card className="container/card flex flex-1 flex-col lg:h-full">
+      <CardHeader>
+        <CardTitle>Orthomosaic</CardTitle>
+        <CardDescription>{survey.id}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col gap-4">
+          <div>
+            An orthomosaic is a high-resolution, georeferenced image created by
+            stitching together multiple overlapping aerial photographs.
+          </div>
+          <div>
+            Orthomosaics provide detailed top-down view of an area, free from
+            distortions and perspective errors.
+          </div>
+
+          {hasOrthoData ? (
+            <Table className="w-full table-auto text-left">
+              <TableBody>
+                <TableRow>
+                  <TableCell>Area</TableCell>
+                  <TableCell>{survey.area?.toFixed(2) || "N/A"} ha</TableCell>
+                </TableRow>
+                {survey.ortho?.num_images && (
+                  <TableRow>
+                    <TableCell>No. of Images</TableCell>
+                    <TableCell>{survey.ortho.num_images}</TableCell>
+                  </TableRow>
+                )}
+                <TableRow>
+                  <TableCell>Crop Inventory</TableCell>
+                  <TableCell>{numBananas.toLocaleString()}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
+              <p className="text-sm text-muted-foreground text-center">
+                Orthomosaic data is not available for this survey.
+              </p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+
+      {detectedObjects.length > 0 && (
+        <>
+          <CardHeader>
+            <CardTitle>Plant Disease Detection</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-4">
+              <div>
+                Banana plant diseases pose significant threats to the
+                country&apos;s banana industry and severely affects production.
+              </div>
+              <div>
+                Timely detection allows for prompt intervention, minimizing
+                damage and ensuring healthier crops.
+              </div>
+              <FoiSelector detectedObjects={detectedObjects} />
+            </div>
+          </CardContent>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function ThreeDTabContent({ survey }: any) {
+  const hasPointCloud = survey.point_cloud !== null;
+
+  return (
+    <Card className="container/card flex flex-1 flex-col gap-4 lg:h-full">
+      <CardHeader>
+        <CardTitle>3D Model</CardTitle>
+        <CardDescription>{survey.id}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col gap-4">
+          <div>
+            A 3D model is a digital representation of an object or scene in
+            three dimensions. It captures the shape, dimensions, and sometimes
+            even the surface properties (i.e., color, texture, etc.) of a real
+            world space and/or object.
+          </div>
+          {survey.code && <ThreeDimensionalModelSelector code={survey.code} />}
+        </div>
+      </CardContent>
+
+      {hasPointCloud ? (
+        <ThreeDimensionalModelCard pcd={survey.point_cloud} />
+      ) : (
+        <CardContent>
+          <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
+            <p className="text-sm text-muted-foreground text-center">
+              3D point cloud data is not available for this survey.
+            </p>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+// Main component
 export default function SurveyMap({
   survey,
   detectedObjects,
@@ -827,11 +1296,12 @@ export default function SurveyMap({
   fallbackCenter?: { lng: number; lat: number };
 }) {
   const [activeTab, setActiveTab] = useState("ortho");
-
-  // Use provided fallback or default
   const globalCenter = fallbackCenter || DEFAULT_CENTER;
+  const safeDetectedObjects = Array.isArray(detectedObjects)
+    ? detectedObjects
+    : [];
 
-  // Basic null checks
+  // Validation
   if (!survey || typeof survey !== "object") {
     return (
       <div className="flex flex-1 flex-col h-full items-center justify-center p-8">
@@ -872,181 +1342,15 @@ export default function SurveyMap({
     );
   }
 
-  const safeDetectedObjects = Array.isArray(detectedObjects)
-    ? detectedObjects
-    : [];
-
-  // Calculate center with proper null checks and NaN validation
-  const mapCenter = useMemo(() => {
-    // Try to use min/max coordinates if available
-    if (
-      survey.min_x != null &&
-      survey.max_x != null &&
-      survey.min_y != null &&
-      survey.max_y != null
-    ) {
-      try {
-        const { centerLng, centerLat } = calculateCentersUsingMinMaxXY(
-          survey.min_x,
-          survey.max_x,
-          survey.min_y,
-          survey.max_y
-        );
-
-        // Validate the result is not NaN
-        if (
-          !isNaN(centerLng) &&
-          !isNaN(centerLat) &&
-          isFinite(centerLng) &&
-          isFinite(centerLat)
-        ) {
-          return { lng: centerLng, lat: centerLat, zoom: 17 };
-        } else {
-          console.warn("Calculated center resulted in NaN or Infinity:", {
-            centerLng,
-            centerLat,
-          });
-        }
-      } catch (error) {
-        console.error("Error calculating center from min/max:", error);
-      }
-    }
-
-    // Try to use geojson_boundaries if available
-    if (
-      survey.geojson_boundaries &&
-      Array.isArray(survey.geojson_boundaries) &&
-      survey.geojson_boundaries.length > 0
-    ) {
-      try {
-        const extremes = findExtremeCoordinates(survey.geojson_boundaries);
-        if (extremes) {
-          const centerLng = (extremes.minLng + extremes.maxLng) / 2;
-          const centerLat = (extremes.minLat + extremes.maxLat) / 2;
-
-          // Validate the result is not NaN
-          if (
-            !isNaN(centerLng) &&
-            !isNaN(centerLat) &&
-            isFinite(centerLng) &&
-            isFinite(centerLat)
-          ) {
-            return { lng: centerLng, lat: centerLat, zoom: 17 };
-          } else {
-            console.warn(
-              "Calculated center from boundaries resulted in NaN or Infinity:",
-              { centerLng, centerLat }
-            );
-          }
-        }
-      } catch (error) {
-        console.error("Error calculating center from boundaries:", error);
-      }
-    }
-
-    // Fallback to global center
-    console.warn("Using global fallback center - no valid coordinates found");
-    return { ...globalCenter, zoom: globalCenter.zoom || 12 };
-  }, [survey, globalCenter]);
-
-  // Calculate bounds with proper null checks and NaN validation
-  const mapBounds = useMemo(() => {
-    if (
-      !survey.geojson_boundaries ||
-      !Array.isArray(survey.geojson_boundaries) ||
-      survey.geojson_boundaries.length === 0
-    ) {
-      return null;
-    }
-
-    try {
-      const extremes = findExtremeCoordinates(survey.geojson_boundaries);
-      if (!extremes) return null;
-
-      // Validate bounds are not NaN or Infinity
-      const { minLng, minLat, maxLng, maxLat } = extremes;
-      if (
-        isNaN(minLng) ||
-        isNaN(minLat) ||
-        isNaN(maxLng) ||
-        isNaN(maxLat) ||
-        !isFinite(minLng) ||
-        !isFinite(minLat) ||
-        !isFinite(maxLng) ||
-        !isFinite(maxLat)
-      ) {
-        console.warn(
-          "Calculated bounds resulted in NaN or Infinity:",
-          extremes
-        );
-        return null;
-      }
-
-      return [
-        [minLng, minLat],
-        [maxLng, maxLat],
-      ];
-    } catch (error) {
-      console.error("Error calculating bounds:", error);
-      return null;
-    }
-  }, [survey.geojson_boundaries]);
-
-  const numBananas = useMemo(() => {
-    return safeDetectedObjects.filter((obj) => obj.label?.includes("Banana"))
-      .length;
-  }, [safeDetectedObjects]);
-
-  // Check if survey has valid map data (updated to check for NaN)
-  const hasValidCoordinates = useMemo(() => {
-    // Check min/max coordinates
-    if (
-      survey.min_x != null &&
-      survey.max_x != null &&
-      survey.min_y != null &&
-      survey.max_y != null
-    ) {
-      const hasValidMinMax =
-        !isNaN(survey.min_x) &&
-        !isNaN(survey.max_x) &&
-        !isNaN(survey.min_y) &&
-        !isNaN(survey.max_y) &&
-        isFinite(survey.min_x) &&
-        isFinite(survey.max_x) &&
-        isFinite(survey.min_y) &&
-        isFinite(survey.max_y);
-      if (hasValidMinMax) return true;
-    }
-
-    // Check geojson_boundaries
-    if (
-      survey.geojson_boundaries &&
-      Array.isArray(survey.geojson_boundaries) &&
-      survey.geojson_boundaries.length > 0
-    ) {
-      // Validate that at least one coordinate pair is valid
-      const hasValidBoundary = survey.geojson_boundaries.some((coord: any) => {
-        if (!Array.isArray(coord) || coord.length < 2) return false;
-        const [lng, lat] = coord;
-        return !isNaN(lng) && !isNaN(lat) && isFinite(lng) && isFinite(lat);
-      });
-      if (hasValidBoundary) return true;
-    }
-
-    return false;
-  }, [survey]);
-
-  // Check if ortho tiles are available
-  const hasOrthoTiles =
-    survey.ortho !== null && survey.code && survey.id && survey.flight_date;
-
-  // Show map if we have coordinates OR if we have ortho tiles (will use fallback center)
-  const shouldShowMap = hasValidCoordinates || hasOrthoTiles;
+  const mapCenter = useMapCenter(survey, globalCenter);
+  const mapBounds = useMapBounds(survey);
+  const { hasValidCoordinates, hasOrthoTiles, shouldShowMap } =
+    useValidationState(survey);
+  const has3DModel = survey.tags?.includes("rgb") && survey.code !== "DIFCO";
 
   return (
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
       <Tabs
-        defaultValue="ortho"
         value={activeTab}
         onValueChange={setActiveTab}
         className="flex flex-1 h-full w-full flex-col justify-start gap-6"
@@ -1055,6 +1359,7 @@ export default function SurveyMap({
           <Label htmlFor="view-selector" className="sr-only">
             View
           </Label>
+
           <Select value={activeTab} onValueChange={setActiveTab}>
             <SelectTrigger
               className="@4xl/main:hidden flex w-fit"
@@ -1064,16 +1369,13 @@ export default function SurveyMap({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ortho">Orthomosaic</SelectItem>
-              {survey.tags?.includes("rgb") && survey.code !== "DIFCO" && (
-                <SelectItem value="3d">3D Model</SelectItem>
-              )}
+              {has3DModel && <SelectItem value="3d">3D Model</SelectItem>}
             </SelectContent>
           </Select>
+
           <TabsList className="@4xl/main:flex hidden">
             <TabsTrigger value="ortho">Orthomosaic</TabsTrigger>
-            {survey.tags?.includes("rgb") && survey.code !== "DIFCO" && (
-              <TabsTrigger value="3d">3D Model</TabsTrigger>
-            )}
+            {has3DModel && <TabsTrigger value="3d">3D Model</TabsTrigger>}
           </TabsList>
         </div>
 
@@ -1082,129 +1384,26 @@ export default function SurveyMap({
             <div className="flex flex-1 h-full">
               <Card className="container/card flex flex-1 flex-col h-full relative">
                 <CardHeader>
-                  <CardTitle>{survey.id}</CardTitle>
-                  <CardDescription>
-                    {`${survey.code || "N/A"} | ${
-                      survey.area_code || "N/A"
-                    } | ${
-                      survey.flight_date
-                        ? format(new Date(survey.flight_date), "dd MMMM yyyy")
-                        : "N/A"
-                    } | ${survey.location || "N/A"}`}
-                  </CardDescription>
+                  <SurveyInfo survey={survey} />
                 </CardHeader>
                 <CardContent className="flex-1 relative">
                   {!shouldShowMap ? (
-                    <div className="flex h-96 lg:h-full items-center justify-center bg-muted/10 rounded-lg border-2 border-dashed">
-                      <div className="text-center p-8">
-                        <p className="font-semibold text-lg mb-2">
-                          No Map Data Available
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          This survey does not have coordinate data or
-                          orthomosaic tiles to display.
-                        </p>
-                      </div>
-                    </div>
+                    <NoMapDataFallback />
                   ) : (
                     <div className="flex h-96 lg:h-full">
-                      {activeTab !== "3d" ? (
-                        <Map
-                          id="survey-map"
-                          initialViewState={{
-                            longitude: mapCenter.lng,
-                            latitude: mapCenter.lat,
-                            zoom: mapBounds ? undefined : mapCenter.zoom,
-                            bounds: mapBounds || undefined,
-                            fitBoundsOptions: { padding: 50 },
-                          }}
-                          minZoom={13}
-                          maxZoom={23}
-                          mapStyle={{
-                            version: 8,
-                            sources: {
-                              osm: {
-                                type: "raster",
-                                tiles: [
-                                  "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
-                                ],
-                                tileSize: 256,
-                                attribution:
-                                  "&copy; OpenStreetMap Contributors",
-                              },
-                            },
-                            layers: [
-                              {
-                                id: "osm",
-                                type: "raster",
-                                source: "osm",
-                              },
-                            ],
-                          }}
-                          doubleClickZoom={false}
-                        >
-                          <InitializeMapImages />
-                          <SurveyMapEvents
-                            survey={survey}
-                            detectedObjects={safeDetectedObjects}
-                          />
-                          {activeTab === "ortho" && hasOrthoTiles && (
-                            <>
-                              <Source
-                                id="ortho"
-                                type="raster"
-                                tiles={[
-                                  `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
-                                    new Date(survey.flight_date)
-                                  )}/${
-                                    survey.id
-                                  }/${activeTab}/sharp-corners/{z}/{x}/{y}.png`,
-                                ]}
-                                tileSize={256}
-                                scheme="tms"
-                                minzoom={15}
-                                maxzoom={24}
-                              >
-                                <Layer
-                                  id="ortho"
-                                  type="raster"
-                                  source="ortho"
-                                  minzoom={15}
-                                  maxzoom={24}
-                                  paint={{
-                                    "raster-opacity": 1,
-                                  }}
-                                />
-                              </Source>
-                              {safeDetectedObjects.length > 0 && (
-                                <FeaturesOfInterest
-                                  detectedObjects={safeDetectedObjects}
-                                  survey={survey}
-                                />
-                              )}
-                              <ObjectPopup />
-                            </>
-                          )}
-
-                          {/* Show warning overlay when using fallback center */}
-                          {!hasValidCoordinates && hasOrthoTiles && (
-                            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
-                              <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-2 rounded-lg shadow-lg text-sm">
-                                <span className="font-semibold">
-                                  ⚠️ Approximate Location:
-                                </span>{" "}
-                                Survey coordinates unavailable, showing regional
-                                map
-                              </div>
-                            </div>
-                          )}
-
-                          <MapLegend />
-                        </Map>
-                      ) : (
+                      {activeTab === "3d" ? (
                         <div className="flex h-full w-full min-w-0 bg-primary">
                           <ThreeDimensionalModelCaller survey={survey} />
                         </div>
+                      ) : (
+                        <MapView
+                          survey={survey}
+                          mapCenter={mapCenter}
+                          mapBounds={mapBounds}
+                          detectedObjects={safeDetectedObjects}
+                          hasValidCoordinates={hasValidCoordinates}
+                          hasOrthoTiles={hasOrthoTiles}
+                        />
                       )}
                     </div>
                   )}
@@ -1213,109 +1412,14 @@ export default function SurveyMap({
             </div>
 
             <TabsContent value="ortho">
-              <Card className="container/card flex flex-1 flex-col lg:h-full">
-                <CardHeader>
-                  <CardTitle>Orthomosaic</CardTitle>
-                  <CardDescription>{survey.id}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col gap-4">
-                    <div>
-                      An orthomosaic is a high-resolution, georeferenced image
-                      created by stitching together multiple overlapping aerial
-                      photographs.
-                    </div>
-                    <div>
-                      Orthomosaics provide detailed top-down view of an area,
-                      free from distortions and perspective errors.
-                    </div>
-
-                    {survey.ortho === null ? (
-                      <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
-                        <p className="text-sm text-muted-foreground text-center">
-                          Orthomosaic data is not available for this survey.
-                        </p>
-                      </div>
-                    ) : (
-                      <Table className="w-full table-auto text-left">
-                        <TableBody>
-                          <TableRow>
-                            <TableCell>Area</TableCell>
-                            <TableCell>
-                              {survey.area?.toFixed(2) || "N/A"} ha
-                            </TableCell>
-                          </TableRow>
-                          {survey.ortho?.num_images && (
-                            <TableRow>
-                              <TableCell>No. of Images</TableCell>
-                              <TableCell>{survey.ortho.num_images}</TableCell>
-                            </TableRow>
-                          )}
-                          <TableRow>
-                            <TableCell>Crop Inventory</TableCell>
-                            <TableCell>{numBananas.toLocaleString()}</TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    )}
-                  </div>
-                </CardContent>
-                {safeDetectedObjects.length > 0 && (
-                  <>
-                    <CardHeader>
-                      <CardTitle>Plant Disease Detection</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-col gap-4">
-                        <div>
-                          Banana plant diseases pose significant threats to the
-                          country&apos;s banana industry and severely affects
-                          production.
-                        </div>
-                        <div>
-                          Timely detection allows for prompt intervention,
-                          minimizing damage and ensuring healthier crops.
-                        </div>
-                        <FoiSelector detectedObjects={safeDetectedObjects} />
-                      </div>
-                    </CardContent>
-                  </>
-                )}
-              </Card>
+              <OrthoTabContent
+                survey={survey}
+                detectedObjects={safeDetectedObjects}
+              />
             </TabsContent>
 
             <TabsContent value="3d">
-              <Card className="container/card flex flex-1 flex-col gap-4 lg:h-full">
-                <CardHeader>
-                  <CardTitle>3D Model</CardTitle>
-                  <CardDescription>{survey.id}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col gap-4">
-                    <div>
-                      A 3D model is a digital representation of an object or
-                      scene in three dimensions. It captures the shape,
-                      dimensions, and sometimes even the surface properties
-                      (i.e., color, texture, etc.) of a real world space and/or
-                      object.
-                    </div>
-                    {survey.code && (
-                      <ThreeDimensionalModelSelector code={survey.code} />
-                    )}
-                  </div>
-                </CardContent>
-                {survey.point_cloud === null ? (
-                  <CardContent>
-                    <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
-                      <p className="text-sm text-muted-foreground text-center">
-                        3D point cloud data is not available for this survey.
-                      </p>
-                    </div>
-                  </CardContent>
-                ) : survey.point_cloud ? (
-                  <ThreeDimensionalModelCard pcd={survey.point_cloud} />
-                ) : null}
-              </Card>
+              <ThreeDTabContent survey={survey} />
             </TabsContent>
           </div>
         </div>
