@@ -61,23 +61,69 @@ const PIN_ANIMATION_STYLES = `
 `;
 
 const PIN_IMAGES = {
-  yellow: `<svg width="32" height="48" viewBox="0 0 32 48" xmlns="http://www.w3.org/2000/svg">
+  yellow: `<svg width="40" height="56" viewBox="0 0 40 56" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-        <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+      <filter id="shadow-yellow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
+        <feOffset dx="0" dy="4" result="offsetblur"/>
+        <feFlood flood-color="#000000" flood-opacity="0.6"/>
+        <feComposite in2="offsetblur" operator="in"/>
+        <feMerge>
+          <feMergeNode/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
       </filter>
     </defs>
-    <path d="M16 2C8.27 2 2 8.27 2 16c0 8 14 28 14 28s14-20 14-28c0-7.73-6.27-14-14-14z" fill="#fbc02d" stroke="#fff" stroke-width="2" filter="url(#shadow)"/>
-    <circle cx="16" cy="16" r="5" fill="#fff"/>
+    <!-- Black outline shadow -->
+    <path d="M20 4C11.72 4 6 11.16 6 18c0 9.5 14 32 14 32s14-22.5 14-32c0-6.84-5.72-14-14-14z" 
+          fill="#000" 
+          opacity="0.4"/>
+    <!-- Thick black border for visibility -->
+    <path d="M20 3C11.72 3 5 9.72 5 18c0 9.5 15 33 15 33s15-23.5 15-33c0-8.28-6.72-15-15-15z" 
+          fill="#fbbf24" 
+          stroke="#000" 
+          stroke-width="4"
+          filter="url(#shadow-yellow)"/>
+    <!-- White inner border -->
+    <path d="M20 3C11.72 3 5 9.72 5 18c0 9.5 15 33 15 33s15-23.5 15-33c0-8.28-6.72-15-15-15z" 
+          fill="none" 
+          stroke="#fff" 
+          stroke-width="2.5"/>
+    <!-- Center dot - larger and high contrast -->
+    <circle cx="20" cy="18" r="6" fill="#fff" stroke="#000" stroke-width="2"/>
+    <circle cx="20" cy="18" r="3.5" fill="#fbbf24"/>
   </svg>`,
-  red: `<svg width="32" height="48" viewBox="0 0 32 48" xmlns="http://www.w3.org/2000/svg">
+  red: `<svg width="40" height="56" viewBox="0 0 40 56" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-        <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+      <filter id="shadow-red" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
+        <feOffset dx="0" dy="4" result="offsetblur"/>
+        <feFlood flood-color="#000000" flood-opacity="0.6"/>
+        <feComposite in2="offsetblur" operator="in"/>
+        <feMerge>
+          <feMergeNode/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
       </filter>
     </defs>
-    <path d="M16 2C8.27 2 2 8.27 2 16c0 8 14 28 14 28s14-20 14-28c0-7.73-6.27-14-14-14z" fill="#ff0000" stroke="#fff" stroke-width="2" filter="url(#shadow)"/>
-    <circle cx="16" cy="16" r="5" fill="#fff"/>
+    <!-- Black outline shadow -->
+    <path d="M20 4C11.72 4 6 11.16 6 18c0 9.5 14 32 14 32s14-22.5 14-32c0-6.84-5.72-14-14-14z" 
+          fill="#000" 
+          opacity="0.4"/>
+    <!-- Thick black border for visibility -->
+    <path d="M20 3C11.72 3 5 9.72 5 18c0 9.5 15 33 15 33s15-23.5 15-33c0-8.28-6.72-15-15-15z" 
+          fill="#dc2626" 
+          stroke="#000" 
+          stroke-width="4"
+          filter="url(#shadow-red)"/>
+    <!-- White inner border -->
+    <path d="M20 3C11.72 3 5 9.72 5 18c0 9.5 15 33 15 33s15-23.5 15-33c0-8.28-6.72-15-15-15z" 
+          fill="none" 
+          stroke="#fff" 
+          stroke-width="2.5"/>
+    <!-- Center dot - larger and high contrast -->
+    <circle cx="20" cy="18" r="6" fill="#fff" stroke="#000" stroke-width="2"/>
+    <circle cx="20" cy="18" r="3.5" fill="#dc2626"/>
   </svg>`,
 };
 
@@ -324,25 +370,25 @@ function MapLegend({ selectedFoi }) {
 
           <div className="flex flex-col gap-4">
             <div className="flex items-start gap-3 group">
-              <div className="w-8 h-8 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full border-2 border-white shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5" />
+              <div className="w-8 h-8 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full border-2 border-black shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5" />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-900">
                   Healthy Plants
                 </div>
                 <div className="text-xs text-gray-500 mt-0.5">
-                  No signs of disease detected
+                  Yellow pins • No signs of disease
                 </div>
               </div>
             </div>
 
             <div className="flex items-start gap-3 group">
-              <div className="w-8 h-8 bg-gradient-to-br from-red-400 to-red-600 rounded-full border-2 border-white shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5" />
+              <div className="w-8 h-8 bg-gradient-to-br from-red-400 to-red-600 rounded-full border-2 border-black shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5" />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-900">
                   Infected Plants
                 </div>
                 <div className="text-xs text-gray-500 mt-0.5">
-                  Disease or pest detected
+                  Red pins • Disease or pest detected
                 </div>
               </div>
             </div>
@@ -803,19 +849,19 @@ function FeaturesOfInterest({
       ["linear"],
       ["zoom"],
       13,
-      0.1,
+      0.15,
       14,
-      0.2,
+      0.25,
       15,
-      0.2,
+      0.3,
       16,
-      0.3,
-      17,
-      0.3,
-      18,
       0.4,
-      20,
+      17,
+      0.45,
+      18,
       0.5,
+      20,
+      0.6,
     ],
     "icon-allow-overlap": true,
   });
