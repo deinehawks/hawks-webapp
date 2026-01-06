@@ -204,6 +204,21 @@ function calculateCentroid(coordinates: number[][]) {
   return [sumX / points.length, sumY / points.length];
 }
 
+function tileToBounds(
+  x: number,
+  y: number,
+  z: number
+): [number, number, number, number] {
+  const n = Math.pow(2, z);
+  const lonMin = (x / n) * 360 - 180;
+  const lonMax = ((x + 1) / n) * 360 - 180;
+  const latMin =
+    (Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 1)) / n))) * 180) / Math.PI;
+  const latMax =
+    (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / n))) * 180) / Math.PI;
+  return [lonMin, latMin, lonMax, latMax];
+}
+
 // Hooks
 const useMapCenter = (survey: any, fallbackCenter: typeof DEFAULT_CENTER) => {
   return useMemo(() => {
@@ -1169,10 +1184,6 @@ function SurveyBoundaryEvents({ survey }: { survey: any }) {
   return null;
 }
 
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
-
 function MapView({
   survey,
   mapCenter,
@@ -1183,115 +1194,118 @@ function MapView({
 }: any) {
   const { current: map } = useMap();
   const [hasZoomed, setHasZoomed] = useState(false);
+  const attemptsRef = useRef(0);
+  const maxAttempts = 20;
 
   useEffect(() => {
     if (!map || !hasOrthoTiles || hasValidCoordinates || hasZoomed) return;
 
-    const attemptZoomToTiles = () => {
-      // Wait for the map to be idle (tiles loaded)
-      map.once("idle", () => {
-        const canvas = map.getCanvas();
-        const gl = canvas.getContext("webgl") || canvas.getContext("webgl2");
+    attemptsRef.current = 0;
 
-        if (!gl) {
-          console.warn("WebGL context not available");
-          return;
+    const checkAndZoomToTiles = () => {
+      attemptsRef.current++;
+
+      // Access the tile cache
+      const sourceCaches = (map.style as any)?._sourceCaches;
+      const orthoCache = sourceCaches?.ortho;
+
+      if (!orthoCache) {
+        if (attemptsRef.current < maxAttempts) {
+          setTimeout(checkAndZoomToTiles, 300);
         }
+        return;
+      }
 
-        // Get the source and check if tiles are loaded
-        const source = map.getSource("ortho") as any;
-        if (!source) {
-          console.warn("Ortho source not found");
-          return;
-        }
-
-        // Access the tile cache
-        const sourceCaches = (map.style as any)?._sourceCaches;
-        const orthoCache = sourceCaches?.ortho;
-
-        if (!orthoCache) {
-          console.warn("Ortho cache not found");
-          return;
-        }
-
-        const tiles = orthoCache._tiles || {};
-        const tileKeys = Object.keys(tiles).filter((key) => {
-          const tile = tiles[key];
-          return tile?.state === "loaded" && tile?.tileID?.canonical;
-        });
-
-        if (tileKeys.length === 0) {
-          console.warn("No loaded tiles found yet");
-          return;
-        }
-
-        // Calculate bounds from all loaded tiles
-        let minLng = Infinity,
-          maxLng = -Infinity;
-        let minLat = Infinity,
-          maxLat = -Infinity;
-
-        tileKeys.forEach((key) => {
-          const tile = tiles[key];
-          const { x, y, z } = tile.tileID.canonical;
-          const bounds = tileToBounds(x, y, z);
-
-          minLng = Math.min(minLng, bounds[0]);
-          minLat = Math.min(minLat, bounds[1]);
-          maxLng = Math.max(maxLng, bounds[2]);
-          maxLat = Math.max(maxLat, bounds[3]);
-        });
-
-        // Validate bounds
-        if (
-          !isFinite(minLng) ||
-          !isFinite(maxLng) ||
-          !isFinite(minLat) ||
-          !isFinite(maxLat)
-        ) {
-          console.warn("Invalid bounds calculated");
-          return;
-        }
-
-        // Add padding (10% buffer)
-        const lngBuffer = (maxLng - minLng) * 0.1;
-        const latBuffer = (maxLat - minLat) * 0.1;
-
-        console.log("Fitting to bounds:", {
-          minLng: minLng - lngBuffer,
-          minLat: minLat - latBuffer,
-          maxLng: maxLng + lngBuffer,
-          maxLat: maxLat + latBuffer,
-        });
-
-        // Fit the map to the calculated bounds
-        map.fitBounds(
-          [
-            [minLng - lngBuffer, minLat - latBuffer],
-            [maxLng + lngBuffer, maxLat + latBuffer],
-          ],
-          {
-            padding: { top: 50, bottom: 50, left: 50, right: 50 },
-            duration: 1500,
-            maxZoom: 19,
-          }
-        );
-
-        setHasZoomed(true);
+      const tiles = orthoCache._tiles || {};
+      const loadedTileKeys = Object.keys(tiles).filter((key) => {
+        const tile = tiles[key];
+        return tile?.state === "loaded" && tile?.tileID?.canonical;
       });
+
+      if (loadedTileKeys.length === 0) {
+        if (attemptsRef.current < maxAttempts) {
+          setTimeout(checkAndZoomToTiles, 300);
+        }
+        return;
+      }
+
+      // Calculate bounds from all loaded tiles
+      let minLng = Infinity,
+        maxLng = -Infinity;
+      let minLat = Infinity,
+        maxLat = -Infinity;
+
+      loadedTileKeys.forEach((key) => {
+        const tile = tiles[key];
+        const { x, y, z } = tile.tileID.canonical;
+        const bounds = tileToBounds(x, y, z);
+
+        minLng = Math.min(minLng, bounds[0]);
+        minLat = Math.min(minLat, bounds[1]);
+        maxLng = Math.max(maxLng, bounds[2]);
+        maxLat = Math.max(maxLat, bounds[3]);
+      });
+
+      // Validate bounds
+      if (
+        !isFinite(minLng) ||
+        !isFinite(maxLng) ||
+        !isFinite(minLat) ||
+        !isFinite(maxLat)
+      ) {
+        if (attemptsRef.current < maxAttempts) {
+          setTimeout(checkAndZoomToTiles, 300);
+        }
+        return;
+      }
+
+      // Add padding (10% buffer)
+      const lngBuffer = (maxLng - minLng) * 0.1;
+      const latBuffer = (maxLat - minLat) * 0.1;
+
+      console.log("Auto-zooming to raster tiles:", {
+        bounds: [
+          [minLng - lngBuffer, minLat - latBuffer],
+          [maxLng + lngBuffer, maxLat + latBuffer],
+        ],
+        tilesFound: loadedTileKeys.length,
+      });
+
+      // Fit the map to the calculated bounds
+      map.fitBounds(
+        [
+          [minLng - lngBuffer, minLat - latBuffer],
+          [maxLng + lngBuffer, maxLat + latBuffer],
+        ],
+        {
+          padding: { top: 50, bottom: 50, left: 50, right: 50 },
+          duration: 1500,
+          maxZoom: 19,
+        }
+      );
+
+      setHasZoomed(true);
     };
 
-    // Start the zoom attempt
+    // Wait for map to be ready, then start checking
     if (map.loaded() && map.isStyleLoaded()) {
-      attemptZoomToTiles();
+      // Give tiles a moment to start loading
+      setTimeout(checkAndZoomToTiles, 1000);
     } else {
-      map.once("load", attemptZoomToTiles);
+      map.once("load", () => {
+        setTimeout(checkAndZoomToTiles, 1000);
+      });
     }
+
+    return () => {
+      attemptsRef.current = maxAttempts; // Stop any pending attempts
+    };
   }, [map, hasOrthoTiles, hasValidCoordinates, survey.id, hasZoomed]);
 
   // Reset hasZoomed when survey changes
   useEffect(() => {
     setHasZoomed(false);
+    attemptsRef.current = 0;
   }, [survey.id]);
 
   return (
@@ -1300,13 +1314,14 @@ function MapView({
       initialViewState={{
         longitude: mapCenter.lng,
         latitude: mapCenter.lat,
-        zoom: mapBounds
-          ? undefined
-          : hasValidCoordinates
-          ? mapCenter.zoom
-          : MAP_CONFIG.orthoMinZoom,
-        bounds: mapBounds || undefined,
-        fitBoundsOptions: { padding: 50 },
+        zoom: hasValidCoordinates
+          ? mapBounds
+            ? undefined
+            : mapCenter.zoom
+          : MAP_CONFIG.orthoMinZoom, // Start at ortho min zoom when no coordinates
+        bounds: hasValidCoordinates && mapBounds ? mapBounds : undefined,
+        fitBoundsOptions:
+          hasValidCoordinates && mapBounds ? { padding: 50 } : undefined,
       }}
       minZoom={MAP_CONFIG.minZoom}
       maxZoom={MAP_CONFIG.maxZoom}
@@ -1373,22 +1388,6 @@ function MapView({
       <MapLegend />
     </Map>
   );
-}
-
-// Utility function to convert tile coordinates to geographic bounds
-function tileToBounds(
-  x: number,
-  y: number,
-  z: number
-): [number, number, number, number] {
-  const n = Math.pow(2, z);
-  const lonMin = (x / n) * 360 - 180;
-  const lonMax = ((x + 1) / n) * 360 - 180;
-  const latMin =
-    (Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 1)) / n))) * 180) / Math.PI;
-  const latMax =
-    (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / n))) * 180) / Math.PI;
-  return [lonMin, latMin, lonMax, latMax];
 }
 
 function SurveyInfo({ survey }: { survey: any }) {
