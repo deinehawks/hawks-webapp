@@ -34,7 +34,7 @@ import {
 } from "@vis.gl/react-maplibre";
 import { format, getYear } from "date-fns";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { ThreeDimensionalModelCard } from "@/components/3d-model-card";
 import { ThreeDimensionalModelSelector } from "@/components/selectors/3d-model-selector";
 import { FoiSelector } from "@/components/selectors/foi-selector";
@@ -190,6 +190,19 @@ const generatePointsWithOffset = (
 
   return { type: "FeatureCollection", features };
 };
+
+function calculateCentroid(coordinates: number[][]) {
+  let sumX = 0;
+  let sumY = 0;
+  const points = coordinates;
+
+  for (let i = 0; i < points.length; i++) {
+    sumX += points[i][0];
+    sumY += points[i][1];
+  }
+
+  return [sumX / points.length, sumY / points.length];
+}
 
 // Hooks
 const useMapCenter = (survey: any, fallbackCenter: typeof DEFAULT_CENTER) => {
@@ -941,6 +954,225 @@ function RegionalViewOverlay() {
   );
 }
 
+function SurveyBoundaries({ survey }: { survey: any }) {
+  if (!survey.geojson_boundaries || !Array.isArray(survey.geojson_boundaries)) {
+    return null;
+  }
+
+  // Create polygon feature
+  const coordinates = [
+    survey.geojson_boundaries.map((pair: string[]) => [
+      parseFloat(pair[0]),
+      parseFloat(pair[1]),
+    ]),
+  ];
+
+  const polygonFeature = {
+    type: "Feature",
+    properties: {
+      survey_id: survey.id,
+    },
+    geometry: {
+      type: "Polygon",
+      coordinates: coordinates,
+    },
+  };
+
+  // Create label feature at centroid
+  const centroid = calculateCentroid(coordinates[0]);
+  const labelFeature = {
+    type: "Feature",
+    properties: {
+      survey_id: survey.id,
+      label: `${survey.access_code}-${survey.area_code}`,
+    },
+    geometry: {
+      type: "Point",
+      coordinates: centroid,
+    },
+  };
+
+  return (
+    <>
+      {/* Polygon boundaries */}
+      <Source
+        id="survey-boundary"
+        type="geojson"
+        data={{
+          type: "FeatureCollection",
+          features: [polygonFeature],
+        }}
+        generateId={true}
+      >
+        {/* Fill layer */}
+        <Layer
+          id="boundary-fill"
+          type="fill"
+          paint={{
+            "fill-color": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              "#0ea5e9",
+              "#06b6d4",
+            ],
+            "fill-opacity": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              0.7,
+              0.4,
+            ],
+          }}
+        />
+
+        {/* Border layer */}
+        <Layer
+          id="boundary-border"
+          type="line"
+          paint={{
+            "line-color": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              "#0284c7",
+              "#0891b2",
+            ],
+            "line-width": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              3,
+              1.5,
+            ],
+            "line-blur": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              0.5,
+              0,
+            ],
+          }}
+        />
+
+        {/* Glow layer */}
+        <Layer
+          id="boundary-glow"
+          type="line"
+          paint={{
+            "line-color": "#0ea5e9",
+            "line-width": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              6,
+              0,
+            ],
+            "line-blur": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              4,
+              0,
+            ],
+            "line-opacity": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              0.6,
+              0,
+            ],
+          }}
+        />
+      </Source>
+
+      {/* Label */}
+      <Source
+        id="survey-boundary-label"
+        type="geojson"
+        data={{
+          type: "FeatureCollection",
+          features: [labelFeature],
+        }}
+      >
+        <Layer
+          id="boundary-label"
+          type="symbol"
+          layout={{
+            "text-field": ["get", "label"],
+            "text-size": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              12,
+              10,
+              16,
+              14,
+              20,
+              18,
+            ],
+            "text-anchor": "center",
+          }}
+          paint={{
+            "text-color": "#ffffff",
+            "text-halo-color": "#0891b2",
+            "text-halo-width": 2,
+            "text-halo-blur": 1,
+          }}
+        />
+      </Source>
+    </>
+  );
+}
+
+function SurveyBoundaryEvents({ survey }: { survey: any }) {
+  const { current: map } = useMap();
+  const hoveredFeatureIdRef = useRef<number | null>(null);
+
+  const handleMouseMove = useCallback(
+    (e: any) => {
+      if (!map || !e.features?.length) return;
+
+      map.getCanvas().style.cursor = "pointer";
+
+      if (hoveredFeatureIdRef.current !== null) {
+        map.setFeatureState(
+          { source: "survey-boundary", id: hoveredFeatureIdRef.current },
+          { hover: false }
+        );
+      }
+      hoveredFeatureIdRef.current = e.features[0].id;
+      map.setFeatureState(
+        { source: "survey-boundary", id: hoveredFeatureIdRef.current },
+        { hover: true }
+      );
+    },
+    [map]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    if (!map) return;
+    map.getCanvas().style.cursor = "";
+    if (hoveredFeatureIdRef.current !== null) {
+      map.setFeatureState(
+        { source: "survey-boundary", id: hoveredFeatureIdRef.current },
+        { hover: false }
+      );
+      hoveredFeatureIdRef.current = null;
+    }
+  }, [map]);
+
+  useEffect(() => {
+    if (!map) return;
+
+    map.on("mousemove", "boundary-fill", handleMouseMove);
+    map.on("mouseleave", "boundary-fill", handleMouseLeave);
+
+    return () => {
+      map.off("mousemove", "boundary-fill", handleMouseMove);
+      map.off("mouseleave", "boundary-fill", handleMouseLeave);
+    };
+  }, [map, handleMouseMove, handleMouseLeave]);
+
+  return null;
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
 function MapView({
   survey,
   mapCenter,
@@ -1080,6 +1312,7 @@ function MapView({
       maxZoom={MAP_CONFIG.maxZoom}
       mapStyle={{
         version: 8,
+        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
         sources: {
           osm: {
             type: "raster",
@@ -1095,6 +1328,13 @@ function MapView({
       <InitializeMapImages />
       <SurveyMapEvents survey={survey} detectedObjects={detectedObjects} />
 
+      {/* Show boundaries ONLY when there's NO orthomosaic data */}
+      {!hasOrthoTiles && hasValidCoordinates && (
+        <>
+          <SurveyBoundaries survey={survey} />
+          <SurveyBoundaryEvents survey={survey} />
+        </>
+      )}
       {hasOrthoTiles && (
         <>
           <Source

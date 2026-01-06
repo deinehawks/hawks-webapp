@@ -6,6 +6,13 @@ export type OrthoMapState = {
   currentLoadingSource: string;
   areAllSourcesLoaded: boolean;
   popupInfo: unknown;
+  hoveredPairId: string | null;
+  plantPopupInfo: {
+    pairId: string;
+    areaId: string;
+    centerLng: number;
+    centerLat: number;
+  } | null;
 };
 
 export type OrthoMapActions = {
@@ -14,6 +21,8 @@ export type OrthoMapActions = {
   setCurrentLoadingSource: (currentLoadingSource: string) => void;
   setAreAllSourcesLoaded: (areAllSourcesLoaded: boolean) => void;
   setPopupInfo: (popupInfo: unknown) => void;
+  setHoveredPairId: (hoveredPairId: string | null) => void;
+  setPlantPopupInfo: (plantPopupInfo: OrthoMapState["plantPopupInfo"]) => void;
 };
 
 export type OrthoMapStore = OrthoMapState & OrthoMapActions;
@@ -25,6 +34,8 @@ export const initOrthoMapStore = (): OrthoMapState => {
     currentLoadingSource: "",
     areAllSourcesLoaded: false,
     popupInfo: null,
+    hoveredPairId: null,
+    plantPopupInfo: null,
   };
 };
 
@@ -34,6 +45,8 @@ export const defaultInitState: OrthoMapState = {
   currentLoadingSource: "",
   areAllSourcesLoaded: false,
   popupInfo: null,
+  hoveredPairId: null,
+  plantPopupInfo: null,
 };
 
 export const createOrthoMapStore = (
@@ -48,5 +61,10 @@ export const createOrthoMapStore = (
     setAreAllSourcesLoaded: (areAllSourcesLoaded: boolean) =>
       set(() => ({ areAllSourcesLoaded })),
     setPopupInfo: (popupInfo: unknown) => set(() => ({ popupInfo })),
+    // Add new setters:
+    setHoveredPairId: (hoveredPairId: string | null) =>
+      set(() => ({ hoveredPairId })),
+    setPlantPopupInfo: (plantPopupInfo: OrthoMapState["plantPopupInfo"]) =>
+      set(() => ({ plantPopupInfo })),
   }));
 };

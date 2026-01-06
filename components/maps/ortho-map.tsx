@@ -124,13 +124,26 @@ function calculateCentroid(coordinates: number[][][]) {
   return [sum.x / points.length, sum.y / points.length];
 }
 
+function calculateCentersWithOffset(
+  min_lon: number,
+  max_lon: number,
+  min_lat: number,
+  max_lat: number
+) {
+  return {
+    centerLng: (min_lon + max_lon) / 2,
+    centerLat: (min_lat + max_lat) / 2,
+  };
+}
+
 // ============================================================================
 // MAP COMPONENTS
 // ============================================================================
 
-function MapEvents({ surveys, showBoundaries }) {
+function MapEvents({ surveys, showBoundaries, code, detectedObjects }) {
   const { orthomap } = useMap();
-  const { setPopupInfo } = useOrthoMapStore((state) => state);
+  const { setPopupInfo, setHoveredPairId, setPlantPopupInfo } =
+    useOrthoMapStore((state) => state);
 
   const handleMapClick = useCallback(
     (e: MapMouseEvent) => {
@@ -160,11 +173,96 @@ function MapEvents({ surveys, showBoundaries }) {
     [surveys, setPopupInfo, orthomap, showBoundaries]
   );
 
+  // Handle pin click to show lat/lon
+  const handlePinClick = useCallback(
+    (e: MapMouseEvent) => {
+      const objectPairId = e.features?.[0]?.properties?.pairId;
+      if (!objectPairId) return;
+
+      const clickedObject = detectedObjects.find(
+        (object) => object.pairId === objectPairId
+      );
+      if (!clickedObject) return;
+
+      const { pairId, areaPairId: areaId, bbox } = clickedObject;
+      const { centerLng, centerLat } = calculateCentersWithOffset(
+        bbox.min_lon,
+        bbox.max_lon,
+        bbox.min_lat,
+        bbox.max_lat
+      );
+
+      setPlantPopupInfo({ pairId, areaId, centerLng, centerLat });
+    },
+    [detectedObjects, setPlantPopupInfo]
+  );
+
+  // Handle pin hover
+  const handlePinHover = useCallback(
+    (e: MapMouseEvent) => {
+      const pairId = e.features?.[0]?.properties?.pairId;
+      setHoveredPairId(pairId || null);
+
+      if (pairId && orthomap) {
+        orthomap.getCanvas().style.cursor = "pointer";
+      }
+    },
+    [orthomap, setHoveredPairId]
+  );
+
+  const handlePinLeave = useCallback(() => {
+    setHoveredPairId(null);
+    if (orthomap) {
+      orthomap.getCanvas().style.cursor = "";
+    }
+  }, [orthomap, setHoveredPairId]);
+
   useEffect(() => {
-    if (!orthomap) return;
-    orthomap.on("click", "area-fills", handleMapClick);
-    return () => orthomap.off("click", "area-fills", handleMapClick);
-  }, [orthomap, handleMapClick]);
+    if (!orthomap || !code) return;
+
+    const LAYER_TYPES = {
+      CLICK_BOUNDARIES: ["area-fills"],
+      CLICK_PINS: [`${code}-unhealthy-pin`, `${code}-healthy-pin`],
+      HOVER_PINS: [`${code}-unhealthy-pin`, `${code}-healthy-pin`],
+    };
+
+    // Boundary clicks
+    LAYER_TYPES.CLICK_BOUNDARIES.forEach((layer) =>
+      orthomap.on("click", layer, handleMapClick)
+    );
+
+    // Pin clicks
+    LAYER_TYPES.CLICK_PINS.forEach((layer) =>
+      orthomap.on("click", layer, handlePinClick)
+    );
+
+    // Pin hover
+    LAYER_TYPES.HOVER_PINS.forEach((layer) => {
+      orthomap.on("mouseenter", layer, handlePinHover);
+      orthomap.on("mouseleave", layer, handlePinLeave);
+    });
+
+    // Cleanup
+    return () => {
+      LAYER_TYPES.CLICK_BOUNDARIES.forEach((layer) =>
+        orthomap.off("click", layer, handleMapClick)
+      );
+      LAYER_TYPES.CLICK_PINS.forEach((layer) =>
+        orthomap.off("click", layer, handlePinClick)
+      );
+      LAYER_TYPES.HOVER_PINS.forEach((layer) => {
+        orthomap.off("mouseenter", layer, handlePinHover);
+        orthomap.off("mouseleave", layer, handlePinLeave);
+      });
+    };
+  }, [
+    orthomap,
+    code,
+    handleMapClick,
+    handlePinClick,
+    handlePinHover,
+    handlePinLeave,
+  ]);
 
   return null;
 }
@@ -295,7 +393,7 @@ function MapLegend({ selectedFoi }) {
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <span>Zoom in to see individual plant markers</span>
+              <span>Hover or click plants to see detection area</span>
             </div>
           </div>
         </div>
@@ -448,6 +546,45 @@ function MapPopup() {
   );
 }
 
+function PlantPopup() {
+  const { plantPopupInfo, setPlantPopupInfo } = useOrthoMapStore(
+    (state) => state
+  );
+
+  if (!plantPopupInfo) return null;
+
+  const { pairId, areaId, centerLng, centerLat } = plantPopupInfo;
+
+  return (
+    <Popup
+      anchor="bottom"
+      longitude={centerLng}
+      latitude={centerLat}
+      onClose={() => setPlantPopupInfo(null)}
+      closeOnClick={false}
+    >
+      <div className="flex flex-col w-fit gap-1">
+        <div className="font-semibold">Plant Information</div>
+        <Separator />
+        <div className="flex flex-col">
+          <div className="grid grid-cols-2 gap-2">
+            <span>Longitude:</span>
+            <span className="text-muted-foreground">
+              {centerLng.toFixed(6)}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <span>Latitude:</span>
+            <span className="text-muted-foreground">
+              {centerLat.toFixed(6)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </Popup>
+  );
+}
+
 function SourceLoadingStatus({ idList }: { idList: string[] }) {
   const { areAllSourcesLoaded, setAreAllSourcesLoaded } = useOrthoMapStore(
     (state) => state
@@ -546,7 +683,9 @@ function FeaturesOfInterest({
   code: string;
   detectedObjects: ComputerVisionObject[];
 }) {
-  const { selectedFoi } = useOrthoMapStore((state) => state);
+  const { selectedFoi, hoveredPairId, plantPopupInfo } = useOrthoMapStore(
+    (state) => state
+  );
 
   const { healthyBananas, unhealthyBananas } = useMemo(() => {
     if (!detectedObjects || !Array.isArray(detectedObjects))
@@ -564,6 +703,47 @@ function FeaturesOfInterest({
       ),
     };
   }, [detectedObjects]);
+
+  // Calculate bbox for hovered or clicked plant
+  const selectedPlantBbox = useMemo(() => {
+    const selectedId = plantPopupInfo?.pairId || hoveredPairId;
+    if (!selectedId) return null;
+
+    const selectedObject = detectedObjects.find(
+      (obj) => obj.pairId === selectedId
+    );
+    if (!selectedObject) return null;
+
+    const { min_lon, max_lon, min_lat, max_lat } = selectedObject.bbox;
+
+    return {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: {
+            type: "Polygon",
+            coordinates: [
+              [
+                [min_lon, min_lat],
+                [max_lon, min_lat],
+                [max_lon, max_lat],
+                [min_lon, max_lat],
+                [min_lon, min_lat],
+              ],
+            ],
+          },
+          properties: {
+            pairId: selectedObject.pairId,
+            label: selectedObject.label,
+          },
+        },
+      ],
+    };
+  }, [detectedObjects, plantPopupInfo, hoveredPairId]);
+
+  const isHealthy =
+    selectedPlantBbox?.features[0]?.properties?.label?.includes("Healthy");
 
   const healthyZoomLevels = useMemo(() => {
     if (!healthyBananas) return DEFAULT_ZOOM_LEVELS;
@@ -642,6 +822,34 @@ function FeaturesOfInterest({
 
   return (
     <>
+      {/* Render bbox for hovered or clicked plant */}
+      {selectedPlantBbox && (
+        <Source
+          id={`${code}-selected-bbox`}
+          type="geojson"
+          data={selectedPlantBbox}
+        >
+          <Layer
+            id={`${code}-selected-bbox-fill`}
+            type="fill"
+            paint={{
+              "fill-color": isHealthy ? "#fbbf24" : "#ff0000",
+              "fill-opacity": 0.15,
+            }}
+          />
+          <Layer
+            id={`${code}-selected-bbox-outline`}
+            type="line"
+            paint={{
+              "line-color": isHealthy ? "#fbbf24" : "#ff0000",
+              "line-width": 2,
+              "line-opacity": 0.8,
+              "line-dasharray": [2, 2],
+            }}
+          />
+        </Source>
+      )}
+
       {(selectedFoi === "healthy" || selectedFoi === "all") && (
         <>
           <Source id={`${code}-healthy`} type="geojson" data={healthyBananas}>
@@ -1005,8 +1213,11 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                   <MapEvents
                     surveys={surveys}
                     showBoundaries={showBoundaries}
+                    code={surveys[0]?.code}
+                    detectedObjects={detectedObjects}
                   />
                   <MapPopup />
+                  <PlantPopup />
                 </Map>
                 <MapLegend selectedFoi={selectedFoi} />
               </div>
