@@ -38,6 +38,7 @@ import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { ThreeDimensionalModelCard } from "@/components/3d-model-card";
 import { ThreeDimensionalModelSelector } from "@/components/selectors/3d-model-selector";
 import { FoiSelector } from "@/components/selectors/foi-selector";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
 
 // Constants
@@ -461,69 +462,109 @@ function MapLegend() {
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <div className="absolute bottom-8 left-8 z-10">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="mb-2 p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-        title={isOpen ? "Hide legend" : "Show legend"}
+    <div className="absolute bottom-8 left-8 z-10 flex items-end gap-2">
+      <div
+        className={`bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden transition-all duration-300 ease-in-out ${
+          isOpen
+            ? "opacity-100 translate-x-0 w-80"
+            : "opacity-0 -translate-x-4 w-0 pointer-events-none"
+        }`}
       >
-        <svg
-          className={`w-5 h-5 text-gray-700 transition-transform ${
-            isOpen ? "rotate-0" : "rotate-180"
-          }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M13 5l7 7m0 0l-7 7m7-7H6"
-          />
-        </svg>
-      </button>
+        <div className="p-5">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="w-1 h-4 bg-blue-500 rounded-full" />
+            Map Legend
+          </h3>
 
-      {isOpen && (
-        <div className="bg-white rounded-lg shadow-lg p-4 max-w-xs border border-gray-200 animate-in fade-in slide-in-from-left-2 duration-200">
-          <div className="text-sm font-semibold text-gray-800 mb-3">Legend</div>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 bg-yellow-400 rounded-full border-2 border-white shadow-md"></div>
-              <div className="text-xs text-gray-700">
-                <div className="font-medium">Healthy Plants</div>
-                <div className="text-gray-500">No signs of disease</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-md"></div>
-              <div className="text-xs text-gray-700">
-                <div className="font-medium">Infected Plants</div>
-                <div className="text-gray-500">Disease detected</div>
-              </div>
-            </div>
-            <div className="pt-2 border-t border-gray-200">
-              <div className="text-xs font-medium text-gray-700 mb-2">
-                Heatmap (Zoomed Out)
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  <div className="w-3 h-3 bg-yellow-200"></div>
-                  <div className="w-3 h-3 bg-yellow-300"></div>
-                  <div className="w-3 h-3 bg-yellow-400"></div>
-                  <div className="w-3 h-3 bg-yellow-500"></div>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-start gap-3 group">
+              <div className="w-8 h-8 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full border-2 border-black shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900">
+                  Healthy Plants
                 </div>
-                <span className="text-gray-600 text-xs">
-                  Low → High Density
-                </span>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  Yellow pins • No signs of disease
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 group">
+              <div className="w-8 h-8 bg-gradient-to-br from-red-400 to-red-600 rounded-full border-2 border-black shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900">
+                  Infected Plants
+                </div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  Red pins • Disease or pest detected
+                </div>
+              </div>
+            </div>
+
+            <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+
+            <div className="flex flex-col gap-2">
+              <div className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
+                Heatmap View
+              </div>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-0.5 rounded overflow-hidden shadow-sm">
+                    {[
+                      "bg-yellow-200",
+                      "bg-yellow-300",
+                      "bg-yellow-400",
+                      "bg-yellow-500",
+                      "bg-yellow-600",
+                    ].map((color, i) => (
+                      <div key={i} className={`w-6 h-6 ${color}`} />
+                    ))}
+                  </div>
+                  <span className="text-xs text-gray-600 flex-1">
+                    Plant Density
+                  </span>
+                </div>
+                <div className="flex justify-between text-[10px] text-gray-400 px-0.5">
+                  <span>Low</span>
+                  <span>High</span>
+                </div>
               </div>
             </div>
           </div>
-          <div className="text-xs text-gray-500 mt-3 italic">
-            Hover or click plants to see detection area
+
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <svg
+                className="w-3.5 h-3.5 text-blue-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span>Hover or click plants to see detection area</span>
+            </div>
           </div>
         </div>
-      )}
+      </div>
+
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex-shrink-0 p-3 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 hover:shadow-xl hover:border-gray-300 transition-all duration-200 group"
+        title={isOpen ? "Hide legend" : "Show legend"}
+        aria-label={isOpen ? "Hide legend" : "Show legend"}
+      >
+        {isOpen ? (
+          <ChevronLeft className="w-5 h-5 text-gray-700 transition-transform duration-200 group-hover:-translate-x-0.5" />
+        ) : (
+          <ChevronRight className="w-5 h-5 text-gray-700 transition-transform duration-200 group-hover:translate-x-0.5" />
+        )}
+      </button>
     </div>
   );
 }
@@ -1414,7 +1455,7 @@ function MapView({
       )}
 
       {!hasValidCoordinates && hasOrthoTiles && <RegionalViewOverlay />}
-      <MapLegend />
+      {hasOrthoTiles && <MapLegend />}
     </Map>
   );
 }
