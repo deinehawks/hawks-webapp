@@ -91,8 +91,23 @@ const isValidCoordinate = (lng: number, lat: number): boolean => {
 };
 
 const hasValidMinMaxCoordinates = (survey: any): boolean => {
-  const { min_x, max_x, min_y, max_y } = survey;
-  return [min_x, max_x, min_y, max_y].every(isValidNumber);
+  // Check original database coordinates
+  const hasOriginalCoords = [
+    survey.min_x,
+    survey.max_x,
+    survey.min_y,
+    survey.max_y,
+  ].every(isValidNumber);
+
+  // Check tile bounds coordinates
+  const hasTileBounds = [
+    survey.tile_min_x,
+    survey.tile_max_x,
+    survey.tile_min_y,
+    survey.tile_max_y,
+  ].every(isValidNumber);
+
+  return hasOriginalCoords || hasTileBounds;
 };
 
 const hasValidBoundaries = (boundaries: any[]): boolean => {
@@ -257,6 +272,12 @@ const useMapCenter = (survey: any, fallbackCenter: typeof DEFAULT_CENTER) => {
       }
     }
 
+    // If we have ortho tiles but no coordinate data, use fallback with appropriate zoom
+    // The auto-zoom logic will adjust to tiles once they load
+    if (hasOrthoTilesAvailable(survey)) {
+      return { ...fallbackCenter, zoom: MAP_CONFIG.orthoMinZoom };
+    }
+
     return { ...fallbackCenter, zoom: fallbackCenter.zoom || 12 };
   }, [survey, fallbackCenter]);
 };
@@ -391,7 +412,7 @@ function SurveyMapEvents({
       clickLayers.forEach((layer) => map.off("click", layer, handleBboxClick));
       hoverLayers.forEach((layer) => {
         map.off("mouseenter", layer, handlePinHover);
-        map.off("mouseleave", layer, handlePinLeave);
+        map.off("mousele", layer, handlePinLeave);
       });
     };
   }, [map, survey, handleBboxClick, handlePinHover, handlePinLeave]);
@@ -1194,50 +1215,56 @@ function MapView({
 }: any) {
   const { current: map } = useMap();
   const [hasZoomed, setHasZoomed] = useState(false);
-  const attemptsRef = useRef(0);
-  const maxAttempts = 20;
+  const loadedTilesRef = useRef<Set<string>>(new Set());
+  const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Use MapLibre's tile events to detect when tiles are loaded
   useEffect(() => {
-    if (!map || !hasOrthoTiles || hasValidCoordinates || hasZoomed) return;
+    if (!map || !hasOrthoTiles || hasValidCoordinates || hasZoomed) {
+      return;
+    }
 
-    attemptsRef.current = 0;
+    const handleSourceData = (e: any) => {
+      // Only process ortho source tiles
+      if (e.sourceId !== "ortho") return;
+      if (!e.isSourceLoaded) return;
+      if (e.tile) {
+        // Track this tile
+        const tileKey = `${e.tile.tileID.canonical.z}/${e.tile.tileID.canonical.x}/${e.tile.tileID.canonical.y}`;
+        loadedTilesRef.current.add(tileKey);
 
-    const checkAndZoomToTiles = () => {
-      attemptsRef.current++;
-
-      // Access the tile cache
-      const sourceCaches = (map.style as any)?._sourceCaches;
-      const orthoCache = sourceCaches?.ortho;
-
-      if (!orthoCache) {
-        if (attemptsRef.current < maxAttempts) {
-          setTimeout(checkAndZoomToTiles, 300);
-        }
-        return;
+        console.log(
+          `Tile loaded: ${tileKey}, total tiles: ${loadedTilesRef.current.size}`
+        );
       }
 
-      const tiles = orthoCache._tiles || {};
-      const loadedTileKeys = Object.keys(tiles).filter((key) => {
-        const tile = tiles[key];
-        return tile?.state === "loaded" && tile?.tileID?.canonical;
-      });
-
-      if (loadedTileKeys.length === 0) {
-        if (attemptsRef.current < maxAttempts) {
-          setTimeout(checkAndZoomToTiles, 300);
-        }
-        return;
+      // Debounce: wait for tiles to stop loading
+      if (zoomTimeoutRef.current) {
+        clearTimeout(zoomTimeoutRef.current);
       }
 
-      // Calculate bounds from all loaded tiles
+      zoomTimeoutRef.current = setTimeout(() => {
+        if (loadedTilesRef.current.size > 0 && !hasZoomed) {
+          performAutoZoom();
+        }
+      }, 1000); // Wait 1 second after last tile loads
+    };
+
+    const performAutoZoom = () => {
+      if (hasZoomed || loadedTilesRef.current.size === 0) return;
+
+      console.log(
+        `Calculating bounds from ${loadedTilesRef.current.size} tiles`
+      );
+
       let minLng = Infinity,
         maxLng = -Infinity;
       let minLat = Infinity,
         maxLat = -Infinity;
 
-      loadedTileKeys.forEach((key) => {
-        const tile = tiles[key];
-        const { x, y, z } = tile.tileID.canonical;
+      // Parse tile coordinates and calculate bounds
+      loadedTilesRef.current.forEach((tileKey) => {
+        const [z, x, y] = tileKey.split("/").map(Number);
         const bounds = tileToBounds(x, y, z);
 
         minLng = Math.min(minLng, bounds[0]);
@@ -1253,9 +1280,7 @@ function MapView({
         !isFinite(minLat) ||
         !isFinite(maxLat)
       ) {
-        if (attemptsRef.current < maxAttempts) {
-          setTimeout(checkAndZoomToTiles, 300);
-        }
+        console.warn("Invalid bounds calculated from tiles");
         return;
       }
 
@@ -1268,44 +1293,48 @@ function MapView({
           [minLng - lngBuffer, minLat - latBuffer],
           [maxLng + lngBuffer, maxLat + latBuffer],
         ],
-        tilesFound: loadedTileKeys.length,
+        tilesFound: loadedTilesRef.current.size,
       });
 
       // Fit the map to the calculated bounds
-      map.fitBounds(
-        [
-          [minLng - lngBuffer, minLat - latBuffer],
-          [maxLng + lngBuffer, maxLat + latBuffer],
-        ],
-        {
-          padding: { top: 50, bottom: 50, left: 50, right: 50 },
-          duration: 1500,
-          maxZoom: 19,
-        }
-      );
-
-      setHasZoomed(true);
+      try {
+        map.fitBounds(
+          [
+            [minLng - lngBuffer, minLat - latBuffer],
+            [maxLng + lngBuffer, maxLat + latBuffer],
+          ],
+          {
+            padding: { top: 50, bottom: 50, left: 50, right: 50 },
+            duration: 1500,
+            maxZoom: 19,
+          }
+        );
+        setHasZoomed(true);
+      } catch (error) {
+        console.error("Error fitting bounds:", error);
+      }
     };
 
-    // Wait for map to be ready, then start checking
-    if (map.loaded() && map.isStyleLoaded()) {
-      // Give tiles a moment to start loading
-      setTimeout(checkAndZoomToTiles, 1000);
-    } else {
-      map.once("load", () => {
-        setTimeout(checkAndZoomToTiles, 1000);
-      });
-    }
+    // Listen for tile loading events
+    map.on("sourcedata", handleSourceData);
 
+    // Cleanup
     return () => {
-      attemptsRef.current = maxAttempts; // Stop any pending attempts
+      map.off("sourcedata", handleSourceData);
+      if (zoomTimeoutRef.current) {
+        clearTimeout(zoomTimeoutRef.current);
+      }
     };
-  }, [map, hasOrthoTiles, hasValidCoordinates, survey.id, hasZoomed]);
+  }, [map, hasOrthoTiles, hasValidCoordinates, hasZoomed, survey.id]);
 
-  // Reset hasZoomed when survey changes
+  // Reset state when survey changes
   useEffect(() => {
     setHasZoomed(false);
-    attemptsRef.current = 0;
+    loadedTilesRef.current.clear();
+    if (zoomTimeoutRef.current) {
+      clearTimeout(zoomTimeoutRef.current);
+      zoomTimeoutRef.current = null;
+    }
   }, [survey.id]);
 
   return (
@@ -1318,7 +1347,7 @@ function MapView({
           ? mapBounds
             ? undefined
             : mapCenter.zoom
-          : MAP_CONFIG.orthoMinZoom, // Start at ortho min zoom when no coordinates
+          : mapCenter.zoom, // Use the zoom from mapCenter (which is now orthoMinZoom for tiles-only case)
         bounds: hasValidCoordinates && mapBounds ? mapBounds : undefined,
         fitBoundsOptions:
           hasValidCoordinates && mapBounds ? { padding: 50 } : undefined,

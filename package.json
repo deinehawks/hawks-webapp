@@ -5,6 +5,8 @@
   "engines": {},
   "scripts": {
     "dev": "next dev --turbopack",
+    "update-tile-bounds": "node scripts/update-tile-bounds.js",
+    "update-tile-bounds:force": "node scripts/update-tile-bounds.js --force",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -27,7 +29,7 @@
     "@react-three/drei": "^10.0.6",
     "@react-three/fiber": "^9.1.2",
     "@supabase/ssr": "^0.6.1",
-    "@supabase/supabase-js": "^2.49.4",
+    "@supabase/supabase-js": "^2.89.0",
     "@tabler/icons-react": "^3.31.0",
     "@tanstack/react-query": "^5.74.0",
     "@tanstack/react-table": "^8.21.3",
@@ -36,6 +38,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
     "framer-motion": "^12.23.25",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.487.0",
@@ -51,6 +54,7 @@
     "three": "^0.175.0",
     "tw-animate-css": "^1.2.5",
     "vaul": "^1.1.2",
+    "xml2js": "^0.6.2",
     "zod": "^3.24.2",
     "zustand": "^5.0.3"
   },
