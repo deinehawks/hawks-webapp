@@ -99,7 +99,7 @@ export function calculateOptimalZoomLevels(
     heatmapMaxZoom = Math.min(heatmapMaxZoom, opts.maxHeatmapZoom);
   }
 
-  const pinMinZoom = Math.min(maxZoom, heatmapMaxZoom + 0.01);
+  const pinMinZoom = Math.min(maxZoom, heatmapMaxZoom - 0.4);
 
   return { heatmapMaxZoom, pinMinZoom };
 }
