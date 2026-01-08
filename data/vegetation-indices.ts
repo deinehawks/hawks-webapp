@@ -1,4 +1,13 @@
-export const vegetationIndices = [
+export interface VegetationIndex {
+  code: string;
+  name: string;
+  formula: string;
+  range: string;
+  description: string;
+  formula_description: string;
+}
+
+export const vegetationIndices: VegetationIndex[] = [
   {
     code: "NDVI",
     name: "Normalized Difference Vegetation Index",

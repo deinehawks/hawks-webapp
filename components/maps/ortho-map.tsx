@@ -3,7 +3,6 @@
 import {
   calculateGlobalCenters,
   findExtremeCoordinates,
-  getUniqueYears,
   transformCoordinatesToLonLatFormat,
 } from "@/lib/helpers";
 import {
@@ -15,7 +14,18 @@ import {
   Source,
   useMap,
 } from "@vis.gl/react-maplibre";
+import type { MapProps } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
+import type {
+  StyleSpecification,
+  GeoJSONSourceSpecification,
+} from "maplibre-gl";
+import type {
+  Feature,
+  FeatureCollection,
+  GeoJsonProperties,
+  Polygon,
+} from "geojson";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { Badge } from "@/components/ui/badge";
@@ -47,119 +57,51 @@ import { getYear } from "date-fns";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
+
+// constants
+import { PIN_ANIMATION_STYLES } from "@/lib/constants/map-animation";
+import { PIN_IMAGES } from "@/lib/constants/map-icons";
+import { MAP_COLORS } from "@/lib/constants/map-colors";
+import {
+  createHeatmapPaint,
+  createPinLayout,
+} from "@/lib/constants/map-layers";
+import { DEFAULT_ZOOM_LEVELS } from "@/lib/constants/map-zoom";
 
 // ============================================================================
-// CONSTANTS
+// LOCAL TYPES
 // ============================================================================
 
-const PIN_ANIMATION_STYLES = `
-  @keyframes dropPin {
-    0% { opacity: 0; transform: translateY(-30px); }
-    100% { opacity: 1; transform: translateY(0); }
-  }
-  .pin-drop { animation: dropPin 0.6s ease-out forwards; }
-`;
-
-const PIN_IMAGES = {
-  yellow: `<svg width="40" height="56" viewBox="0 0 40 56" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <filter id="shadow-yellow" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
-        <feOffset dx="0" dy="4" result="offsetblur"/>
-        <feFlood flood-color="#000000" flood-opacity="0.6"/>
-        <feComposite in2="offsetblur" operator="in"/>
-        <feMerge>
-          <feMergeNode/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-    </defs>
-    <!-- Black outline shadow -->
-    <path d="M20 4C11.72 4 6 11.16 6 18c0 9.5 14 32 14 32s14-22.5 14-32c0-6.84-5.72-14-14-14z" 
-          fill="#000" 
-          opacity="0.4"/>
-    <!-- Thick black border for visibility -->
-    <path d="M20 3C11.72 3 5 9.72 5 18c0 9.5 15 33 15 33s15-23.5 15-33c0-8.28-6.72-15-15-15z" 
-          fill="#fbbf24" 
-          stroke="#000" 
-          stroke-width="4"
-          filter="url(#shadow-yellow)"/>
-    <!-- White inner border -->
-    <path d="M20 3C11.72 3 5 9.72 5 18c0 9.5 15 33 15 33s15-23.5 15-33c0-8.28-6.72-15-15-15z" 
-          fill="none" 
-          stroke="#fff" 
-          stroke-width="2.5"/>
-    <!-- Center dot - larger and high contrast -->
-    <circle cx="20" cy="18" r="6" fill="#fff" stroke="#000" stroke-width="2"/>
-    <circle cx="20" cy="18" r="3.5" fill="#fbbf24"/>
-  </svg>`,
-  red: `<svg width="40" height="56" viewBox="0 0 40 56" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <filter id="shadow-red" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
-        <feOffset dx="0" dy="4" result="offsetblur"/>
-        <feFlood flood-color="#000000" flood-opacity="0.6"/>
-        <feComposite in2="offsetblur" operator="in"/>
-        <feMerge>
-          <feMergeNode/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-    </defs>
-    <!-- Black outline shadow -->
-    <path d="M20 4C11.72 4 6 11.16 6 18c0 9.5 14 32 14 32s14-22.5 14-32c0-6.84-5.72-14-14-14z" 
-          fill="#000" 
-          opacity="0.4"/>
-    <!-- Thick black border for visibility -->
-    <path d="M20 3C11.72 3 5 9.72 5 18c0 9.5 15 33 15 33s15-23.5 15-33c0-8.28-6.72-15-15-15z" 
-          fill="#dc2626" 
-          stroke="#000" 
-          stroke-width="4"
-          filter="url(#shadow-red)"/>
-    <!-- White inner border -->
-    <path d="M20 3C11.72 3 5 9.72 5 18c0 9.5 15 33 15 33s15-23.5 15-33c0-8.28-6.72-15-15-15z" 
-          fill="none" 
-          stroke="#fff" 
-          stroke-width="2.5"/>
-    <!-- Center dot - larger and high contrast -->
-    <circle cx="20" cy="18" r="6" fill="#fff" stroke="#000" stroke-width="2"/>
-    <circle cx="20" cy="18" r="3.5" fill="#dc2626"/>
-  </svg>`,
+type SurveyLike = {
+  id: string | number;
+  code?: string | null;
+  flight_date?: string | Date | null;
+  boundaries?: unknown[];
+  min_y?: number;
+  max_y?: number;
+  access_code?: string;
+  area_code?: string;
+  area?: number;
+  location?: string;
+  tags?: string;
 };
 
-const DEFAULT_ZOOM_LEVELS = { heatmapMaxZoom: 15, pinMinZoom: 15 };
+type PopupInfo = {
+  id: string | number;
+  lng: number;
+  lat: number;
+  access_code?: string;
+  area_code?: string;
+  area?: number;
+  flight_date?: string | Date;
+  location?: string;
+  tags?: string;
+};
 
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
-
-function calculateOptimalZoomLevels(features: any[]) {
-  if (!features?.length) return DEFAULT_ZOOM_LEVELS;
-
-  const coords = features
-    .filter((f) => f.geometry?.coordinates)
-    .map((f) => f.geometry.coordinates);
-
-  if (!coords.length) return DEFAULT_ZOOM_LEVELS;
-
-  const lons = coords.map((c) => c[0]);
-  const lats = coords.map((c) => c[1]);
-  const lonSpan = Math.max(...lons) - Math.min(...lons);
-  const latSpan = Math.max(...lats) - Math.min(...lats);
-  const avgSpan = (lonSpan + latSpan) / 2;
-
-  let zoomThreshold = 15;
-  if (avgSpan > 0.1) zoomThreshold = 17;
-  else if (avgSpan > 0.01) zoomThreshold = 16;
-  else if (avgSpan > 0.001) zoomThreshold = 18;
-  else zoomThreshold = 19;
-
-  const density = features.length / (avgSpan * avgSpan || 1);
-  if (density > 1000) zoomThreshold = Math.min(19, zoomThreshold + 1);
-  else if (density < 10) zoomThreshold = Math.max(13, zoomThreshold - 2);
-
-  return { heatmapMaxZoom: zoomThreshold, pinMinZoom: zoomThreshold };
-}
 
 function calculateCentroid(coordinates: number[][][]) {
   const points = coordinates[0];
@@ -167,7 +109,7 @@ function calculateCentroid(coordinates: number[][][]) {
     (acc, point) => ({ x: acc.x + point[0], y: acc.y + point[1] }),
     { x: 0, y: 0 }
   );
-  return [sum.x / points.length, sum.y / points.length];
+  return [sum.x / points.length, sum.y / points.length] as const;
 }
 
 function calculateCentersWithOffset(
@@ -186,7 +128,17 @@ function calculateCentersWithOffset(
 // MAP COMPONENTS
 // ============================================================================
 
-function MapEvents({ surveys, showBoundaries, code, detectedObjects }) {
+function MapEvents({
+  surveys,
+  showBoundaries,
+  code,
+  detectedObjects,
+}: {
+  surveys: SurveyLike[];
+  showBoundaries: boolean;
+  code?: string;
+  detectedObjects: ComputerVisionObject[];
+}) {
   const { orthomap } = useMap();
   const { setPopupInfo, setHoveredPairId, setPlantPopupInfo } =
     useOrthoMapStore((state) => state);
@@ -195,16 +147,18 @@ function MapEvents({ surveys, showBoundaries, code, detectedObjects }) {
     (e: MapMouseEvent) => {
       if (!showBoundaries || !surveys || !e.features?.length) return;
 
-      const surveyId = e.features[0]?.properties.survey_id;
-      const clickedSurvey = surveys.find((s) => s.id === surveyId);
+      const surveyId = e.features[0]?.properties?.survey_id;
+      const clickedSurvey = surveys.find(
+        (s) => String(s.id) === String(surveyId)
+      );
 
       if (clickedSurvey && clickedSurvey.boundaries) {
         const coordinates = [
-          transformCoordinatesToLonLatFormat(clickedSurvey.boundaries),
+          transformCoordinatesToLonLatFormat(clickedSurvey.boundaries as any),
         ];
         const [lng, lat] = calculateCentroid(coordinates);
 
-        setPopupInfo({ ...clickedSurvey, lat, lng });
+        setPopupInfo({ ...(clickedSurvey as any), lat, lng });
 
         orthomap?.flyTo({
           center: [lng, lat],
@@ -219,14 +173,15 @@ function MapEvents({ surveys, showBoundaries, code, detectedObjects }) {
     [surveys, setPopupInfo, orthomap, showBoundaries]
   );
 
-  // Handle pin click to show lat/lon
   const handlePinClick = useCallback(
     (e: MapMouseEvent) => {
-      const objectPairId = e.features?.[0]?.properties?.pairId;
+      const objectPairId = e.features?.[0]?.properties?.pairId as
+        | string
+        | undefined;
       if (!objectPairId) return;
 
       const clickedObject = detectedObjects.find(
-        (object) => object.pairId === objectPairId
+        (o) => o.pairId === objectPairId
       );
       if (!clickedObject) return;
 
@@ -243,59 +198,49 @@ function MapEvents({ surveys, showBoundaries, code, detectedObjects }) {
     [detectedObjects, setPlantPopupInfo]
   );
 
-  // Handle pin hover
   const handlePinHover = useCallback(
     (e: MapMouseEvent) => {
-      const pairId = e.features?.[0]?.properties?.pairId;
+      const pairId = e.features?.[0]?.properties?.pairId as string | undefined;
       setHoveredPairId(pairId || null);
-
-      if (pairId && orthomap) {
-        orthomap.getCanvas().style.cursor = "pointer";
-      }
+      if (pairId && orthomap) orthomap.getCanvas().style.cursor = "pointer";
     },
     [orthomap, setHoveredPairId]
   );
 
   const handlePinLeave = useCallback(() => {
     setHoveredPairId(null);
-    if (orthomap) {
-      orthomap.getCanvas().style.cursor = "";
-    }
+    if (orthomap) orthomap.getCanvas().style.cursor = "";
   }, [orthomap, setHoveredPairId]);
 
   useEffect(() => {
     if (!orthomap || !code) return;
 
-    const LAYER_TYPES = {
+    const LAYER_TYPES: Record<string, string[]> = {
       CLICK_BOUNDARIES: ["area-fills"],
       CLICK_PINS: [`${code}-unhealthy-pin`, `${code}-healthy-pin`],
       HOVER_PINS: [`${code}-unhealthy-pin`, `${code}-healthy-pin`],
     };
 
-    // Boundary clicks
-    LAYER_TYPES.CLICK_BOUNDARIES.forEach((layer) =>
-      orthomap.on("click", layer, handleMapClick)
-    );
+    LAYER_TYPES.CLICK_BOUNDARIES.forEach((layer) => {
+      orthomap.on("click", layer, handleMapClick);
+    });
 
-    // Pin clicks
-    LAYER_TYPES.CLICK_PINS.forEach((layer) =>
-      orthomap.on("click", layer, handlePinClick)
-    );
+    LAYER_TYPES.CLICK_PINS.forEach((layer) => {
+      orthomap.on("click", layer, handlePinClick);
+    });
 
-    // Pin hover
     LAYER_TYPES.HOVER_PINS.forEach((layer) => {
       orthomap.on("mouseenter", layer, handlePinHover);
       orthomap.on("mouseleave", layer, handlePinLeave);
     });
 
-    // Cleanup
     return () => {
-      LAYER_TYPES.CLICK_BOUNDARIES.forEach((layer) =>
-        orthomap.off("click", layer, handleMapClick)
-      );
-      LAYER_TYPES.CLICK_PINS.forEach((layer) =>
-        orthomap.off("click", layer, handlePinClick)
-      );
+      LAYER_TYPES.CLICK_BOUNDARIES.forEach((layer) => {
+        orthomap.off("click", layer, handleMapClick);
+      });
+      LAYER_TYPES.CLICK_PINS.forEach((layer) => {
+        orthomap.off("click", layer, handlePinClick);
+      });
       LAYER_TYPES.HOVER_PINS.forEach((layer) => {
         orthomap.off("mouseenter", layer, handlePinHover);
         orthomap.off("mouseleave", layer, handlePinLeave);
@@ -321,6 +266,7 @@ function InitializeMapImages() {
 
     const loadSvgImage = (svgString: string, id: string) => {
       const img = new Image();
+
       img.onload = () => {
         const canvas = document.createElement("canvas");
         canvas.width = img.width;
@@ -335,10 +281,20 @@ function InitializeMapImages() {
           if (!orthomap.hasImage(id)) orthomap.addImage(id, imageData);
         } catch (error) {
           console.warn(`Failed to add image ${id}:`, error);
+        } finally {
+          if (img.src.startsWith("blob:")) URL.revokeObjectURL(img.src);
         }
       };
-      img.onerror = () => console.error(`Failed to load SVG image for ${id}`);
-      img.src = `data:image/svg+xml;base64,${btoa(svgString)}`;
+
+      img.onerror = (e) => {
+        console.error(`Failed to load SVG image for ${id}`, e);
+        if (img.src.startsWith("blob:")) URL.revokeObjectURL(img.src);
+      };
+
+      const blob = new Blob([svgString], {
+        type: "image/svg+xml;charset=utf-8",
+      });
+      img.src = URL.createObjectURL(blob);
     };
 
     loadSvgImage(PIN_IMAGES.yellow, "pin-yellow");
@@ -348,9 +304,8 @@ function InitializeMapImages() {
   return null;
 }
 
-function MapLegend({ selectedFoi }) {
+function MapLegend({ selectedFoi }: { selectedFoi: string }) {
   const [isOpen, setIsOpen] = useState(true);
-
   if (!selectedFoi || selectedFoi === "none") return null;
 
   return (
@@ -364,13 +319,22 @@ function MapLegend({ selectedFoi }) {
       >
         <div className="p-5">
           <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <div className="w-1 h-4 bg-blue-500 rounded-full" />
+            <div
+              className="w-1 h-4 rounded-full"
+              style={{ backgroundColor: MAP_COLORS.boundary }}
+            />
             Map Legend
           </h3>
 
           <div className="flex flex-col gap-4">
             <div className="flex items-start gap-3 group">
-              <div className="w-8 h-8 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full border-2 border-black shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5" />
+              <div
+                className="w-8 h-8 rounded-full border-2 border-black shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5"
+                style={{
+                  background: `linear-gradient(135deg, ${MAP_COLORS.healthy.base} 0%, ${MAP_COLORS.healthy.base} 100%)`,
+                  filter: "saturate(1.05) brightness(1.02)",
+                }}
+              />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-900">
                   Healthy Plants
@@ -382,7 +346,13 @@ function MapLegend({ selectedFoi }) {
             </div>
 
             <div className="flex items-start gap-3 group">
-              <div className="w-8 h-8 bg-gradient-to-br from-red-400 to-red-600 rounded-full border-2 border-black shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5" />
+              <div
+                className="w-8 h-8 rounded-full border-2 border-black shadow-md transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mt-0.5"
+                style={{
+                  background: `linear-gradient(135deg, ${MAP_COLORS.unhealthy.base} 0%, ${MAP_COLORS.unhealthy.base} 100%)`,
+                  filter: "saturate(1.05) brightness(1.02)",
+                }}
+              />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-900">
                   Infected Plants
@@ -393,29 +363,36 @@ function MapLegend({ selectedFoi }) {
               </div>
             </div>
 
-            <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+            <div className="h-px bg-linear-to-r from-transparent via-gray-200 to-transparent" />
 
             <div className="flex flex-col gap-2">
               <div className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
                 Heatmap View
               </div>
+
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-3">
                   <div className="flex gap-0.5 rounded overflow-hidden shadow-sm">
                     {[
-                      "bg-yellow-200",
-                      "bg-yellow-300",
-                      "bg-yellow-400",
-                      "bg-yellow-500",
-                      "bg-yellow-600",
-                    ].map((color, i) => (
-                      <div key={i} className={`w-6 h-6 ${color}`} />
+                      `rgba(${MAP_COLORS.healthy.heatmap}, 0.15)`,
+                      `rgba(${MAP_COLORS.healthy.heatmap}, 0.3)`,
+                      `rgba(${MAP_COLORS.healthy.heatmap}, 0.45)`,
+                      `rgba(${MAP_COLORS.healthy.heatmap}, 0.6)`,
+                      `rgba(${MAP_COLORS.healthy.heatmap}, 0.75)`,
+                    ].map((c, i) => (
+                      <div
+                        key={i}
+                        className="w-6 h-6"
+                        style={{ backgroundColor: c }}
+                      />
                     ))}
                   </div>
+
                   <span className="text-xs text-gray-600 flex-1">
                     Plant Density
                   </span>
                 </div>
+
                 <div className="flex justify-between text-[10px] text-gray-400 px-0.5">
                   <span>Low</span>
                   <span>High</span>
@@ -427,7 +404,8 @@ function MapLegend({ selectedFoi }) {
           <div className="mt-4 pt-3 border-t border-gray-100">
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <svg
-                className="w-3.5 h-3.5 text-blue-500"
+                className="w-3.5 h-3.5"
+                style={{ color: MAP_COLORS.boundary }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -447,7 +425,7 @@ function MapLegend({ selectedFoi }) {
 
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex-shrink-0 p-3 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 hover:shadow-xl hover:border-gray-300 transition-all duration-200 group"
+        className="shrink-0 p-3 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 hover:shadow-xl hover:border-gray-300 transition-all duration-200 group"
         title={isOpen ? "Hide legend" : "Show legend"}
         aria-label={isOpen ? "Hide legend" : "Show legend"}
       >
@@ -464,15 +442,16 @@ function MapLegend({ selectedFoi }) {
 function MapPopup() {
   const { popupInfo, setPopupInfo } = useOrthoMapStore((state) => state);
 
-  if (!popupInfo) return null;
+  const info = popupInfo as PopupInfo | null;
+  if (!info) return null;
 
   return (
     <AnimatePresence mode="wait">
       <Popup
-        key={popupInfo.id}
+        key={info.id}
         anchor="bottom"
-        longitude={popupInfo.lng}
-        latitude={popupInfo.lat}
+        longitude={info.lng}
+        latitude={info.lat}
         onClose={() => setPopupInfo(null)}
         closeOnClick={false}
         closeOnMove={false}
@@ -497,11 +476,11 @@ function MapPopup() {
                   Survey Area
                 </div>
                 <div className="text-lg font-semibold text-primary-foreground">
-                  {`${popupInfo.access_code}-${popupInfo.area_code}`}
+                  {`${info.access_code ?? ""}-${info.area_code ?? ""}`}
                 </div>
               </div>
               <div className="text-xs px-2.5 py-1 bg-primary-foreground/20 text-primary-foreground rounded-md font-medium">
-                #{popupInfo.id}
+                #{info.id}
               </div>
             </div>
           </motion.div>
@@ -520,14 +499,12 @@ function MapPopup() {
                   </span>
                 </div>
                 <span className="text-base font-bold text-foreground">
-                  {popupInfo.area.toFixed(2)} ha
+                  {Number(info.area ?? 0).toFixed(2)} ha
                 </span>
               </div>
             </motion.div>
 
-            {(popupInfo.flight_date ||
-              popupInfo.location ||
-              popupInfo.tags) && (
+            {(info.flight_date || info.location || info.tags) && (
               <>
                 <Separator />
                 <motion.div
@@ -536,36 +513,36 @@ function MapPopup() {
                   transition={{ delay: 0.15 }}
                   className="space-y-2"
                 >
-                  {popupInfo.flight_date && (
+                  {info.flight_date && (
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">
                         Flight date
                       </span>
                       <span className="text-sm font-semibold text-foreground">
-                        {new Date(popupInfo.flight_date).toLocaleDateString()}
+                        {new Date(info.flight_date).toLocaleDateString()}
                       </span>
                     </div>
                   )}
-                  {popupInfo.location && (
+                  {info.location && (
                     <div className="flex justify-between items-center gap-3">
                       <span className="text-sm text-muted-foreground">
                         Location
                       </span>
                       <span
                         className="text-sm font-semibold text-foreground truncate max-w-[180px]"
-                        title={popupInfo.location}
+                        title={info.location}
                       >
-                        {popupInfo.location}
+                        {info.location}
                       </span>
                     </div>
                   )}
-                  {popupInfo.tags && (
+                  {info.tags && (
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">
                         Type
                       </span>
                       <span className="text-xs font-semibold text-foreground uppercase px-2 py-0.5 bg-muted rounded">
-                        {popupInfo.tags}
+                        {info.tags}
                       </span>
                     </div>
                   )}
@@ -579,7 +556,7 @@ function MapPopup() {
               transition={{ delay: 0.18 }}
               className="pt-1"
             >
-              <Link href={`/dashboard/surveys/${popupInfo.id}`}>
+              <Link href={`/dashboard/surveys/${info.id}`}>
                 <button className="w-full px-4 py-2.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold shadow-sm">
                   View Details →
                 </button>
@@ -599,7 +576,7 @@ function PlantPopup() {
 
   if (!plantPopupInfo) return null;
 
-  const { pairId, areaId, centerLng, centerLat } = plantPopupInfo;
+  const { centerLng, centerLat } = plantPopupInfo;
 
   return (
     <Popup
@@ -631,7 +608,7 @@ function PlantPopup() {
   );
 }
 
-function SourceLoadingStatus({ idList }: { idList: string[] }) {
+function SourceLoadingStatus({ idList }: { idList: Array<string | number> }) {
   const { areAllSourcesLoaded, setAreAllSourcesLoaded } = useOrthoMapStore(
     (state) => state
   );
@@ -643,7 +620,9 @@ function SourceLoadingStatus({ idList }: { idList: string[] }) {
     const handleIdle = () => setAreAllSourcesLoaded(true);
     orthomap.on("idle", handleIdle);
 
-    return () => orthomap.off("idle", handleIdle);
+    return () => {
+      orthomap.off("idle", handleIdle);
+    };
   }, [orthomap, setAreAllSourcesLoaded]);
 
   return (
@@ -736,6 +715,7 @@ function FeaturesOfInterest({
   const { healthyBananas, unhealthyBananas } = useMemo(() => {
     if (!detectedObjects || !Array.isArray(detectedObjects))
       return { healthyBananas: "", unhealthyBananas: "" };
+
     return {
       healthyBananas: generateFeatureCollection(
         GeometryType.Point,
@@ -750,8 +730,10 @@ function FeaturesOfInterest({
     };
   }, [detectedObjects]);
 
-  // Calculate bbox for hovered or clicked plant
-  const selectedPlantBbox = useMemo(() => {
+  const selectedPlantBbox = useMemo<FeatureCollection<
+    Polygon,
+    GeoJsonProperties
+  > | null>(() => {
     const selectedId = plantPopupInfo?.pairId || hoveredPairId;
     if (!selectedId) return null;
 
@@ -789,86 +771,25 @@ function FeaturesOfInterest({
   }, [detectedObjects, plantPopupInfo, hoveredPairId]);
 
   const isHealthy =
-    selectedPlantBbox?.features[0]?.properties?.label?.includes("Healthy");
+    selectedPlantBbox?.features[0]?.properties &&
+    String((selectedPlantBbox.features[0].properties as any).label).includes(
+      "Healthy"
+    );
+
+  const selectedColor = isHealthy
+    ? MAP_COLORS.healthy.base
+    : MAP_COLORS.unhealthy.base;
 
   const healthyZoomLevels = useMemo(() => {
-    if (!healthyBananas) return DEFAULT_ZOOM_LEVELS;
-    const levels = calculateOptimalZoomLevels(
-      (healthyBananas as any).features || []
-    );
-    return { ...levels, pinMinZoom: Math.max(13, levels.pinMinZoom - 1.5) };
+    return calculateOptimalZoomLevels((healthyBananas as any).features ?? []);
   }, [healthyBananas]);
 
   const unhealthyZoomLevels = useMemo(() => {
-    if (!unhealthyBananas) return DEFAULT_ZOOM_LEVELS;
-    const levels = calculateOptimalZoomLevels(
-      (unhealthyBananas as any).features || []
-    );
-    return { ...levels, pinMinZoom: Math.max(13, levels.pinMinZoom - 1.5) };
+    return calculateOptimalZoomLevels((unhealthyBananas as any).features ?? []);
   }, [unhealthyBananas]);
-
-  const heatmapPaint = (color: string) => ({
-    "heatmap-weight": ["interpolate", ["linear"], ["get", "mag"], 0, 0, 6, 1],
-    "heatmap-color": [
-      "interpolate",
-      ["linear"],
-      ["heatmap-density"],
-      0,
-      `rgba(${color}, 0)`,
-      0.2,
-      `rgba(${color}, 0.3)`,
-      0.5,
-      `rgba(${color}, 0.6)`,
-      1,
-      `rgba(${color}, 0.9)`,
-    ],
-    "heatmap-radius": [
-      "interpolate",
-      ["linear"],
-      ["zoom"],
-      10,
-      8,
-      12,
-      10,
-      14,
-      12,
-      16,
-      15,
-      18,
-      20,
-      20,
-      25,
-    ],
-    "heatmap-opacity": 0.7,
-  });
-
-  const pinLayout = (iconImage: string) => ({
-    "icon-image": iconImage,
-    "icon-size": [
-      "interpolate",
-      ["linear"],
-      ["zoom"],
-      13,
-      0.15,
-      14,
-      0.25,
-      15,
-      0.3,
-      16,
-      0.4,
-      17,
-      0.45,
-      18,
-      0.5,
-      20,
-      0.6,
-    ],
-    "icon-allow-overlap": true,
-  });
 
   return (
     <>
-      {/* Render bbox for hovered or clicked plant */}
       {selectedPlantBbox && (
         <Source
           id={`${code}-selected-bbox`}
@@ -878,16 +799,13 @@ function FeaturesOfInterest({
           <Layer
             id={`${code}-selected-bbox-fill`}
             type="fill"
-            paint={{
-              "fill-color": isHealthy ? "#fbbf24" : "#ff0000",
-              "fill-opacity": 0.15,
-            }}
+            paint={{ "fill-color": selectedColor, "fill-opacity": 0.15 }}
           />
           <Layer
             id={`${code}-selected-bbox-outline`}
             type="line"
             paint={{
-              "line-color": isHealthy ? "#fbbf24" : "#ff0000",
+              "line-color": selectedColor,
               "line-width": 2,
               "line-opacity": 0.8,
               "line-dasharray": [2, 2],
@@ -898,24 +816,29 @@ function FeaturesOfInterest({
 
       {(selectedFoi === "healthy" || selectedFoi === "all") && (
         <>
-          <Source id={`${code}-healthy`} type="geojson" data={healthyBananas}>
+          <Source
+            id={`${code}-healthy`}
+            type="geojson"
+            data={healthyBananas as any}
+          >
             <Layer
               id={`${code}-healthy-heatmap`}
               type="heatmap"
               maxzoom={healthyZoomLevels.heatmapMaxZoom}
-              paint={heatmapPaint("251, 192, 45")}
+              paint={createHeatmapPaint("healthy")}
             />
           </Source>
+
           <Source
             id={`${code}-healthy-pins`}
             type="geojson"
-            data={healthyBananas}
+            data={healthyBananas as any}
           >
             <Layer
               id={`${code}-healthy-pin`}
               type="symbol"
               minzoom={healthyZoomLevels.pinMinZoom}
-              layout={pinLayout("pin-yellow")}
+              layout={createPinLayout("pin-yellow")}
               paint={{ "icon-opacity": 0.75 }}
             />
           </Source>
@@ -927,25 +850,26 @@ function FeaturesOfInterest({
           <Source
             id={`${code}-unhealthy`}
             type="geojson"
-            data={unhealthyBananas}
+            data={unhealthyBananas as any}
           >
             <Layer
               id={`${code}-unhealthy-heatmap`}
               type="heatmap"
               maxzoom={unhealthyZoomLevels.heatmapMaxZoom}
-              paint={heatmapPaint("255, 0, 0")}
+              paint={createHeatmapPaint("unhealthy")}
             />
           </Source>
+
           <Source
             id={`${code}-unhealthy-pins`}
             type="geojson"
-            data={unhealthyBananas}
+            data={unhealthyBananas as any}
           >
             <Layer
               id={`${code}-unhealthy-pin`}
               type="symbol"
               minzoom={unhealthyZoomLevels.pinMinZoom}
-              layout={pinLayout("pin-red")}
+              layout={createPinLayout("pin-red")}
               paint={{ "icon-opacity": 0.75 }}
             />
           </Source>
@@ -955,7 +879,7 @@ function FeaturesOfInterest({
   );
 }
 
-function BoundaryLayers({ showBoundaries }) {
+function BoundaryLayers({ showBoundaries }: { showBoundaries: boolean }) {
   const { orthomap } = useMap();
 
   useEffect(() => {
@@ -977,7 +901,9 @@ function BoundaryLayers({ showBoundaries }) {
 
     moveLayersToTop();
     orthomap.on("styledata", moveLayersToTop);
-    return () => orthomap.off("styledata", moveLayersToTop);
+    return () => {
+      orthomap.off("styledata", moveLayersToTop);
+    };
   }, [orthomap, showBoundaries]);
 
   return (
@@ -987,7 +913,7 @@ function BoundaryLayers({ showBoundaries }) {
         type="line"
         source="areas"
         paint={{
-          "line-color": "#0ea5e9",
+          "line-color": MAP_COLORS.boundary,
           "line-width": 5,
           "line-blur": 3,
           "line-opacity": 0.4,
@@ -999,7 +925,7 @@ function BoundaryLayers({ showBoundaries }) {
         type="line"
         source="areas"
         paint={{
-          "line-color": "#0ea5e9",
+          "line-color": MAP_COLORS.boundary,
           "line-width": 2.5,
           "line-opacity": 0.9,
         }}
@@ -1013,8 +939,15 @@ function BoundaryLayers({ showBoundaries }) {
 // MAIN COMPONENT
 // ============================================================================
 
-export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
-  // Comprehensive null checks at the top
+export default function OrthoMap({
+  userProfile,
+  surveys,
+  detectedObjects,
+}: {
+  userProfile: any;
+  surveys: SurveyLike[];
+  detectedObjects: ComputerVisionObject[] | null | undefined;
+}) {
   if (!surveys || !Array.isArray(surveys) || surveys.length === 0) {
     return (
       <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
@@ -1034,39 +967,33 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
     );
   }
 
-  if (!detectedObjects) {
-    detectedObjects = []; // Set to empty array if null
-  }
+  const safeDetectedObjects = detectedObjects ?? [];
 
   const [showBoundaries, setShowBoundaries] = useState(false);
   const { selectedFoi, setPopupInfo } = useOrthoMapStore((state) => state);
 
-  const surveyIds = useMemo(() => surveys?.map((s) => s.id) || [], [surveys]);
+  const surveyIds = useMemo(() => surveys.map((s) => s.id), [surveys]);
 
   const { global_x, global_y } = useMemo(
     () =>
       surveys
-        ? calculateGlobalCenters(surveys)
+        ? calculateGlobalCenters(surveys as any)
         : { global_x: 125.58147596772221, global_y: 7.0763840759644 },
     [surveys]
   );
 
   const bounds = useMemo(() => {
-    if (!surveys || !Array.isArray(surveys)) return undefined;
-
     try {
-      // Filter out surveys without boundaries
       const validSurveys = surveys.filter(
         (s) =>
           s.boundaries && Array.isArray(s.boundaries) && s.boundaries.length > 0
       );
-
       if (validSurveys.length === 0) return undefined;
 
       const transformedBoundaries = validSurveys
         .map((s) => {
           try {
-            return transformCoordinatesToLonLatFormat(s.boundaries);
+            return transformCoordinatesToLonLatFormat(s.boundaries as any);
           } catch (error) {
             console.warn(
               `Failed to transform boundaries for survey ${s.id}:`,
@@ -1075,20 +1002,43 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
             return null;
           }
         })
-        .filter((b) => b !== null);
+        .filter((b): b is any => b !== null);
 
       if (transformedBoundaries.length === 0) return undefined;
-
-      const extremes = findExtremeCoordinates(transformedBoundaries);
-      return extremes;
+      return findExtremeCoordinates(transformedBoundaries as any);
     } catch (error) {
       console.error("Error calculating bounds:", error);
       return undefined;
     }
   }, [surveys]);
 
-  const mapStyle = useMemo(
-    () => ({
+  const mapStyle = useMemo<StyleSpecification>(() => {
+    const areaFeatures: Feature<Polygon, GeoJsonProperties>[] = surveys
+      .filter((survey) => survey.boundaries && Array.isArray(survey.boundaries))
+      .map((survey) => {
+        const coords = transformCoordinatesToLonLatFormat(
+          survey.boundaries as any
+        );
+
+        return {
+          type: "Feature",
+          properties: {
+            survey_id: survey.id,
+            latitude: Number(((survey.max_y ?? 0) + (survey.min_y ?? 0)) / 2),
+          },
+          geometry: {
+            type: "Polygon",
+            coordinates: [coords],
+          },
+        };
+      });
+
+    const areasData: FeatureCollection<Polygon, GeoJsonProperties> = {
+      type: "FeatureCollection",
+      features: areaFeatures,
+    };
+
+    return {
       version: 8,
       sources: {
         osm: {
@@ -1099,41 +1049,9 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
         },
         areas: {
           type: "geojson",
-          data: {
-            type: "FeatureCollection",
-            features:
-              surveys
-                ?.filter(
-                  (survey) =>
-                    survey.boundaries && Array.isArray(survey.boundaries)
-                )
-                .map((survey) => {
-                  try {
-                    return {
-                      type: "Feature",
-                      properties: {
-                        survey_id: survey.id,
-                        latitude: Number((survey.max_y + survey.min_y) / 2),
-                      },
-                      geometry: {
-                        type: "Polygon",
-                        coordinates: [
-                          transformCoordinatesToLonLatFormat(survey.boundaries),
-                        ],
-                      },
-                    };
-                  } catch (error) {
-                    console.warn(
-                      `Failed to create feature for survey ${survey.id}:`,
-                      error
-                    );
-                    return null;
-                  }
-                })
-                .filter((f) => f !== null) || [],
-          },
+          data: areasData,
           generateId: true,
-        },
+        } satisfies GeoJSONSourceSpecification,
       },
       layers: [
         { id: "osm", type: "raster", source: "osm" },
@@ -1145,8 +1063,8 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
             "fill-color": [
               "case",
               ["boolean", ["feature-state", "hover"], false],
-              "#0ea5e9",
-              "#06b6d4",
+              MAP_COLORS.boundary,
+              MAP_COLORS.hover,
             ],
             "fill-opacity": [
               "case",
@@ -1157,15 +1075,14 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
           },
         },
       ],
-    }),
-    [surveys]
-  );
+    };
+  }, [surveys]);
 
-  const initialViewState = useMemo(
+  const initialViewState = useMemo<MapProps["initialViewState"]>(
     () => ({
       latitude: global_y,
       longitude: global_x,
-      bounds: bounds,
+      bounds: bounds ?? undefined,
       fitBoundsOptions: { padding: 15 },
     }),
     [global_x, global_y, bounds]
@@ -1188,7 +1105,7 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
             <TabsTrigger value="orthomap">Orthomap</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
-            <OrthomapFoiSelector detectedObjects={detectedObjects} />
+            <OrthomapFoiSelector detectedObjects={safeDetectedObjects} />
             <Button
               size="sm"
               variant={showBoundaries ? "default" : "outline"}
@@ -1211,6 +1128,7 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                 {userProfile?.organization?.name || "Loading..."}
               </CardDescription>
             </CardHeader>
+
             <CardContent className="flex-1 relative">
               <div className="h-full flex">
                 <Map
@@ -1227,11 +1145,13 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                     .map((survey) => (
                       <Source
                         key={survey.id}
-                        id={survey.id}
+                        id={String(survey.id)}
                         type="raster"
                         tiles={[
-                          `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${getYear(
-                            survey.flight_date
+                          `/asimov-hawks/tiles/${String(
+                            survey.code
+                          ).toLowerCase()}/${getYear(
+                            new Date(survey.flight_date as any)
                           )}/${survey.id}/ortho/sharp-corners/{z}/{x}/{y}.png`,
                         ]}
                         scheme="tms"
@@ -1240,9 +1160,9 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
                         maxzoom={24}
                       >
                         <Layer
-                          id={survey.id}
+                          id={String(survey.id)}
                           type="raster"
-                          source={survey.id}
+                          source={String(survey.id)}
                           minzoom={10}
                           maxzoom={24}
                         />
@@ -1251,23 +1171,30 @@ export default function OrthoMap({ userProfile, surveys, detectedObjects }) {
 
                   {surveys.length > 0 && surveys[0].code && (
                     <FeaturesOfInterest
-                      code={surveys[0].code}
-                      detectedObjects={detectedObjects}
+                      code={String(surveys[0].code)}
+                      detectedObjects={safeDetectedObjects}
                     />
                   )}
+
                   <BoundaryLayers showBoundaries={showBoundaries} />
+
                   <MapEvents
                     surveys={surveys}
                     showBoundaries={showBoundaries}
-                    code={surveys[0]?.code}
-                    detectedObjects={detectedObjects}
+                    code={
+                      surveys[0]?.code ? String(surveys[0].code) : undefined
+                    }
+                    detectedObjects={safeDetectedObjects}
                   />
+
                   <MapPopup />
                   <PlantPopup />
                 </Map>
+
                 <MapLegend selectedFoi={selectedFoi} />
               </div>
             </CardContent>
+
             <CardFooter>
               <SourceLoadingStatus idList={surveyIds} />
             </CardFooter>

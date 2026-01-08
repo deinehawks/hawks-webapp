@@ -4,7 +4,8 @@
   "private": true,
   "engines": {},
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "set NEXT_DISABLE_TURBOPACK=1 && next dev",
+    "turbo-dev": "next dev --turbo",
     "update-tile-bounds": "node scripts/update-tile-bounds.js",
     "update-tile-bounds:force": "node scripts/update-tile-bounds.js --force",
     "build": "next build",
