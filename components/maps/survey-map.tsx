@@ -62,6 +62,17 @@ import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
 import { MapLegend } from "@/components/maps/shared/map-legend";
 
+// Styles
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Info,
+  MapPinned,
+  Image as ImageIcon,
+  Sprout,
+  Cuboid,
+} from "lucide-react";
+
 // Constants
 import { PIN_ANIMATION_STYLES } from "@/lib/constants/map-animation";
 import { PIN_IMAGES } from "@/lib/constants/map-icons";
@@ -1231,79 +1242,159 @@ function OrthoTabContent({
     [detectedObjects]
   );
 
+  const numHealthy = useMemo(
+    () =>
+      detectedObjects.filter((o) =>
+        String(o.label ?? "").includes("Healthy-looking")
+      ).length,
+    [detectedObjects]
+  );
+
+  const numUnhealthy = useMemo(
+    () =>
+      detectedObjects.filter((o) => String(o.label ?? "").includes("Infected"))
+        .length,
+    [detectedObjects]
+  );
+
   const hasOrthoData = survey.ortho !== null;
+  const numImages = (survey as any).ortho?.num_images as number | undefined;
 
   return (
-    <Card className="container/card flex flex-1 flex-col lg:h-full">
-      <CardHeader>
-        <CardTitle>Orthomosaic</CardTitle>
-        <CardDescription>{survey.id}</CardDescription>
+    <Card className="container/card relative flex flex-1 flex-col lg:h-full overflow-hidden">
+      <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary/70 via-primary/30 to-transparent" />
+
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <MapPinned className="h-4 w-4 text-primary" />
+              Orthomosaic
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Survey{" "}
+              <span className="font-medium text-foreground/80">
+                {survey.id}
+              </span>
+            </CardDescription>
+          </div>
+
+          <Badge
+            variant={hasOrthoData ? "default" : "secondary"}
+            className="shrink-0"
+          >
+            {hasOrthoData ? "Data available" : "No data"}
+          </Badge>
+        </div>
       </CardHeader>
 
-      <CardContent>
-        <div className="flex flex-col gap-4">
-          <div>
-            An orthomosaic is a high-resolution, georeferenced image created by
-            stitching together multiple overlapping aerial photographs.
-          </div>
-          <div>
-            Orthomosaics provide detailed top-down view of an area, free from
-            distortions and perspective errors.
-          </div>
-
-          {hasOrthoData ? (
-            <Table className="w-full table-auto text-left">
-              <TableBody>
-                <TableRow>
-                  <TableCell>Area</TableCell>
-                  <TableCell>
-                    {survey.area != null ? survey.area.toFixed(2) : "N/A"} ha
-                  </TableCell>
-                </TableRow>
-
-                {(survey as any).ortho?.num_images && (
-                  <TableRow>
-                    <TableCell>No. of Images</TableCell>
-                    <TableCell>{(survey as any).ortho.num_images}</TableCell>
-                  </TableRow>
-                )}
-
-                <TableRow>
-                  <TableCell>Crop Inventory</TableCell>
-                  <TableCell>{numBananas.toLocaleString()}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
-              <p className="text-sm text-muted-foreground text-center">
-                Orthomosaic data is not available for this survey.
+      <CardContent className="space-y-5">
+        {/* compact explanation */}
+        <div className="rounded-lg border bg-muted/20 p-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 rounded-md bg-background p-2 border">
+              <Info className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">What you’re looking at</p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                An orthomosaic is a high-resolution, georeferenced top-down
+                image created by stitching overlapping aerial photos—minimizing
+                distortion for accurate inspection.
               </p>
             </div>
-          )}
+          </div>
         </div>
-      </CardContent>
 
-      {detectedObjects.length > 0 && (
-        <>
-          <CardHeader>
-            <CardTitle>Plant Disease Detection</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4">
-              <div>
-                Banana plant diseases pose significant threats to the
-                country&apos;s banana industry and severely affects production.
-              </div>
-              <div>
-                Timely detection allows for prompt intervention, minimizing
-                damage and ensuring healthier crops.
-              </div>
-              <FoiSelector detectedObjects={detectedObjects} />
+        {/* at-a-glance stats (single source of truth) */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              At a glance
+            </p>
+
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="gap-1">
+                <Sprout className="h-3.5 w-3.5" />
+                Inventory: {numBananas.toLocaleString()}
+              </Badge>
+
+              {numImages != null && (
+                <Badge variant="outline" className="gap-1">
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  {numImages.toLocaleString()} images
+                </Badge>
+              )}
             </div>
-          </CardContent>
-        </>
-      )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border bg-card/60 p-3">
+              <p className="text-xs text-muted-foreground">Area</p>
+              <p className="mt-1 text-lg font-semibold">
+                {survey.area != null ? survey.area.toFixed(2) : "N/A"}{" "}
+                <span className="text-sm font-medium text-muted-foreground">
+                  ha
+                </span>
+              </p>
+            </div>
+
+            <div className="rounded-lg border bg-card/60 p-3">
+              <p className="text-xs text-muted-foreground">Images</p>
+              <p className="mt-1 text-lg font-semibold">
+                {numImages != null ? numImages.toLocaleString() : "N/A"}
+              </p>
+            </div>
+
+            <div className="rounded-lg border bg-card/60 p-3">
+              <p className="text-xs text-muted-foreground">Crop inventory</p>
+              <p className="mt-1 text-lg font-semibold">
+                {numBananas.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* empty state only when needed */}
+        {!hasOrthoData && (
+          <Alert>
+            <AlertTitle>Orthomosaic not available</AlertTitle>
+            <AlertDescription className="text-sm">
+              This survey doesn’t include orthomosaic metadata (area/images)
+              right now.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* plant disease detection section */}
+        {detectedObjects.length > 0 && (
+          <div className="space-y-3 pt-2">
+            <Separator />
+
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Plant Disease Detection</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Early detection helps reduce spread and supports timely
+                  intervention.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Badge variant="outline">
+                  Healthy: {numHealthy.toLocaleString()}
+                </Badge>
+                <Badge variant="outline">
+                  Infected: {numUnhealthy.toLocaleString()}
+                </Badge>
+              </div>
+            </div>
+
+            {/* FoiSelector already has its own container */}
+            <FoiSelector detectedObjects={detectedObjects} />
+          </div>
+        )}
+      </CardContent>
     </Card>
   );
 }
@@ -1312,38 +1403,91 @@ function ThreeDTabContent({ survey }: { survey: SurveyLike }) {
   const hasPointCloud = survey.point_cloud !== null;
 
   return (
-    <Card className="container/card flex flex-1 flex-col gap-4 lg:h-full">
-      <CardHeader>
-        <CardTitle>3D Model</CardTitle>
-        <CardDescription>{survey.id}</CardDescription>
+    <Card className="container/card relative flex flex-1 flex-col lg:h-full overflow-hidden">
+      <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-violet-500/70 via-violet-500/25 to-transparent" />
+
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <Cuboid className="h-4 w-4 text-violet-500" />
+              3D Model
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Survey{" "}
+              <span className="font-medium text-foreground/80">
+                {survey.id}
+              </span>
+            </CardDescription>
+          </div>
+
+          <Badge
+            variant={hasPointCloud ? "default" : "secondary"}
+            className="shrink-0"
+          >
+            {hasPointCloud ? "Point cloud ready" : "No point cloud"}
+          </Badge>
+        </div>
       </CardHeader>
 
-      <CardContent>
-        <div className="flex flex-col gap-4">
-          <div>
-            A 3D model is a digital representation of an object or scene in
-            three dimensions. It captures the shape, dimensions, and sometimes
-            even the surface properties (i.e., color, texture, etc.) of a real
-            world space and/or object.
+      <CardContent className="relative z-20 space-y-5">
+        <div className="rounded-lg border bg-muted/20 p-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 rounded-md bg-background p-2 border">
+              <Info className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">What the 3D model provides</p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                A 3D model represents the surveyed area in three
+                dimensions—useful for structure, elevation, and spatial
+                inspection beyond top-down imagery.
+              </p>
+            </div>
           </div>
-
-          {survey.code && (
-            <ThreeDimensionalModelSelector code={String(survey.code)} />
-          )}
         </div>
+
+        {survey.code ? (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Model selection
+            </p>
+
+            <div className="relative z-30 rounded-lg border bg-card/60 p-3">
+              <ThreeDimensionalModelSelector code={String(survey.code)} />
+            </div>
+          </div>
+        ) : (
+          <Alert>
+            <AlertTitle>Missing survey code</AlertTitle>
+            <AlertDescription className="text-sm">
+              A survey code is required to load selectable 3D models.
+            </AlertDescription>
+          </Alert>
+        )}
       </CardContent>
 
-      {hasPointCloud ? (
-        <ThreeDimensionalModelCard pcd={survey.point_cloud as any} />
-      ) : (
-        <CardContent>
-          <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
-            <p className="text-sm text-muted-foreground text-center">
-              3D point cloud data is not available for this survey.
+      <div className="relative z-10 mt-2 px-6 pb-6 min-h-0">
+        {hasPointCloud ? (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Point cloud
             </p>
+
+            <div className="relative min-h-[320px] rounded-xl border bg-card/60 overflow-hidden">
+              <ThreeDimensionalModelCard pcd={survey.point_cloud as any} />
+            </div>
           </div>
-        </CardContent>
-      )}
+        ) : (
+          <Alert>
+            <AlertTitle>3D point cloud not available</AlertTitle>
+            <AlertDescription className="text-sm">
+              This survey doesn’t include point cloud output yet. If the capture
+              is recent, it may still be processing.
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
     </Card>
   );
 }
