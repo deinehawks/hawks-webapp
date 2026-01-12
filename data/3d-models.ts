@@ -11,13 +11,13 @@ export const three_dimensional_models = [
     name: "Point Cloud (Photogrammetry)",
     source: "aerial photographs",
     description:
-      "A point cloud derived from aerial imagery is a 3D representation of a scene, composed of a dense set of data points. Each point in the cloud is generated through photogrammetric techniques that analyze overlapping aerial photographs. ",
+      "A point cloud created from aerial images is a collection of small points that together show the shape of the land or objects on it. These points are produced by carefully analyzing multiple photos taken from above, allowing the system to represent the area in three dimensions.",
   },
-  // {
-  //   code: "glb",
-  //   name: "Textured Model",
-  //   source: "aerial imagery",
-  //   description:
-  //     "A textured 3D model from aerial images combines the geometric accuracy of a point cloud with the visual richness of the original photographs. By projecting the colors and textures from the aerial images onto the 3D geometry derived through photogrammetry, a realistic and visually interpretable model is created.",
-  // },
+  {
+    code: "glb",
+    name: "Textured Model",
+    source: "aerial imagery",
+    description:
+      "A point cloud created from aerial images is a collection of many small points that together show the shape of the land or objects on it. These points are produced by carefully analyzing multiple photos taken from above, allowing the system to represent the area in three dimensions.",
+  },
 ];

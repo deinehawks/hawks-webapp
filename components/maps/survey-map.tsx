@@ -1316,9 +1316,10 @@ function OrthoTabContent({
             <div className="space-y-1">
               <p className="text-sm font-medium">What you’re looking at</p>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                An orthomosaic is a -resolution, georeferenced top-down image
-                created by stitching overlapping aerial photos—minimizing
-                distortion for accurate inspection.
+                An orthomosaic is a clear, detailed image of an area created by
+                combining many aerial photos into one accurate map. It shows a
+                straight top-down view of the land without distortion, making it
+                easier to see crops, fields, and other features clearly.
               </p>
             </div>
           </div>
@@ -1376,8 +1377,11 @@ function OrthoTabContent({
               <div>
                 <p className="text-sm font-semibold">Plant Disease Detection</p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Early detection helps reduce spread and supports timely
-                  intervention.
+                  Banana plant diseases are a serious threat to the country’s
+                  banana industry and can greatly reduce crop production.
+                  Detecting these diseases early allows farmers to take
+                  immediate action, helping prevent further damage and maintain
+                  healthier banana plants.
                 </p>
               </div>
 
@@ -1459,9 +1463,9 @@ function ThreeDTabContent({ survey }: { survey: SurveyLike }) {
             <div className="space-y-1">
               <p className="text-sm font-medium">What the 3D model provides</p>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                A 3D model represents the surveyed area in three
-                dimensions—useful for structure, elevation, and spatial
-                inspection beyond top-down imagery.
+                A 3D model is a digital version of an object or place that shows
+                its shape and size in three dimensions. It helps us see how an
+                area or object looks in real life.
               </p>
             </div>
           </div>
