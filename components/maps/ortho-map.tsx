@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   calculateGlobalCenters,
   findExtremeCoordinates,
@@ -55,7 +56,6 @@ import { GeometryType, type ComputerVisionObject } from "@/lib/types";
 import { useOrthoMapStore } from "@/providers/ortho-map-store-provider";
 import { getYear } from "date-fns";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
 import { MapLegend } from "@/components/maps/shared/map-legend";
 
@@ -324,7 +324,7 @@ function MapPopup() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 12, scale: 0.95 }}
           transition={{ duration: 0.23, ease: "easeOut" }}
-          className="rounded-xl overflow-hidden shadow-xl border border-border bg-card w-full max-w-[340px]"
+          className="rounded-xl overflow-hidden shadow-xl border border-border bg-card w-full max-w-85"
         >
           <motion.div
             initial={{ opacity: 0, y: 5 }}
@@ -563,6 +563,52 @@ function OrthomapFoiSelector({
   );
 }
 
+// Optimized RasterTiles component with memoization
+const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
+  const surveyTiles = useMemo(() => {
+    return surveys
+      .filter((survey) => survey.code && survey.flight_date)
+      .map((survey) => ({
+        id: survey.id,
+        code: String(survey.code).toLowerCase(),
+        year: getYear(new Date(survey.flight_date as any)),
+        tileUrl: `/asimov-hawks/tiles/${String(
+          survey.code
+        ).toLowerCase()}/${getYear(new Date(survey.flight_date as any))}/${
+          survey.id
+        }/ortho/sharp-corners/{z}/{x}/{y}.png`,
+      }));
+  }, [surveys]);
+
+  return (
+    <>
+      {surveyTiles.map((tile) => (
+        <Source
+          key={tile.id}
+          id={String(tile.id)}
+          type="raster"
+          tiles={[tile.tileUrl]}
+          scheme="tms"
+          tileSize={256}
+          minzoom={10}
+          maxzoom={24}
+        >
+          <Layer
+            id={String(tile.id)}
+            type="raster"
+            source={String(tile.id)}
+            minzoom={10}
+            maxzoom={24}
+          />
+        </Source>
+      ))}
+    </>
+  );
+});
+
+RasterTiles.displayName = "RasterTiles";
+
+// Memoized FeaturesOfInterest component
 function FeaturesOfInterest({
   code,
   detectedObjects,
@@ -701,7 +747,7 @@ function FeaturesOfInterest({
               type="symbol"
               minzoom={healthyZoomLevels.pinMinZoom}
               layout={createPinLayout("pin-yellow")}
-              paint={{ "icon-opacity": 0.75 }}
+              paint={{ "icon-opacity": 0.9 }}
             />
           </Source>
         </>
@@ -732,7 +778,7 @@ function FeaturesOfInterest({
               type="symbol"
               minzoom={unhealthyZoomLevels.pinMinZoom}
               layout={createPinLayout("pin-red")}
-              paint={{ "icon-opacity": 0.75 }}
+              paint={{ "icon-opacity": 0.9 }}
             />
           </Source>
         </>
@@ -740,6 +786,8 @@ function FeaturesOfInterest({
     </>
   );
 }
+
+FeaturesOfInterest.displayName = "FeaturesOfInterest";
 
 function BoundaryLayers({ showBoundaries }: { showBoundaries: boolean }) {
   const { orthomap } = useMap();
@@ -887,6 +935,7 @@ export default function OrthoMap({
           properties: {
             survey_id: survey.id,
             latitude: Number(((survey.max_y ?? 0) + (survey.min_y ?? 0)) / 2),
+            label: `${survey.access_code ?? ""}-${survey.area_code ?? ""}`,
           },
           geometry: {
             type: "Polygon",
@@ -898,6 +947,27 @@ export default function OrthoMap({
     const areasData: FeatureCollection<Polygon, GeoJsonProperties> = {
       type: "FeatureCollection",
       features: areaFeatures,
+    };
+
+    // labels at polygon centroids
+    const labelFeatures: Feature[] = areaFeatures.map((f) => {
+      const centroid = calculateCentroid(f.geometry.coordinates as any);
+      return {
+        type: "Feature",
+        properties: {
+          survey_id: (f.properties as any)?.survey_id,
+          label: (f.properties as any)?.label,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: [...centroid] as [number, number],
+        },
+      };
+    });
+
+    const labelsData: FeatureCollection = {
+      type: "FeatureCollection",
+      features: labelFeatures,
     };
 
     return {
@@ -913,6 +983,12 @@ export default function OrthoMap({
           type: "geojson",
           data: areasData,
           generateId: true,
+        } satisfies GeoJSONSourceSpecification,
+
+        // new source for centroid labels
+        "area-labels": {
+          type: "geojson",
+          data: labelsData,
         } satisfies GeoJSONSourceSpecification,
       },
       layers: [
@@ -934,6 +1010,37 @@ export default function OrthoMap({
               0.7,
               0.4,
             ],
+          },
+        },
+
+        // new layer for labels (visibility controlled dynamically via useEffect)
+        {
+          id: "area-labels",
+          type: "symbol",
+          source: "area-labels",
+          layout: {
+            "text-field": ["get", "label"],
+            "text-size": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              13,
+              10,
+              16,
+              14,
+              20,
+              18,
+            ],
+            "text-anchor": "center",
+            "text-allow-overlap": true,
+            "text-ignore-placement": true,
+            visibility: "none",
+          },
+          paint: {
+            "text-color": "#ffffff",
+            "text-halo-color": MAP_COLORS.boundary,
+            "text-halo-width": 2,
+            "text-halo-blur": 1,
           },
         },
       ],
@@ -1053,7 +1160,9 @@ export default function OrthoMap({
                   <PlantPopup />
                 </Map>
 
-                <MapLegend selectedFoi={selectedFoi} />
+                {selectedFoi && selectedFoi !== "none" && (
+                  <MapLegend selectedFoi={selectedFoi} />
+                )}
               </div>
             </CardContent>
 

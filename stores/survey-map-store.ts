@@ -64,7 +64,7 @@ export const defaultInitState: SurveyMapState = {
   selectedDemType: "dsm",
   selectedDemColor: "viridis",
   selectedDemShading: "normal",
-  selected3dModel: "pcd",
+  selected3dModel: "",
   show3dAxesHelper: false,
 };
 

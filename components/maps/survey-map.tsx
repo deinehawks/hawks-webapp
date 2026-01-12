@@ -16,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
@@ -62,16 +61,13 @@ import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
 import { MapLegend } from "@/components/maps/shared/map-legend";
 
+// animation
+import { AnimatePresence, motion } from "framer-motion";
+
 // Styles
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Info,
-  MapPinned,
-  Image as ImageIcon,
-  Sprout,
-  Cuboid,
-} from "lucide-react";
+import { Info, MapPinned, Cuboid } from "lucide-react";
 
 // Constants
 import { PIN_ANIMATION_STYLES } from "@/lib/constants/map-animation";
@@ -510,7 +506,6 @@ function InitializeMapImages() {
         if (img.src.startsWith("blob:")) URL.revokeObjectURL(img.src);
       };
 
-      // ✅ avoid btoa/unicode issues
       const blob = new Blob([svgString], {
         type: "image/svg+xml;charset=utf-8",
       });
@@ -668,7 +663,7 @@ function FeaturesOfInterest({
               type="symbol"
               minzoom={healthyZoomLevels.pinMinZoom}
               layout={createPinLayout("pin-yellow")}
-              paint={{ "icon-opacity": 0.75 }}
+              paint={{ "icon-opacity": 0.9 }}
             />
           </Source>
         </>
@@ -699,7 +694,7 @@ function FeaturesOfInterest({
               type="symbol"
               minzoom={unhealthyZoomLevels.pinMinZoom}
               layout={createPinLayout("pin-red")}
-              paint={{ "icon-opacity": 0.75 }}
+              paint={{ "icon-opacity": 0.9 }}
             />
           </Source>
         </>
@@ -1028,6 +1023,16 @@ function MapView({
   const loadedTilesRef = useRef<Set<string>>(new Set());
   const zoomTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // READ selectedFoi here so MapLegend can respond to FoiSelector
+  const selectedFoi = useSurveyMapStore((s) => s.selectedFoi);
+
+  // Show legend ONLY when a crop status is selected (not none/empty)
+  const shouldShowLegend =
+    hasOrthoTiles &&
+    selectedFoi != null &&
+    selectedFoi !== "" &&
+    selectedFoi !== "none";
+
   const mapStyle = useMemo<StyleSpecification>(
     () => ({
       version: 8,
@@ -1052,7 +1057,7 @@ function MapView({
       longitude: mapCenter.lng,
       latitude: mapCenter.lat,
       zoom: shouldFit ? undefined : mapCenter.zoom,
-      bounds: shouldFit ? mapBounds ?? undefined : undefined, // ✅ null-safe
+      bounds: shouldFit ? mapBounds ?? undefined : undefined,
       fitBoundsOptions: shouldFit ? { padding: 50 } : undefined,
     };
   }, [
@@ -1206,7 +1211,20 @@ function MapView({
         )}
 
       {!hasValidCoordinates && hasOrthoTiles && <RegionalViewOverlay />}
-      {hasOrthoTiles && <MapLegend />}
+
+      {/* Smooth appear/disappear for the legend */}
+      <AnimatePresence>
+        {shouldShowLegend && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
+            <MapLegend />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Map>
   );
 }
@@ -1237,28 +1255,29 @@ function OrthoTabContent({
   survey: SurveyLike;
   detectedObjects: ComputerVisionObject[];
 }) {
-  const numBananas = useMemo(
-    () => detectedObjects.filter((obj) => obj.label?.includes("Banana")).length,
-    [detectedObjects]
-  );
+  const {
+    bananas: numBananas,
+    healthy: numHealthy,
+    infected: numUnhealthy,
+  } = useMemo(() => {
+    let bananas = 0;
+    let healthy = 0;
+    let infected = 0;
 
-  const numHealthy = useMemo(
-    () =>
-      detectedObjects.filter((o) =>
-        String(o.label ?? "").includes("Healthy-looking")
-      ).length,
-    [detectedObjects]
-  );
+    for (const o of detectedObjects) {
+      const label = String(o.label ?? "");
+      if (label.includes("Banana")) bananas++;
+      if (label.includes("Healthy-looking")) healthy++;
+      if (label.includes("Infected")) infected++;
+    }
 
-  const numUnhealthy = useMemo(
-    () =>
-      detectedObjects.filter((o) => String(o.label ?? "").includes("Infected"))
-        .length,
-    [detectedObjects]
-  );
+    return { bananas, healthy, infected };
+  }, [detectedObjects]);
 
-  const hasOrthoData = survey.ortho !== null;
+  const hasOrthoData = (survey as any).ortho != null;
   const numImages = (survey as any).ortho?.num_images as number | undefined;
+
+  const hasDiseaseSignals = numHealthy + numUnhealthy > 0;
 
   return (
     <Card className="container/card relative flex flex-1 flex-col lg:h-full overflow-hidden">
@@ -1289,7 +1308,6 @@ function OrthoTabContent({
       </CardHeader>
 
       <CardContent className="space-y-5">
-        {/* compact explanation */}
         <div className="rounded-lg border bg-muted/20 p-4">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 rounded-md bg-background p-2 border">
@@ -1298,34 +1316,19 @@ function OrthoTabContent({
             <div className="space-y-1">
               <p className="text-sm font-medium">What you’re looking at</p>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                An orthomosaic is a high-resolution, georeferenced top-down
-                image created by stitching overlapping aerial photos—minimizing
+                An orthomosaic is a -resolution, georeferenced top-down image
+                created by stitching overlapping aerial photos—minimizing
                 distortion for accurate inspection.
               </p>
             </div>
           </div>
         </div>
 
-        {/* at-a-glance stats (single source of truth) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               At a glance
             </p>
-
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="gap-1">
-                <Sprout className="h-3.5 w-3.5" />
-                Inventory: {numBananas.toLocaleString()}
-              </Badge>
-
-              {numImages != null && (
-                <Badge variant="outline" className="gap-1">
-                  <ImageIcon className="h-3.5 w-3.5" />
-                  {numImages.toLocaleString()} images
-                </Badge>
-              )}
-            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -1355,7 +1358,6 @@ function OrthoTabContent({
           </div>
         </div>
 
-        {/* empty state only when needed */}
         {!hasOrthoData && (
           <Alert>
             <AlertTitle>Orthomosaic not available</AlertTitle>
@@ -1366,8 +1368,7 @@ function OrthoTabContent({
           </Alert>
         )}
 
-        {/* plant disease detection section */}
-        {detectedObjects.length > 0 && (
+        {hasDiseaseSignals && (
           <div className="space-y-3 pt-2">
             <Separator />
 
@@ -1380,18 +1381,21 @@ function OrthoTabContent({
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <Badge variant="outline">
+              <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                <Badge variant="outline" className="whitespace-nowrap">
                   Healthy: {numHealthy.toLocaleString()}
                 </Badge>
-                <Badge variant="outline">
+                <Badge variant="outline" className="whitespace-nowrap">
                   Infected: {numUnhealthy.toLocaleString()}
                 </Badge>
               </div>
             </div>
 
-            {/* FoiSelector already has its own container */}
-            <FoiSelector detectedObjects={detectedObjects} />
+            <div className="flex justify-center">
+              <div className="w-full max-w-md pt-2">
+                <FoiSelector detectedObjects={detectedObjects} />
+              </div>
+            </div>
           </div>
         )}
       </CardContent>
@@ -1400,17 +1404,33 @@ function OrthoTabContent({
 }
 
 function ThreeDTabContent({ survey }: { survey: SurveyLike }) {
-  const hasPointCloud = survey.point_cloud !== null;
+  const hasPointCloud = survey.point_cloud != null;
+
+  const tagsLower = String(survey.tags ?? "").toLowerCase();
+  const pc = (survey as any).point_cloud;
+
+  const hasPhotogrammetryModel =
+    (survey as any).photogrammetry_model != null ||
+    tagsLower.includes("rgb") ||
+    pc?.type === "photogrammetry" ||
+    pc?.source === "photogrammetry" ||
+    pc?.method === "odm";
+
+  const hasLidarModel =
+    (survey as any).lidar_model != null ||
+    tagsLower.includes("lidar") ||
+    pc?.type === "lidar" ||
+    pc?.source === "lidar";
 
   return (
     <Card className="container/card relative flex flex-1 flex-col lg:h-full overflow-hidden">
-      <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-violet-500/70 via-violet-500/25 to-transparent" />
+      <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary/70 via-primary/30 to-transparent" />
 
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2">
-              <Cuboid className="h-4 w-4 text-violet-500" />
+              <Cuboid className="h-4 w-4 text-primary" />
               3D Model
             </CardTitle>
             <CardDescription className="text-xs">
@@ -1450,12 +1470,14 @@ function ThreeDTabContent({ survey }: { survey: SurveyLike }) {
         {survey.code ? (
           <div className="space-y-2">
             <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Model selection
+              Select a Model
             </p>
-
-            <div className="relative z-30 rounded-lg border bg-card/60 p-3">
-              <ThreeDimensionalModelSelector code={String(survey.code)} />
-            </div>
+            <ThreeDimensionalModelSelector
+              code={String(survey.code)}
+              hasPointCloud={hasPointCloud}
+              hasPhotogrammetryModel={hasPhotogrammetryModel}
+              hasLidarModel={hasLidarModel}
+            />
           </div>
         ) : (
           <Alert>
@@ -1474,7 +1496,7 @@ function ThreeDTabContent({ survey }: { survey: SurveyLike }) {
               Point cloud
             </p>
 
-            <div className="relative min-h-[320px] rounded-xl border bg-card/60 overflow-hidden">
+            <div className="relative min-h-80 rounded-xl border bg-card/60 overflow-hidden text-sm">
               <ThreeDimensionalModelCard pcd={survey.point_cloud as any} />
             </div>
           </div>
@@ -1482,7 +1504,7 @@ function ThreeDTabContent({ survey }: { survey: SurveyLike }) {
           <Alert>
             <AlertTitle>3D point cloud not available</AlertTitle>
             <AlertDescription className="text-sm">
-              This survey doesn’t include point cloud output yet. If the capture
+              This survey doesn't include point cloud output yet. If the capture
               is recent, it may still be processing.
             </AlertDescription>
           </Alert>
@@ -1564,9 +1586,11 @@ export default function SurveyMap({
   const { hasValidCoordinates, hasOrthoTiles, shouldShowMap } =
     useValidationState(survey);
 
-  const has3DModel = Boolean(
-    survey.tags?.includes("rgb") && survey.code !== "DIFCO"
-  );
+  const tagsLower = String(survey.tags ?? "").toLowerCase();
+  const has3DModel =
+    (survey as any).point_cloud != null ||
+    tagsLower.includes("rgb") ||
+    tagsLower.includes("lidar");
 
   return (
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">

@@ -101,7 +101,7 @@ export function MapLegend({
 
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-3">
-                      <div className="flex gap-0.5 rounded overflow-hidden shadow-sm">
+                      <div className="flex flex-1 gap-0.5 rounded overflow-hidden shadow-sm">
                         {[
                           `rgba(${MAP_COLORS.healthy.heatmap}, 0.15)`,
                           `rgba(${MAP_COLORS.healthy.heatmap}, 0.3)`,
@@ -111,12 +111,13 @@ export function MapLegend({
                         ].map((c, i) => (
                           <div
                             key={i}
-                            className="w-6 h-6"
+                            className="h-6 flex-1" // <-- fills available width evenly
                             style={{ backgroundColor: c }}
                           />
                         ))}
                       </div>
-                      <span className="text-xs text-gray-600 flex-1">
+
+                      <span className="text-xs text-gray-600 whitespace-nowrap">
                         Plant Density
                       </span>
                     </div>

@@ -2,10 +2,6 @@
 import type { ExpressionSpecification } from "maplibre-gl";
 import { MAP_COLORS, type PlantHealth } from "./map-colors";
 
-/* -------------------------------------------------------------------------- */
-/* Shared heatmap interpolations                                              */
-/* -------------------------------------------------------------------------- */
-
 export const HEATMAP_RADIUS_BY_ZOOM: ExpressionSpecification = [
   "interpolate",
   ["linear"],
@@ -80,3 +76,39 @@ export function createHeatmapPaint(type: PlantHealth) {
     ] as ExpressionSpecification,
   } satisfies Record<string, unknown>;
 }
+
+/* export const createHeatmapPaint = (type: "healthy" | "unhealthy") => {
+  const isHealthy = type === "healthy";
+
+  return {
+    "heatmap-weight": [
+      "interpolate",
+      ["linear"],
+      ["get", "point_count"],
+      0,
+      0,
+      6,
+      1,
+    ],
+    "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 9, 3],
+    "heatmap-color": [
+      "interpolate",
+      ["linear"],
+      ["heatmap-density"],
+      0,
+      "rgba(0, 0, 0, 0)",
+      0.2,
+      isHealthy ? "rgba(1, 115, 178, 0.2)" : "rgba(222, 143, 5, 0.2)",
+      0.4,
+      isHealthy ? "rgba(1, 115, 178, 0.4)" : "rgba(222, 143, 5, 0.4)",
+      0.6,
+      isHealthy ? "rgba(1, 115, 178, 0.6)" : "rgba(222, 143, 5, 0.6)",
+      0.8,
+      isHealthy ? "rgba(2, 144, 217, 0.8)" : "rgba(245, 166, 35, 0.8)",
+      1,
+      isHealthy ? "rgba(2, 144, 217, 1)" : "rgba(245, 166, 35, 1)",
+    ],
+    "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 9, 20],
+    "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0.8, 9, 0.6],
+  };
+};*/

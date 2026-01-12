@@ -1,12 +1,8 @@
 "use client";
 
 import { Separator } from "@/components/ui/separator";
-import {
-  calculateGlobalCenters,
-  findExtremeCoordinates,
-  transformCoordinatesToLonLatFormat,
-} from "@/lib/helpers";
-import { LngLatLike, Map, Marker, Popup, useMap } from "@vis.gl/react-maplibre";
+import { calculateGlobalCenters, findExtremeCoordinates } from "@/lib/helpers";
+import { LngLatLike, Map, Popup, useMap } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";

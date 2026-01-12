@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { Switch } from "@/components/ui/switch";
 import { useSurveyMapStore } from "@/providers/survey-map-store-provider";
 import {
   Select,
@@ -9,25 +11,40 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Switch } from "../ui/switch";
 
 export function ThreeDimensionalModelSelector({
   code,
+  hasPointCloud,
   hasPhotogrammetryModel,
   hasLidarModel,
   disabled = false,
 }: {
   code: string;
+  hasPointCloud: boolean;
   hasPhotogrammetryModel: boolean;
   hasLidarModel: boolean;
   disabled?: boolean;
 }) {
-  const { selected3dModel, setSelected3dModel } = useSurveyMapStore(
-    (state) => state
-  );
+  const { selected3dModel, setSelected3dModel } = useSurveyMapStore((s) => s);
 
-  const hasAnyModel = hasPhotogrammetryModel || hasLidarModel;
-  const isDisabled = disabled || !hasAnyModel;
+  // Enable selector if point cloud exists
+  const isDisabled = disabled || !hasPointCloud;
+
+  // Auto-pick a sensible default when data becomes available
+  useEffect(() => {
+    if (isDisabled) return;
+    if (selected3dModel) return;
+
+    if (hasLidarModel) setSelected3dModel("pcd-lidar");
+    else if (hasPhotogrammetryModel) setSelected3dModel("pcd-odm");
+    else setSelected3dModel("pcd"); // fallback when type is unknown
+  }, [
+    isDisabled,
+    selected3dModel,
+    hasLidarModel,
+    hasPhotogrammetryModel,
+    setSelected3dModel,
+  ]);
 
   if (isDisabled) {
     return (
@@ -44,11 +61,7 @@ export function ThreeDimensionalModelSelector({
 
   return (
     <div className="w-fit">
-      <Select
-        value={selected3dModel}
-        onValueChange={setSelected3dModel}
-        disabled={isDisabled}
-      >
+      <Select value={selected3dModel} onValueChange={setSelected3dModel}>
         <SelectTrigger className="w-fit" id="3d-model-selector">
           <Label>Model:</Label>
           <SelectValue placeholder="Select 3D model" />
@@ -66,6 +79,11 @@ export function ThreeDimensionalModelSelector({
               <SelectItem value="pcd-odm">
                 Point Cloud (Photogrammetry)
               </SelectItem>
+            )}
+
+            {/* Fallback if we can't detect which kind */}
+            {!hasLidarModel && !hasPhotogrammetryModel && (
+              <SelectItem value="pcd">Point Cloud</SelectItem>
             )}
           </SelectGroup>
         </SelectContent>

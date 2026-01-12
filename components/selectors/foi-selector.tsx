@@ -38,41 +38,43 @@ export function FoiSelector({
   }, [detectedObjects]);
 
   return (
-    <Select value={selectedFoi} onValueChange={setSelectedFoi}>
-      <SelectTrigger className="w-fit" id="foi-selector">
-        <Label>Crop Status:</Label>
-        <SelectValue placeholder="Select feature of interest" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectLabel>Feature of Interest</SelectLabel>
-          <SelectItem value="none">None</SelectItem>
-          <SelectItem value="healthy" className="flex gap-2">
-            <span> Healthy Banana </span>
-            {selectedFoi === "healthy" && (
-              <Badge variant="secondary" className="rounded-full">
-                {numHealthyBananas}
-              </Badge>
-            )}
-          </SelectItem>
-          <SelectItem value="unhealthy" className="flex gap-2">
-            <span> Unhealthy Banana </span>
-            {selectedFoi === "unhealthy" && (
-              <Badge variant="secondary" className="rounded-full">
-                {numUnhealthyBananas}
-              </Badge>
-            )}
-          </SelectItem>
-          <SelectItem value="all" className="flex gap-2">
-            <span> All </span>
-            {selectedFoi === "all" && (
-              <Badge variant="secondary" className="rounded-full">
-                {numUnhealthyBananas + numHealthyBananas}
-              </Badge>
-            )}
-          </SelectItem>
-        </SelectGroup>
-      </SelectContent>
-    </Select>
+    <div className="flex flex-col items-center gap-2">
+      <Select value={selectedFoi} onValueChange={setSelectedFoi}>
+        <SelectTrigger className="w-fit" id="foi-selector">
+          <Label>Crop Status:</Label>
+          <SelectValue placeholder="Select feature of interest" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectLabel>Feature of Interest</SelectLabel>
+            <SelectItem value="none">None</SelectItem>
+            <SelectItem value="healthy" className="flex gap-2">
+              <span> Healthy Banana </span>
+              {selectedFoi === "healthy" && (
+                <Badge variant="secondary" className="rounded-full">
+                  {numHealthyBananas}
+                </Badge>
+              )}
+            </SelectItem>
+            <SelectItem value="unhealthy" className="flex gap-2">
+              <span> Unhealthy Banana </span>
+              {selectedFoi === "unhealthy" && (
+                <Badge variant="secondary" className="rounded-full">
+                  {numUnhealthyBananas}
+                </Badge>
+              )}
+            </SelectItem>
+            <SelectItem value="all" className="flex gap-2">
+              <span> All </span>
+              {selectedFoi === "all" && (
+                <Badge variant="secondary" className="rounded-full">
+                  {numUnhealthyBananas + numHealthyBananas}
+                </Badge>
+              )}
+            </SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
