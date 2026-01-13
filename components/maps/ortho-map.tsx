@@ -125,137 +125,143 @@ function calculateCentersWithOffset(
 // MAP COMPONENTS
 // ============================================================================
 
-function MapEvents({
-  surveys,
-  showBoundaries,
-  code,
-  detectedObjects,
-}: {
-  surveys: SurveyLike[];
-  showBoundaries: boolean;
-  code?: string;
-  detectedObjects: ComputerVisionObject[];
-}) {
-  const { orthomap } = useMap();
-  const { setPopupInfo, setHoveredPairId, setPlantPopupInfo } =
-    useOrthoMapStore((state) => state);
-
-  const handleMapClick = useCallback(
-    (e: MapMouseEvent) => {
-      if (!showBoundaries || !surveys || !e.features?.length) return;
-
-      const surveyId = e.features[0]?.properties?.survey_id;
-      const clickedSurvey = surveys.find(
-        (s) => String(s.id) === String(surveyId)
-      );
-
-      if (clickedSurvey && clickedSurvey.boundaries) {
-        const coordinates = [
-          transformCoordinatesToLonLatFormat(clickedSurvey.boundaries as any),
-        ];
-        const [lng, lat] = calculateCentroid(coordinates);
-
-        setPopupInfo({ ...(clickedSurvey as any), lat, lng });
-
-        orthomap?.flyTo({
-          center: [lng, lat],
-          zoom: Math.max(orthomap.getZoom(), 16),
-          padding: { top: 250, bottom: 25, left: 50, right: 50 },
-          duration: 800,
-          curve: 1.4,
-          essential: true,
-        });
-      }
-    },
-    [surveys, setPopupInfo, orthomap, showBoundaries]
-  );
-
-  const handlePinClick = useCallback(
-    (e: MapMouseEvent) => {
-      const objectPairId = e.features?.[0]?.properties?.pairId as
-        | string
-        | undefined;
-      if (!objectPairId) return;
-
-      const clickedObject = detectedObjects.find(
-        (o) => o.pairId === objectPairId
-      );
-      if (!clickedObject) return;
-
-      const { pairId, areaPairId: areaId, bbox } = clickedObject;
-      const { centerLng, centerLat } = calculateCentersWithOffset(
-        bbox.min_lon,
-        bbox.max_lon,
-        bbox.min_lat,
-        bbox.max_lat
-      );
-
-      setPlantPopupInfo({ pairId, areaId, centerLng, centerLat });
-    },
-    [detectedObjects, setPlantPopupInfo]
-  );
-
-  const handlePinHover = useCallback(
-    (e: MapMouseEvent) => {
-      const pairId = e.features?.[0]?.properties?.pairId as string | undefined;
-      setHoveredPairId(pairId || null);
-      if (pairId && orthomap) orthomap.getCanvas().style.cursor = "pointer";
-    },
-    [orthomap, setHoveredPairId]
-  );
-
-  const handlePinLeave = useCallback(() => {
-    setHoveredPairId(null);
-    if (orthomap) orthomap.getCanvas().style.cursor = "";
-  }, [orthomap, setHoveredPairId]);
-
-  useEffect(() => {
-    if (!orthomap || !code) return;
-
-    const LAYER_TYPES: Record<string, string[]> = {
-      CLICK_BOUNDARIES: ["area-fills"],
-      CLICK_PINS: [`${code}-unhealthy-pin`, `${code}-healthy-pin`],
-      HOVER_PINS: [`${code}-unhealthy-pin`, `${code}-healthy-pin`],
-    };
-
-    LAYER_TYPES.CLICK_BOUNDARIES.forEach((layer) => {
-      orthomap.on("click", layer, handleMapClick);
-    });
-
-    LAYER_TYPES.CLICK_PINS.forEach((layer) => {
-      orthomap.on("click", layer, handlePinClick);
-    });
-
-    LAYER_TYPES.HOVER_PINS.forEach((layer) => {
-      orthomap.on("mouseenter", layer, handlePinHover);
-      orthomap.on("mouseleave", layer, handlePinLeave);
-    });
-
-    return () => {
-      LAYER_TYPES.CLICK_BOUNDARIES.forEach((layer) => {
-        orthomap.off("click", layer, handleMapClick);
-      });
-      LAYER_TYPES.CLICK_PINS.forEach((layer) => {
-        orthomap.off("click", layer, handlePinClick);
-      });
-      LAYER_TYPES.HOVER_PINS.forEach((layer) => {
-        orthomap.off("mouseenter", layer, handlePinHover);
-        orthomap.off("mouseleave", layer, handlePinLeave);
-      });
-    };
-  }, [
-    orthomap,
+const MapEvents = React.memo(
+  ({
+    surveys,
+    showBoundaries,
     code,
-    handleMapClick,
-    handlePinClick,
-    handlePinHover,
-    handlePinLeave,
-  ]);
+    detectedObjects,
+  }: {
+    surveys: SurveyLike[];
+    showBoundaries: boolean;
+    code?: string;
+    detectedObjects: ComputerVisionObject[];
+  }) => {
+    const { orthomap } = useMap();
+    const { setPopupInfo, setHoveredPairId, setPlantPopupInfo } =
+      useOrthoMapStore((state) => state);
 
-  return null;
-}
+    const handleMapClick = useCallback(
+      (e: MapMouseEvent) => {
+        if (!showBoundaries || !surveys || !e.features?.length) return;
 
-function InitializeMapImages() {
+        const surveyId = e.features[0]?.properties?.survey_id;
+        const clickedSurvey = surveys.find(
+          (s) => String(s.id) === String(surveyId)
+        );
+
+        if (clickedSurvey && clickedSurvey.boundaries) {
+          const coordinates = [
+            transformCoordinatesToLonLatFormat(clickedSurvey.boundaries as any),
+          ];
+          const [lng, lat] = calculateCentroid(coordinates);
+
+          setPopupInfo({ ...(clickedSurvey as any), lat, lng });
+
+          orthomap?.flyTo({
+            center: [lng, lat],
+            zoom: Math.max(orthomap.getZoom(), 16),
+            padding: { top: 250, bottom: 25, left: 50, right: 50 },
+            duration: 800,
+            curve: 1.4,
+            essential: true,
+          });
+        }
+      },
+      [surveys, setPopupInfo, orthomap, showBoundaries]
+    );
+
+    const handlePinClick = useCallback(
+      (e: MapMouseEvent) => {
+        const objectPairId = e.features?.[0]?.properties?.pairId as
+          | string
+          | undefined;
+        if (!objectPairId) return;
+
+        const clickedObject = detectedObjects.find(
+          (o) => o.pairId === objectPairId
+        );
+        if (!clickedObject) return;
+
+        const { pairId, areaPairId: areaId, bbox } = clickedObject;
+        const { centerLng, centerLat } = calculateCentersWithOffset(
+          bbox.min_lon,
+          bbox.max_lon,
+          bbox.min_lat,
+          bbox.max_lat
+        );
+
+        setPlantPopupInfo({ pairId, areaId, centerLng, centerLat });
+      },
+      [detectedObjects, setPlantPopupInfo]
+    );
+
+    const handlePinHover = useCallback(
+      (e: MapMouseEvent) => {
+        const pairId = e.features?.[0]?.properties?.pairId as
+          | string
+          | undefined;
+        setHoveredPairId(pairId || null);
+        if (pairId && orthomap) orthomap.getCanvas().style.cursor = "pointer";
+      },
+      [orthomap, setHoveredPairId]
+    );
+
+    const handlePinLeave = useCallback(() => {
+      setHoveredPairId(null);
+      if (orthomap) orthomap.getCanvas().style.cursor = "";
+    }, [orthomap, setHoveredPairId]);
+
+    useEffect(() => {
+      if (!orthomap || !code) return;
+
+      const LAYER_TYPES: Record<string, string[]> = {
+        CLICK_BOUNDARIES: ["area-fills"],
+        CLICK_PINS: [`${code}-unhealthy-pin`, `${code}-healthy-pin`],
+        HOVER_PINS: [`${code}-unhealthy-pin`, `${code}-healthy-pin`],
+      };
+
+      LAYER_TYPES.CLICK_BOUNDARIES.forEach((layer) => {
+        orthomap.on("click", layer, handleMapClick);
+      });
+
+      LAYER_TYPES.CLICK_PINS.forEach((layer) => {
+        orthomap.on("click", layer, handlePinClick);
+      });
+
+      LAYER_TYPES.HOVER_PINS.forEach((layer) => {
+        orthomap.on("mouseenter", layer, handlePinHover);
+        orthomap.on("mouseleave", layer, handlePinLeave);
+      });
+
+      return () => {
+        LAYER_TYPES.CLICK_BOUNDARIES.forEach((layer) => {
+          orthomap.off("click", layer, handleMapClick);
+        });
+        LAYER_TYPES.CLICK_PINS.forEach((layer) => {
+          orthomap.off("click", layer, handlePinClick);
+        });
+        LAYER_TYPES.HOVER_PINS.forEach((layer) => {
+          orthomap.off("mouseenter", layer, handlePinHover);
+          orthomap.off("mouseleave", layer, handlePinLeave);
+        });
+      };
+    }, [
+      orthomap,
+      code,
+      handleMapClick,
+      handlePinClick,
+      handlePinHover,
+      handlePinLeave,
+    ]);
+
+    return null;
+  }
+);
+
+MapEvents.displayName = "MapEvents";
+
+const InitializeMapImages = React.memo(() => {
   const { orthomap } = useMap();
 
   useEffect(() => {
@@ -299,9 +305,11 @@ function InitializeMapImages() {
   }, [orthomap]);
 
   return null;
-}
+});
 
-function MapPopup() {
+InitializeMapImages.displayName = "InitializeMapImages";
+
+const MapPopup = React.memo(() => {
   const { popupInfo, setPopupInfo } = useOrthoMapStore((state) => state);
 
   const info = popupInfo as PopupInfo | null;
@@ -429,9 +437,11 @@ function MapPopup() {
       </Popup>
     </AnimatePresence>
   );
-}
+});
 
-function PlantPopup() {
+MapPopup.displayName = "MapPopup";
+
+const PlantPopup = React.memo(() => {
   const { plantPopupInfo, setPlantPopupInfo } = useOrthoMapStore(
     (state) => state
   );
@@ -468,102 +478,107 @@ function PlantPopup() {
       </div>
     </Popup>
   );
-}
+});
 
-function SourceLoadingStatus({ idList }: { idList: Array<string | number> }) {
-  const { areAllSourcesLoaded, setAreAllSourcesLoaded } = useOrthoMapStore(
-    (state) => state
-  );
-  const { orthomap } = useMap();
+PlantPopup.displayName = "PlantPopup";
 
-  useEffect(() => {
-    if (!orthomap) return;
+const SourceLoadingStatus = React.memo(
+  ({ idList }: { idList: Array<string | number> }) => {
+    const { areAllSourcesLoaded, setAreAllSourcesLoaded } = useOrthoMapStore(
+      (state) => state
+    );
+    const { orthomap } = useMap();
 
-    const handleIdle = () => setAreAllSourcesLoaded(true);
-    orthomap.on("idle", handleIdle);
+    useEffect(() => {
+      if (!orthomap) return;
 
-    return () => {
-      orthomap.off("idle", handleIdle);
-    };
-  }, [orthomap, setAreAllSourcesLoaded]);
+      const handleIdle = () => setAreAllSourcesLoaded(true);
+      orthomap.on("idle", handleIdle);
 
-  return (
-    <div className="text-sm text-muted-foreground">
-      {areAllSourcesLoaded ? "All sources loaded." : "Loading map sources..."}
-    </div>
-  );
-}
+      return () => {
+        orthomap.off("idle", handleIdle);
+      };
+    }, [orthomap, setAreAllSourcesLoaded]);
 
-function OrthomapFoiSelector({
-  detectedObjects,
-}: {
-  detectedObjects: ComputerVisionObject[];
-}) {
-  const { selectedFoi, setSelectedFoi } = useOrthoMapStore((state) => state);
-  const [placeholder, setPlaceholder] = useState("feature of interest");
+    return (
+      <div className="text-sm text-muted-foreground">
+        {areAllSourcesLoaded ? "All sources loaded." : "Loading map sources..."}
+      </div>
+    );
+  }
+);
 
-  useEffect(() => {
-    const updatePlaceholder = () =>
-      setPlaceholder(window.innerWidth < 768 ? "FOI" : "feature of interest");
-    updatePlaceholder();
-    window.addEventListener("resize", updatePlaceholder);
-    return () => window.removeEventListener("resize", updatePlaceholder);
-  }, []);
+SourceLoadingStatus.displayName = "SourceLoadingStatus";
 
-  const counts = useMemo(() => {
-    if (!detectedObjects || !Array.isArray(detectedObjects))
-      return { healthy: 0, unhealthy: 0 };
-    return {
-      healthy: detectedObjects.filter(
-        (obj) => obj.label === "Banana Plant (Healthy-looking)"
-      ).length,
-      unhealthy: detectedObjects.filter(
-        (obj) => obj.label === "Banana Plant (Infected)"
-      ).length,
-    };
-  }, [detectedObjects]);
+const OrthomapFoiSelector = React.memo(
+  ({ detectedObjects }: { detectedObjects: ComputerVisionObject[] }) => {
+    const { selectedFoi, setSelectedFoi } = useOrthoMapStore((state) => state);
+    const [placeholder, setPlaceholder] = useState("feature of interest");
 
-  return (
-    <Select value={selectedFoi} onValueChange={setSelectedFoi}>
-      <SelectTrigger className="w-fit" id="foi-selector">
-        <Label>Crop Status:</Label>
-        <SelectValue placeholder={`Select ${placeholder}`} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectLabel>Feature of Interest</SelectLabel>
-          <SelectItem value="none">None</SelectItem>
-          <SelectItem value="healthy">
-            Healthy Banana
-            {selectedFoi === "healthy" && (
-              <Badge variant="secondary" className="ml-2 rounded-full">
-                {counts.healthy}
-              </Badge>
-            )}
-          </SelectItem>
-          <SelectItem value="unhealthy">
-            Unhealthy Banana
-            {selectedFoi === "unhealthy" && (
-              <Badge variant="secondary" className="ml-2 rounded-full">
-                {counts.unhealthy}
-              </Badge>
-            )}
-          </SelectItem>
-          <SelectItem value="all">
-            All
-            {selectedFoi === "all" && (
-              <Badge variant="secondary" className="ml-2 rounded-full">
-                {counts.healthy + counts.unhealthy}
-              </Badge>
-            )}
-          </SelectItem>
-        </SelectGroup>
-      </SelectContent>
-    </Select>
-  );
-}
+    useEffect(() => {
+      const updatePlaceholder = () =>
+        setPlaceholder(window.innerWidth < 768 ? "FOI" : "feature of interest");
+      updatePlaceholder();
+      window.addEventListener("resize", updatePlaceholder);
+      return () => window.removeEventListener("resize", updatePlaceholder);
+    }, []);
 
-// Optimized RasterTiles component with memoization
+    const counts = useMemo(() => {
+      if (!detectedObjects || !Array.isArray(detectedObjects))
+        return { healthy: 0, unhealthy: 0 };
+      return {
+        healthy: detectedObjects.filter(
+          (obj) => obj.label === "Banana Plant (Healthy-looking)"
+        ).length,
+        unhealthy: detectedObjects.filter(
+          (obj) => obj.label === "Banana Plant (Infected)"
+        ).length,
+      };
+    }, [detectedObjects]);
+
+    return (
+      <Select value={selectedFoi} onValueChange={setSelectedFoi}>
+        <SelectTrigger className="w-fit" id="foi-selector">
+          <Label>Crop Status:</Label>
+          <SelectValue placeholder={`Select ${placeholder}`} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectLabel>Feature of Interest</SelectLabel>
+            <SelectItem value="none">None</SelectItem>
+            <SelectItem value="healthy">
+              Healthy Banana
+              {selectedFoi === "healthy" && (
+                <Badge variant="secondary" className="ml-2 rounded-full">
+                  {counts.healthy}
+                </Badge>
+              )}
+            </SelectItem>
+            <SelectItem value="unhealthy">
+              Unhealthy Banana
+              {selectedFoi === "unhealthy" && (
+                <Badge variant="secondary" className="ml-2 rounded-full">
+                  {counts.unhealthy}
+                </Badge>
+              )}
+            </SelectItem>
+            <SelectItem value="all">
+              All
+              {selectedFoi === "all" && (
+                <Badge variant="secondary" className="ml-2 rounded-full">
+                  {counts.healthy + counts.unhealthy}
+                </Badge>
+              )}
+            </SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    );
+  }
+);
+
+OrthomapFoiSelector.displayName = "OrthomapFoiSelector";
+
 const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
   const surveyTiles = useMemo(() => {
     return surveys
@@ -592,6 +607,8 @@ const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
           tileSize={256}
           minzoom={10}
           maxzoom={24}
+          // PERFORMANCE: Increase tile cache to reduce reloading
+          maxzoom={24}
         >
           <Layer
             id={String(tile.id)}
@@ -599,6 +616,12 @@ const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
             source={String(tile.id)}
             minzoom={10}
             maxzoom={24}
+            paint={{
+              // PERFORMANCE: Fade in tiles faster for snappier feel
+              "raster-fade-duration": 150, // Default is 300ms
+              // Optional: Reduce resampling for sharper tiles at non-integer zooms
+              "raster-resampling": "nearest", // or "linear" for smoother
+            }}
           />
         </Source>
       ))}
@@ -608,242 +631,254 @@ const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
 
 RasterTiles.displayName = "RasterTiles";
 
-// Memoized FeaturesOfInterest component
-function FeaturesOfInterest({
-  code,
-  detectedObjects,
-}: {
-  code: string;
-  detectedObjects: ComputerVisionObject[];
-}) {
-  const { selectedFoi, hoveredPairId, plantPopupInfo } = useOrthoMapStore(
-    (state) => state
-  );
-
-  const { healthyBananas, unhealthyBananas } = useMemo(() => {
-    if (!detectedObjects || !Array.isArray(detectedObjects))
-      return { healthyBananas: "", unhealthyBananas: "" };
-
-    return {
-      healthyBananas: generateFeatureCollection(
-        GeometryType.Point,
-        "Banana Plant (Healthy-looking)",
-        detectedObjects
-      ),
-      unhealthyBananas: generateFeatureCollection(
-        GeometryType.Point,
-        "Banana Plant (Infected)",
-        detectedObjects
-      ),
-    };
-  }, [detectedObjects]);
-
-  const selectedPlantBbox = useMemo<FeatureCollection<
-    Polygon,
-    GeoJsonProperties
-  > | null>(() => {
-    const selectedId = plantPopupInfo?.pairId || hoveredPairId;
-    if (!selectedId) return null;
-
-    const selectedObject = detectedObjects.find(
-      (obj) => obj.pairId === selectedId
+// FIXED: Memoized FeaturesOfInterest component with proper layer ordering
+const FeaturesOfInterest = React.memo(
+  ({
+    code,
+    detectedObjects,
+  }: {
+    code: string;
+    detectedObjects: ComputerVisionObject[];
+  }) => {
+    const { selectedFoi, hoveredPairId, plantPopupInfo } = useOrthoMapStore(
+      (state) => state
     );
-    if (!selectedObject) return null;
 
-    const { min_lon, max_lon, min_lat, max_lat } = selectedObject.bbox;
+    const { healthyBananas, unhealthyBananas } = useMemo(() => {
+      if (!detectedObjects || !Array.isArray(detectedObjects))
+        return { healthyBananas: "", unhealthyBananas: "" };
 
-    return {
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          geometry: {
-            type: "Polygon",
-            coordinates: [
-              [
-                [min_lon, min_lat],
-                [max_lon, min_lat],
-                [max_lon, max_lat],
-                [min_lon, max_lat],
-                [min_lon, min_lat],
+      return {
+        healthyBananas: generateFeatureCollection(
+          GeometryType.Point,
+          "Banana Plant (Healthy-looking)",
+          detectedObjects
+        ),
+        unhealthyBananas: generateFeatureCollection(
+          GeometryType.Point,
+          "Banana Plant (Infected)",
+          detectedObjects
+        ),
+      };
+    }, [detectedObjects]);
+
+    const selectedPlantBbox = useMemo<FeatureCollection<
+      Polygon,
+      GeoJsonProperties
+    > | null>(() => {
+      const selectedId = plantPopupInfo?.pairId || hoveredPairId;
+      if (!selectedId) return null;
+
+      const selectedObject = detectedObjects.find(
+        (obj) => obj.pairId === selectedId
+      );
+      if (!selectedObject) return null;
+
+      const { min_lon, max_lon, min_lat, max_lat } = selectedObject.bbox;
+
+      return {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [min_lon, min_lat],
+                  [max_lon, min_lat],
+                  [max_lon, max_lat],
+                  [min_lon, max_lat],
+                  [min_lon, min_lat],
+                ],
               ],
-            ],
+            },
+            properties: {
+              pairId: selectedObject.pairId,
+              label: selectedObject.label,
+            },
           },
-          properties: {
-            pairId: selectedObject.pairId,
-            label: selectedObject.label,
-          },
-        },
-      ],
-    };
-  }, [detectedObjects, plantPopupInfo, hoveredPairId]);
+        ],
+      };
+    }, [detectedObjects, plantPopupInfo, hoveredPairId]);
 
-  const isHealthy =
-    selectedPlantBbox?.features[0]?.properties &&
-    String((selectedPlantBbox.features[0].properties as any).label).includes(
-      "Healthy"
+    const isHealthy =
+      selectedPlantBbox?.features[0]?.properties &&
+      String((selectedPlantBbox.features[0].properties as any).label).includes(
+        "Healthy"
+      );
+
+    const selectedColor = isHealthy
+      ? MAP_COLORS.healthy.base
+      : MAP_COLORS.unhealthy.base;
+
+    const healthyZoomLevels = useMemo(() => {
+      return calculateOptimalZoomLevels((healthyBananas as any).features ?? []);
+    }, [healthyBananas]);
+
+    const unhealthyZoomLevels = useMemo(() => {
+      return calculateOptimalZoomLevels(
+        (unhealthyBananas as any).features ?? []
+      );
+    }, [unhealthyBananas]);
+
+    // FIXED: Render unhealthy layers AFTER healthy layers to ensure proper stacking order
+    // This prevents healthy pins from covering unhealthy pins when "All" is selected
+    return (
+      <>
+        {selectedPlantBbox && (
+          <Source
+            id={`${code}-selected-bbox`}
+            type="geojson"
+            data={selectedPlantBbox}
+          >
+            <Layer
+              id={`${code}-selected-bbox-fill`}
+              type="fill"
+              paint={{ "fill-color": selectedColor, "fill-opacity": 0.15 }}
+            />
+            <Layer
+              id={`${code}-selected-bbox-outline`}
+              type="line"
+              paint={{
+                "line-color": selectedColor,
+                "line-width": 2,
+                "line-opacity": 0.8,
+                "line-dasharray": [2, 2],
+              }}
+            />
+          </Source>
+        )}
+
+        {/* Render healthy layers first (bottom of stack) */}
+        {(selectedFoi === "healthy" || selectedFoi === "all") && (
+          <>
+            <Source
+              id={`${code}-healthy`}
+              type="geojson"
+              data={healthyBananas as any}
+            >
+              <Layer
+                id={`${code}-healthy-heatmap`}
+                type="heatmap"
+                maxzoom={healthyZoomLevels.heatmapMaxZoom}
+                paint={createHeatmapPaint("healthy")}
+              />
+            </Source>
+
+            <Source
+              id={`${code}-healthy-pins`}
+              type="geojson"
+              data={healthyBananas as any}
+            >
+              <Layer
+                id={`${code}-healthy-pin`}
+                type="symbol"
+                minzoom={healthyZoomLevels.pinMinZoom}
+                layout={createPinLayout("pin-yellow")}
+                paint={{ "icon-opacity": 0.9 }}
+              />
+            </Source>
+          </>
+        )}
+
+        {/* Render unhealthy layers second (top of stack) */}
+        {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
+          <>
+            <Source
+              id={`${code}-unhealthy`}
+              type="geojson"
+              data={unhealthyBananas as any}
+            >
+              <Layer
+                id={`${code}-unhealthy-heatmap`}
+                type="heatmap"
+                maxzoom={unhealthyZoomLevels.heatmapMaxZoom}
+                paint={createHeatmapPaint("unhealthy")}
+              />
+            </Source>
+
+            <Source
+              id={`${code}-unhealthy-pins`}
+              type="geojson"
+              data={unhealthyBananas as any}
+            >
+              <Layer
+                id={`${code}-unhealthy-pin`}
+                type="symbol"
+                minzoom={unhealthyZoomLevels.pinMinZoom}
+                layout={createPinLayout("pin-red")}
+                paint={{ "icon-opacity": 0.9 }}
+              />
+            </Source>
+          </>
+        )}
+      </>
     );
-
-  const selectedColor = isHealthy
-    ? MAP_COLORS.healthy.base
-    : MAP_COLORS.unhealthy.base;
-
-  const healthyZoomLevels = useMemo(() => {
-    return calculateOptimalZoomLevels((healthyBananas as any).features ?? []);
-  }, [healthyBananas]);
-
-  const unhealthyZoomLevels = useMemo(() => {
-    return calculateOptimalZoomLevels((unhealthyBananas as any).features ?? []);
-  }, [unhealthyBananas]);
-
-  return (
-    <>
-      {selectedPlantBbox && (
-        <Source
-          id={`${code}-selected-bbox`}
-          type="geojson"
-          data={selectedPlantBbox}
-        >
-          <Layer
-            id={`${code}-selected-bbox-fill`}
-            type="fill"
-            paint={{ "fill-color": selectedColor, "fill-opacity": 0.15 }}
-          />
-          <Layer
-            id={`${code}-selected-bbox-outline`}
-            type="line"
-            paint={{
-              "line-color": selectedColor,
-              "line-width": 2,
-              "line-opacity": 0.8,
-              "line-dasharray": [2, 2],
-            }}
-          />
-        </Source>
-      )}
-
-      {(selectedFoi === "healthy" || selectedFoi === "all") && (
-        <>
-          <Source
-            id={`${code}-healthy`}
-            type="geojson"
-            data={healthyBananas as any}
-          >
-            <Layer
-              id={`${code}-healthy-heatmap`}
-              type="heatmap"
-              maxzoom={healthyZoomLevels.heatmapMaxZoom}
-              paint={createHeatmapPaint("healthy")}
-            />
-          </Source>
-
-          <Source
-            id={`${code}-healthy-pins`}
-            type="geojson"
-            data={healthyBananas as any}
-          >
-            <Layer
-              id={`${code}-healthy-pin`}
-              type="symbol"
-              minzoom={healthyZoomLevels.pinMinZoom}
-              layout={createPinLayout("pin-yellow")}
-              paint={{ "icon-opacity": 0.9 }}
-            />
-          </Source>
-        </>
-      )}
-
-      {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
-        <>
-          <Source
-            id={`${code}-unhealthy`}
-            type="geojson"
-            data={unhealthyBananas as any}
-          >
-            <Layer
-              id={`${code}-unhealthy-heatmap`}
-              type="heatmap"
-              maxzoom={unhealthyZoomLevels.heatmapMaxZoom}
-              paint={createHeatmapPaint("unhealthy")}
-            />
-          </Source>
-
-          <Source
-            id={`${code}-unhealthy-pins`}
-            type="geojson"
-            data={unhealthyBananas as any}
-          >
-            <Layer
-              id={`${code}-unhealthy-pin`}
-              type="symbol"
-              minzoom={unhealthyZoomLevels.pinMinZoom}
-              layout={createPinLayout("pin-red")}
-              paint={{ "icon-opacity": 0.9 }}
-            />
-          </Source>
-        </>
-      )}
-    </>
-  );
-}
+  }
+);
 
 FeaturesOfInterest.displayName = "FeaturesOfInterest";
 
-function BoundaryLayers({ showBoundaries }: { showBoundaries: boolean }) {
-  const { orthomap } = useMap();
+const BoundaryLayers = React.memo(
+  ({ showBoundaries }: { showBoundaries: boolean }) => {
+    const { orthomap } = useMap();
 
-  useEffect(() => {
-    if (!orthomap || !showBoundaries) return;
+    useEffect(() => {
+      if (!orthomap || !showBoundaries) return;
 
-    const moveLayersToTop = () => {
-      try {
-        if (
-          orthomap.getLayer("boundary-glow") &&
-          orthomap.getLayer("boundary-borders")
-        ) {
-          orthomap.moveLayer("boundary-glow");
-          orthomap.moveLayer("boundary-borders");
+      const moveLayersToTop = () => {
+        try {
+          if (
+            orthomap.getLayer("boundary-glow") &&
+            orthomap.getLayer("boundary-borders")
+          ) {
+            orthomap.moveLayer("boundary-glow");
+            orthomap.moveLayer("boundary-borders");
+          }
+        } catch (e) {
+          console.warn("Error moving boundary layers:", e);
         }
-      } catch (e) {
-        console.warn("Error moving boundary layers:", e);
-      }
-    };
+      };
 
-    moveLayersToTop();
-    orthomap.on("styledata", moveLayersToTop);
-    return () => {
-      orthomap.off("styledata", moveLayersToTop);
-    };
-  }, [orthomap, showBoundaries]);
+      moveLayersToTop();
+      orthomap.on("styledata", moveLayersToTop);
+      return () => {
+        orthomap.off("styledata", moveLayersToTop);
+      };
+    }, [orthomap, showBoundaries]);
 
-  return (
-    <>
-      <Layer
-        id="boundary-glow"
-        type="line"
-        source="areas"
-        paint={{
-          "line-color": MAP_COLORS.boundary,
-          "line-width": 5,
-          "line-blur": 3,
-          "line-opacity": 0.4,
-        }}
-        layout={{ visibility: showBoundaries ? "visible" : "none" }}
-      />
-      <Layer
-        id="boundary-borders"
-        type="line"
-        source="areas"
-        paint={{
-          "line-color": MAP_COLORS.boundary,
-          "line-width": 2.5,
-          "line-opacity": 0.9,
-        }}
-        layout={{ visibility: showBoundaries ? "visible" : "none" }}
-      />
-    </>
-  );
-}
+    return (
+      <>
+        <Layer
+          id="boundary-glow"
+          type="line"
+          source="areas"
+          paint={{
+            "line-color": MAP_COLORS.boundary,
+            "line-width": 5,
+            "line-blur": 3,
+            "line-opacity": 0.4,
+          }}
+          layout={{ visibility: showBoundaries ? "visible" : "none" }}
+        />
+        <Layer
+          id="boundary-borders"
+          type="line"
+          source="areas"
+          paint={{
+            "line-color": MAP_COLORS.boundary,
+            "line-width": 2.5,
+            "line-opacity": 0.9,
+          }}
+          layout={{ visibility: showBoundaries ? "visible" : "none" }}
+        />
+      </>
+    );
+  }
+);
+
+BoundaryLayers.displayName = "BoundaryLayers";
 
 // ============================================================================
 // MAIN COMPONENT
@@ -877,7 +912,10 @@ export default function OrthoMap({
     );
   }
 
-  const safeDetectedObjects = detectedObjects ?? [];
+  const safeDetectedObjects = useMemo(
+    () => detectedObjects ?? [],
+    [detectedObjects]
+  );
 
   const [showBoundaries, setShowBoundaries] = useState(false);
   const { selectedFoi, setPopupInfo } = useOrthoMapStore((state) => state);
@@ -949,7 +987,6 @@ export default function OrthoMap({
       features: areaFeatures,
     };
 
-    // labels at polygon centroids
     const labelFeatures: Feature[] = areaFeatures.map((f) => {
       const centroid = calculateCentroid(f.geometry.coordinates as any);
       return {
@@ -984,8 +1021,6 @@ export default function OrthoMap({
           data: areasData,
           generateId: true,
         } satisfies GeoJSONSourceSpecification,
-
-        // new source for centroid labels
         "area-labels": {
           type: "geojson",
           data: labelsData,
@@ -1012,8 +1047,6 @@ export default function OrthoMap({
             ],
           },
         },
-
-        // new layer for labels (visibility controlled dynamically via useEffect)
         {
           id: "area-labels",
           type: "symbol",
@@ -1106,6 +1139,22 @@ export default function OrthoMap({
                   minZoom={13}
                   maxZoom={23}
                   mapStyle={mapStyle}
+                  // PERFORMANCE: Optimize map rendering
+                  renderWorldCopies={false} // Disable world duplication
+                  maxTileCacheSize={500} // Increase tile cache (default ~50)
+                  transformRequest={(url, resourceType) => {
+                    // Add cache headers for better browser caching
+                    if (
+                      resourceType === "Tile" &&
+                      url.includes("/asimov-hawks/tiles/")
+                    ) {
+                      return {
+                        url: url,
+                        headers: { "Cache-Control": "public, max-age=86400" },
+                      };
+                    }
+                    return { url };
+                  }}
                 >
                   <InitializeMapImages />
 
@@ -1134,6 +1183,10 @@ export default function OrthoMap({
                           source={String(survey.id)}
                           minzoom={10}
                           maxzoom={24}
+                          paint={{
+                            "raster-fade-duration": 150,
+                            "raster-resampling": "linear",
+                          }}
                         />
                       </Source>
                     ))}

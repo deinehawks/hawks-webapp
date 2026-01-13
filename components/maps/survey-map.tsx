@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 
 import {
   calculateCentersUsingMinMaxXY,
@@ -53,21 +54,19 @@ import type {
 } from "geojson";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import { ThreeDimensionalModelCard } from "@/components/3d-model-card";
 import { ThreeDimensionalModelSelector } from "@/components/selectors/3d-model-selector";
-import { FoiSelector } from "@/components/selectors/foi-selector";
 import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
+import { FoiSelector } from "@/components/selectors/foi-selector";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
 import { MapLegend } from "@/components/maps/shared/map-legend";
+import {
+  OrthoTabContent,
+  ThreeDTabContent,
+} from "@/components/survey-page-components/data-tab";
+import { Info } from "lucide-react";
 
 // animation
 import { AnimatePresence, motion } from "framer-motion";
-
-// Styles
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info, MapPinned, Cuboid } from "lucide-react";
 
 // Constants
 import { PIN_ANIMATION_STYLES } from "@/lib/constants/map-animation";
@@ -79,34 +78,6 @@ import { createPinLayout } from "@/lib/constants/map-layers";
 /* -------------------------------------------------------------------------- */
 /* Local types                                                                */
 /* -------------------------------------------------------------------------- */
-
-type SurveyLike = {
-  id: string | number;
-  code?: string | null;
-  flight_date?: string | Date | null;
-
-  // coordinate sources
-  min_x?: number | null;
-  max_x?: number | null;
-  min_y?: number | null;
-  max_y?: number | null;
-
-  tile_min_x?: number | null;
-  tile_max_x?: number | null;
-  tile_min_y?: number | null;
-  tile_max_y?: number | null;
-
-  geojson_boundaries?: Array<[string, string]> | Array<[number, number]> | null;
-
-  access_code?: string | null;
-  area_code?: string | null;
-  area?: number | null;
-  location?: string | null;
-  tags?: string | null;
-
-  ortho?: unknown | null;
-  point_cloud?: unknown | null;
-};
 
 type MapCenter = { lng: number; lat: number; zoom: number };
 
@@ -145,7 +116,7 @@ const isValidNumber = (value: unknown): value is number =>
 const isValidCoordinate = (lng: unknown, lat: unknown): boolean =>
   isValidNumber(lng) && isValidNumber(lat);
 
-const hasValidMinMaxCoordinates = (survey: SurveyLike): boolean => {
+const hasValidMinMaxCoordinates = (survey: any): boolean => {
   const hasOriginalCoords = [
     survey.min_x,
     survey.max_x,
@@ -163,10 +134,10 @@ const hasValidMinMaxCoordinates = (survey: SurveyLike): boolean => {
   return hasOriginalCoords || hasTileBounds;
 };
 
-const hasValidBoundaries = (boundaries: SurveyLike["geojson_boundaries"]) => {
+const hasValidBoundaries = (boundaries: any) => {
   if (!Array.isArray(boundaries) || boundaries.length === 0) return false;
 
-  return boundaries.some((coord) => {
+  return boundaries.some((coord: any) => {
     if (!Array.isArray(coord) || coord.length < 2) return false;
     const [lngRaw, latRaw] = coord;
     const lng = typeof lngRaw === "string" ? Number(lngRaw) : lngRaw;
@@ -175,7 +146,7 @@ const hasValidBoundaries = (boundaries: SurveyLike["geojson_boundaries"]) => {
   });
 };
 
-const hasOrthoTilesAvailable = (survey: SurveyLike): boolean =>
+const hasOrthoTilesAvailable = (survey: any): boolean =>
   Boolean(
     survey.ortho !== null && survey.code && survey.id && survey.flight_date
   );
@@ -263,7 +234,7 @@ function generatePointsWithOffset(
 /* Hooks                                                                      */
 /* -------------------------------------------------------------------------- */
 
-const useMapCenter = (survey: SurveyLike, fallbackCenter: MapCenter) => {
+const useMapCenter = (survey: any, fallbackCenter: MapCenter) => {
   return useMemo<MapCenter>(() => {
     // PRIMARY: original min/max
     if (
@@ -339,7 +310,7 @@ const useMapCenter = (survey: SurveyLike, fallbackCenter: MapCenter) => {
   }, [survey, fallbackCenter]);
 };
 
-const useMapBounds = (survey: SurveyLike) => {
+const useMapBounds = (survey: any) => {
   return useMemo<LngLatBoundsLike | undefined>(() => {
     if (!hasValidBoundaries(survey.geojson_boundaries)) return undefined;
 
@@ -367,7 +338,7 @@ const useMapBounds = (survey: SurveyLike) => {
   }, [survey.geojson_boundaries]);
 };
 
-const useValidationState = (survey: SurveyLike) => {
+const useValidationState = (survey: any) => {
   return useMemo(() => {
     const hasValidCoordinates =
       hasValidMinMaxCoordinates(survey) ||
@@ -393,7 +364,7 @@ function SurveyMapEvents({
   survey,
   detectedObjects,
 }: {
-  survey: SurveyLike;
+  survey: any;
   detectedObjects: ComputerVisionObject[];
 }) {
   const map = useSurveyMapInstance();
@@ -524,7 +495,7 @@ function FeaturesOfInterest({
   survey,
 }: {
   detectedObjects: ComputerVisionObject[];
-  survey: SurveyLike;
+  survey: any;
 }) {
   const { selectedFoi, popupInfo, hoveredPairId } = useSurveyMapStore(
     (state) => state
@@ -796,19 +767,19 @@ function RegionalViewOverlay() {
   );
 }
 
-function SurveyBoundaries({ survey }: { survey: SurveyLike }) {
+function SurveyBoundaries({ survey }: { survey: any }) {
   if (!survey.geojson_boundaries || !Array.isArray(survey.geojson_boundaries))
     return null;
 
   const ring: number[][] = survey.geojson_boundaries
-    .map((pair) => {
+    .map((pair: any) => {
       const lngRaw = pair[0];
       const latRaw = pair[1];
       const lng = typeof lngRaw === "string" ? Number(lngRaw) : lngRaw;
       const lat = typeof latRaw === "string" ? Number(latRaw) : latRaw;
       return [lng, lat];
     })
-    .filter((p) => isValidCoordinate(p[0], p[1]));
+    .filter((p: any) => isValidCoordinate(p[0], p[1]));
 
   if (ring.length < 3) return null;
 
@@ -1012,7 +983,7 @@ function MapView({
   hasValidCoordinates,
   hasOrthoTiles,
 }: {
-  survey: SurveyLike;
+  survey: any;
   mapCenter: MapCenter;
   mapBounds?: LngLatBoundsLike;
   detectedObjects: ComputerVisionObject[];
@@ -1212,7 +1183,7 @@ function MapView({
 
       {!hasValidCoordinates && hasOrthoTiles && <RegionalViewOverlay />}
 
-      {/* Smooth appear/disappear for the legend */}
+      {/* Map Legend */}
       <AnimatePresence>
         {shouldShowLegend && (
           <motion.div
@@ -1233,288 +1204,117 @@ function MapView({
 /* Right-side panels                                                          */
 /* -------------------------------------------------------------------------- */
 
-function SurveyInfo({ survey }: { survey: SurveyLike }) {
-  return (
-    <>
-      <CardTitle>{survey.id}</CardTitle>
-      <CardDescription>
-        {`${survey.code || "N/A"} | ${survey.area_code || "N/A"} | ${
-          survey.flight_date
-            ? format(new Date(survey.flight_date), "dd MMMM yyyy")
-            : "N/A"
-        } | ${survey.location || "N/A"}`}
-      </CardDescription>
-    </>
-  );
-}
-
-function OrthoTabContent({
+function SurveyInfo({
   survey,
   detectedObjects,
+  activeTab,
 }: {
-  survey: SurveyLike;
+  survey: any;
   detectedObjects: ComputerVisionObject[];
+  activeTab: string;
 }) {
-  const {
-    bananas: numBananas,
-    healthy: numHealthy,
-    infected: numUnhealthy,
-  } = useMemo(() => {
+  const statistics = useMemo(() => {
     let bananas = 0;
     let healthy = 0;
     let infected = 0;
 
-    for (const o of detectedObjects) {
-      const label = String(o.label ?? "");
+    for (const obj of detectedObjects) {
+      const label = String(obj.label ?? "");
       if (label.includes("Banana")) bananas++;
       if (label.includes("Healthy-looking")) healthy++;
       if (label.includes("Infected")) infected++;
     }
 
-    return { bananas, healthy, infected };
-  }, [detectedObjects]);
+    const hasOrthoData = survey.ortho != null;
 
-  const hasOrthoData = (survey as any).ortho != null;
-  const numImages = (survey as any).ortho?.num_images as number | undefined;
+    return {
+      area: survey.area,
+      cropInventory: bananas,
+      healthy,
+      infected,
+      hasData: hasOrthoData && bananas > 0,
+    };
+  }, [survey, detectedObjects]);
 
-  const hasDiseaseSignals = numHealthy + numUnhealthy > 0;
-
-  return (
-    <Card className="container/card relative flex flex-1 flex-col lg:h-full overflow-hidden">
-      <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary/70 via-primary/30 to-transparent" />
-
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2">
-              <MapPinned className="h-4 w-4 text-primary" />
-              Orthomosaic
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Survey{" "}
-              <span className="font-medium text-foreground/80">
-                {survey.id}
-              </span>
-            </CardDescription>
-          </div>
-
-          <Badge
-            variant={hasOrthoData ? "default" : "secondary"}
-            className="shrink-0"
-          >
-            {hasOrthoData ? "Data available" : "No data"}
-          </Badge>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-5">
-        <div className="rounded-lg border bg-muted/20 p-4">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 rounded-md bg-background p-2 border">
-              <Info className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium">What you’re looking at</p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                An orthomosaic is a clear, detailed image of an area created by
-                combining many aerial photos into one accurate map. It shows a
-                straight top-down view of the land without distortion, making it
-                easier to see crops, fields, and other features clearly.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              At a glance
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border bg-card/60 p-3">
-              <p className="text-xs text-muted-foreground">Area</p>
-              <p className="mt-1 text-lg font-semibold">
-                {survey.area != null ? survey.area.toFixed(2) : "N/A"}{" "}
-                <span className="text-sm font-medium text-muted-foreground">
-                  ha
-                </span>
-              </p>
-            </div>
-
-            <div className="rounded-lg border bg-card/60 p-3">
-              <p className="text-xs text-muted-foreground">Images</p>
-              <p className="mt-1 text-lg font-semibold">
-                {numImages != null ? numImages.toLocaleString() : "N/A"}
-              </p>
-            </div>
-
-            <div className="rounded-lg border bg-card/60 p-3">
-              <p className="text-xs text-muted-foreground">Crop inventory</p>
-              <p className="mt-1 text-lg font-semibold">
-                {numBananas.toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {!hasOrthoData && (
-          <Alert>
-            <AlertTitle>Orthomosaic not available</AlertTitle>
-            <AlertDescription className="text-sm">
-              This survey doesn’t include orthomosaic metadata (area/images)
-              right now.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {hasDiseaseSignals && (
-          <div className="space-y-3 pt-2">
-            <Separator />
-
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold">Plant Disease Detection</p>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Banana plant diseases are a serious threat to the country’s
-                  banana industry and can greatly reduce crop production.
-                  Detecting these diseases early allows farmers to take
-                  immediate action, helping prevent further damage and maintain
-                  healthier banana plants.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                <Badge variant="outline" className="whitespace-nowrap">
-                  Healthy: {numHealthy.toLocaleString()}
-                </Badge>
-                <Badge variant="outline" className="whitespace-nowrap">
-                  Infected: {numUnhealthy.toLocaleString()}
-                </Badge>
-              </div>
-            </div>
-
-            <div className="flex justify-center">
-              <div className="w-full max-w-md pt-2">
-                <FoiSelector detectedObjects={detectedObjects} />
-              </div>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function ThreeDTabContent({ survey }: { survey: SurveyLike }) {
-  const hasPointCloud = survey.point_cloud != null;
-
-  const tagsLower = String(survey.tags ?? "").toLowerCase();
-  const pc = (survey as any).point_cloud;
-
-  const hasPhotogrammetryModel =
-    (survey as any).photogrammetry_model != null ||
-    tagsLower.includes("rgb") ||
-    pc?.type === "photogrammetry" ||
-    pc?.source === "photogrammetry" ||
-    pc?.method === "odm";
-
-  const hasLidarModel =
-    (survey as any).lidar_model != null ||
-    tagsLower.includes("lidar") ||
-    pc?.type === "lidar" ||
-    pc?.source === "lidar";
+  const showStatistics = activeTab === "ortho" && statistics.hasData;
 
   return (
-    <Card className="container/card relative flex flex-1 flex-col lg:h-full overflow-hidden">
-      <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary/70 via-primary/30 to-transparent" />
-
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2">
-              <Cuboid className="h-4 w-4 text-primary" />
-              3D Model
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Survey{" "}
-              <span className="font-medium text-foreground/80">
-                {survey.id}
-              </span>
-            </CardDescription>
-          </div>
-
-          <Badge
-            variant={hasPointCloud ? "default" : "secondary"}
-            className="shrink-0"
-          >
-            {hasPointCloud ? "Point cloud ready" : "No point cloud"}
-          </Badge>
-        </div>
-      </CardHeader>
-
-      <CardContent className="relative z-20 space-y-5">
-        <div className="rounded-lg border bg-muted/20 p-4">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 rounded-md bg-background p-2 border">
-              <Info className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium">What the 3D model provides</p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                A 3D model is a digital version of an object or place that shows
-                its shape and size in three dimensions. It helps us see how an
-                area or object looks in real life.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {survey.code ? (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Select a Model
-            </p>
-            <ThreeDimensionalModelSelector
-              code={String(survey.code)}
-              hasPointCloud={hasPointCloud}
-              hasPhotogrammetryModel={hasPhotogrammetryModel}
-              hasLidarModel={hasLidarModel}
-            />
-          </div>
-        ) : (
-          <Alert>
-            <AlertTitle>Missing survey code</AlertTitle>
-            <AlertDescription className="text-sm">
-              A survey code is required to load selectable 3D models.
-            </AlertDescription>
-          </Alert>
-        )}
-      </CardContent>
-
-      <div className="relative z-10 mt-2 px-6 pb-6 min-h-0">
-        {hasPointCloud ? (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Point cloud
-            </p>
-
-            <div className="relative min-h-80 rounded-xl border bg-card/60 overflow-hidden text-sm">
-              <ThreeDimensionalModelCard pcd={survey.point_cloud as any} />
-            </div>
-          </div>
-        ) : (
-          <Alert>
-            <AlertTitle>3D point cloud not available</AlertTitle>
-            <AlertDescription className="text-sm">
-              This survey doesn't include point cloud output yet. If the capture
-              is recent, it may still be processing.
-            </AlertDescription>
-          </Alert>
-        )}
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <CardTitle className="text-2xl font-bold tracking-tight">
+          {survey.id}
+        </CardTitle>
+        <CardDescription className="text-sm leading-relaxed">
+          {`${survey.code || "N/A"} • ${survey.area_code || "N/A"} • ${
+            survey.flight_date
+              ? format(new Date(survey.flight_date), "dd MMMM yyyy")
+              : "N/A"
+          } • ${survey.location || "N/A"}`}
+        </CardDescription>
       </div>
-    </Card>
+
+      {showStatistics && (
+        <div className="flex flex-wrap items-center gap-2">
+          {statistics.area != null && (
+            <Badge variant="secondary" className="px-3 py-1.5 font-normal">
+              <span className="text-xs text-muted-foreground mr-1.5">
+                Area:
+              </span>
+              <span className="font-semibold">
+                {statistics.area.toFixed(2)} ha
+              </span>
+            </Badge>
+          )}
+
+          {statistics.cropInventory > 0 && (
+            <Badge variant="secondary" className="px-3 py-1.5 font-normal">
+              <span className="text-xs text-muted-foreground mr-1.5">
+                Plants:
+              </span>
+              <span className="font-semibold">
+                {statistics.cropInventory.toLocaleString()}
+              </span>
+            </Badge>
+          )}
+
+          {statistics.healthy > 0 && (
+            <Badge
+              variant="outline"
+              className="px-3 py-1.5 font-normal border-green-200 bg-green-50"
+            >
+              <div
+                className="h-2 w-2 rounded-full mr-1.5"
+                style={{ backgroundColor: MAP_COLORS.healthy.base }}
+              />
+              <span className="font-semibold">
+                {statistics.healthy.toLocaleString()}
+              </span>
+              <span className="text-xs text-muted-foreground ml-1">
+                healthy
+              </span>
+            </Badge>
+          )}
+
+          {statistics.infected > 0 && (
+            <Badge
+              variant="outline"
+              className="px-3 py-1.5 font-normal border-red-200 bg-red-50"
+            >
+              <div
+                className="h-2 w-2 rounded-full mr-1.5"
+                style={{ backgroundColor: MAP_COLORS.unhealthy.base }}
+              />
+              <span className="font-semibold">
+                {statistics.infected.toLocaleString()}
+              </span>
+              <span className="text-xs text-muted-foreground ml-1">
+                infected
+              </span>
+            </Badge>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1527,11 +1327,12 @@ export default function SurveyMap({
   detectedObjects,
   fallbackCenter,
 }: {
-  survey: SurveyLike;
+  survey: any;
   detectedObjects: ComputerVisionObject[] | null | undefined;
   fallbackCenter?: { lng: number; lat: number };
 }) {
   const [activeTab, setActiveTab] = useState("ortho");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const globalCenter: MapCenter = {
     ...(fallbackCenter
@@ -1543,6 +1344,13 @@ export default function SurveyMap({
   const safeDetectedObjects = Array.isArray(detectedObjects)
     ? detectedObjects
     : [];
+  const { setSelectedFoi } = useSurveyMapStore((state) => state);
+
+  useEffect(() => {
+    if (activeTab === "3d") {
+      setSelectedFoi("none");
+    }
+  }, [activeTab, setSelectedFoi]);
 
   if (!survey || typeof survey !== "object") {
     return (
@@ -1591,18 +1399,28 @@ export default function SurveyMap({
     useValidationState(survey);
 
   const tagsLower = String(survey.tags ?? "").toLowerCase();
+
   const has3DModel =
-    (survey as any).point_cloud != null ||
+    survey.point_cloud != null ||
     tagsLower.includes("rgb") ||
     tagsLower.includes("lidar");
+
+  const hasPointCloud = survey.point_cloud != null;
+  const hasPhotogrammetryModel =
+    tagsLower.includes("rgb") || tagsLower.includes("photogrammetry");
+  const hasLidarModel = tagsLower.includes("lidar");
+
+  const isOrtho = activeTab === "ortho";
+  const is3D = activeTab === "3d";
 
   return (
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="flex flex-1 h-full w-full flex-col justify-start gap-6"
+        className="flex flex-1 h-full w-full flex-col gap-6"
       >
+        {/* HEADER */}
         <div className="flex items-center justify-between px-4 lg:px-6">
           <Label htmlFor="view-selector" className="sr-only">
             View
@@ -1625,54 +1443,110 @@ export default function SurveyMap({
             <TabsTrigger value="ortho">Orthomosaic</TabsTrigger>
             {has3DModel && <TabsTrigger value="3d">3D Model</TabsTrigger>}
           </TabsList>
+
+          {/* RIGHT-SIDE SELECTORS + SIDEBAR TOGGLE */}
+          <div className="flex items-center gap-3">
+            {isOrtho && <FoiSelector detectedObjects={safeDetectedObjects} />}
+
+            {is3D && survey.code && (
+              <ThreeDimensionalModelSelector
+                code={String(survey.code)}
+                hasPointCloud={hasPointCloud}
+                hasPhotogrammetryModel={hasPhotogrammetryModel}
+                hasLidarModel={hasLidarModel}
+              />
+            )}
+
+            {/* SIDEBAR TOGGLE */}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="hidden lg:flex items-center gap-2 h-9 px-3 rounded-md border bg-background shadow-sm hover:bg-accent hover:text-accent-foreground transition-all"
+              aria-label={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            >
+              <Info className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                {isSidebarOpen ? "Hide" : "Info"}
+              </span>
+              <svg
+                className={`h-4 w-4 transition-transform duration-200 ${
+                  isSidebarOpen ? "rotate-0" : "rotate-180"
+                }`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-1 h-full px-4 lg:px-6">
-          <div className="grid grid-cols-1 gap-4 h-full w-full lg:grid-cols-[3fr_1fr]">
-            <div className="flex flex-1 h-full">
-              <Card className="container/card flex flex-1 flex-col h-full relative">
-                <CardHeader>
-                  <SurveyInfo survey={survey} />
-                </CardHeader>
+        {/* MAIN CONTENT */}
+        <div className="flex flex-1 h-full px-4 lg:px-6 gap-4">
+          <div className="flex flex-1 h-full min-w-0">
+            <Card className="container/card flex flex-1 flex-col h-full relative">
+              <CardHeader>
+                <SurveyInfo
+                  survey={survey}
+                  detectedObjects={safeDetectedObjects}
+                  activeTab={activeTab}
+                />
+              </CardHeader>
 
-                <CardContent className="flex-1 relative">
-                  {!shouldShowMap ? (
-                    <NoMapDataFallback />
-                  ) : (
-                    <div className="flex h-96 lg:h-full">
-                      {activeTab === "3d" ? (
-                        <div className="flex h-full w-full min-w-0 bg-primary">
-                          <ThreeDimensionalModelCaller survey={survey as any} />
-                        </div>
-                      ) : (
-                        <MapProvider>
-                          <MapView
-                            survey={survey}
-                            mapCenter={mapCenter}
-                            mapBounds={mapBounds}
-                            detectedObjects={safeDetectedObjects}
-                            hasValidCoordinates={hasValidCoordinates}
-                            hasOrthoTiles={hasOrthoTiles}
-                          />
-                        </MapProvider>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            <TabsContent value="ortho">
-              <OrthoTabContent
-                survey={survey}
-                detectedObjects={safeDetectedObjects}
-              />
-            </TabsContent>
-
-            <TabsContent value="3d">
-              <ThreeDTabContent survey={survey} />
-            </TabsContent>
+              <CardContent className="flex-1 relative">
+                {!shouldShowMap ? (
+                  <NoMapDataFallback />
+                ) : (
+                  <div className="flex h-96 lg:h-full">
+                    {is3D ? (
+                      <div className="flex h-full w-full min-w-0 bg-primary">
+                        <ThreeDimensionalModelCaller survey={survey} />
+                      </div>
+                    ) : (
+                      <MapProvider>
+                        <MapView
+                          survey={survey}
+                          mapCenter={mapCenter}
+                          mapBounds={mapBounds}
+                          detectedObjects={safeDetectedObjects}
+                          hasValidCoordinates={hasValidCoordinates}
+                          hasOrthoTiles={hasOrthoTiles}
+                        />
+                      </MapProvider>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
+
+          {/* SIDEBAR */}
+          <AnimatePresence mode="wait">
+            {isSidebarOpen && (
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: "auto", opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="hidden lg:block shrink-0 overflow-hidden"
+              >
+                <div className="w-80 xl:w-96 h-full">
+                  <TabsContent value="ortho" className="mt-0 h-full">
+                    <OrthoTabContent survey={survey} />
+                  </TabsContent>
+
+                  <TabsContent value="3d" className="mt-0 h-full">
+                    <ThreeDTabContent survey={survey} />
+                  </TabsContent>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </Tabs>
     </div>

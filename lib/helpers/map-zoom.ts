@@ -22,9 +22,9 @@ function clamp(n: number, a: number, b: number) {
  * - heatmap shows when points are so dense their average spacing < overlapPx
  * - pins show when spacing >= overlapPx
  *
- * overlapPx should be something like:
- * - ~24–32 if you want "starts overlapping"
- * - ~14–20 if you want "overlap a LOT before switching"
+ * overlapPx:
+ * - ~24–32 "starts overlapping"
+ * - ~14–20 "overlap a LOT before switching"
  */
 export function calculateOptimalZoomLevels(
   features: Array<{ geometry?: { coordinates?: [number, number] } }>,
@@ -83,7 +83,7 @@ export function calculateOptimalZoomLevels(
   const spacing0 = Math.sqrt(areaPx0 / n);
 
   // Choose overlap threshold in pixels
-  const iconPx = opts?.iconPx ?? 28; // your pin visual footprint
+  const iconPx = opts?.iconPx ?? 28;
   const overlapFactor = opts?.overlapFactor ?? 0.7; // lower = allow more overlap
   const overlapPx = opts?.overlapPx ?? iconPx * overlapFactor;
 

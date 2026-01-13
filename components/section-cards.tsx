@@ -115,7 +115,10 @@ export function SectionCards({
     footerContent?: React.ReactNode;
     progress?: number;
   }) => (
-    <Card className="@container/card transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+    <Card
+      className="@container/card transition-transform duration-300 hover:scale-105 hover:shadow-lg bg-gradient-to-t from-primary/5 to-card dark:bg-card shadow-xs"
+      data-slot="card"
+    >
       <CardHeader className="relative">
         <CardDescription>{title}</CardDescription>
         <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
