@@ -80,17 +80,6 @@ export function OrthoTabContent({ survey }: OrthoTabContentProps) {
                 enables timely intervention to prevent crop losses.
               </p>
             </div>
-
-            {/* You could add more sections here */}
-            <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Tip
-              </p>
-              <p className="text-sm">
-                Use the Feature of Interest selector above to filter between
-                healthy and infected plants on the map.
-              </p>
-            </div>
           </div>
         )}
       </CardContent>
@@ -166,28 +155,8 @@ export function ThreeDTabContent({ survey }: ThreeDTabContentProps) {
         ) : (
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-semibold mb-3">Model Details</h3>
               <div className="relative min-h-75 rounded-lg border bg-card p-4">
                 <ThreeDimensionalModelCard pcd={survey.point_cloud as any} />
-              </div>
-            </div>
-
-            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 rounded-md bg-background p-2 border">
-                  <Info className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div className="space-y-2 flex-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Tip
-                  </p>
-                  <p className="text-sm leading-relaxed">
-                    Use your mouse to rotate, pan, and zoom the 3D model in the
-                    main view. Switch between different model types using the
-                    selector above, and toggle the axis helper for spatial
-                    orientation.
-                  </p>
-                </div>
               </div>
             </div>
           </div>
