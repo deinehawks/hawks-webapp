@@ -58,7 +58,7 @@ import { ThreeDimensionalModelSelector } from "@/components/selectors/3d-model-s
 import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
 import { FoiSelector } from "@/components/selectors/foi-selector";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
-import { MapLegend } from "@/components/maps/shared/map-legend";
+import MapLegend from "@/components/maps/shared/map-legend";
 import {
   OrthoTabContent,
   ThreeDTabContent,
@@ -95,7 +95,7 @@ type ObjectPopupInfo = {
 const DEFAULT_CENTER: MapCenter = {
   lng: 125.58147596772221,
   lat: 7.0763840759644,
-  zoom: 12,
+  zoom: 13,
 };
 
 const MAP_CONFIG = {
@@ -746,7 +746,7 @@ function RegionalViewOverlay() {
     <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
       <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-2 rounded-lg shadow-lg text-sm flex items-center gap-2">
         <svg
-          className="w-4 h-4 text-blue-600 flex-shrink-0"
+          className="w-4 h-4 text-blue-600 shrink-0"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -1022,22 +1022,19 @@ function MapView({
   );
 
   const initialViewState = useMemo<MapProps["initialViewState"]>(() => {
-    const shouldFit = hasValidCoordinates && !!mapBounds;
+    if (hasValidCoordinates && mapBounds) {
+      return {
+        bounds: mapBounds,
+        fitBoundsOptions: { padding: 20 },
+      };
+    }
 
     return {
       longitude: mapCenter.lng,
       latitude: mapCenter.lat,
-      zoom: shouldFit ? undefined : mapCenter.zoom,
-      bounds: shouldFit ? mapBounds ?? undefined : undefined,
-      fitBoundsOptions: shouldFit ? { padding: 50 } : undefined,
+      zoom: mapCenter.zoom,
     };
-  }, [
-    mapCenter.lng,
-    mapCenter.lat,
-    mapCenter.zoom,
-    hasValidCoordinates,
-    mapBounds,
-  ]);
+  }, [mapCenter, hasValidCoordinates, mapBounds]);
 
   // Auto-zoom to ortho tiles when we only have tiles but no coordinates
   const map = useSurveyMapInstance();
@@ -1187,10 +1184,10 @@ function MapView({
       <AnimatePresence>
         {shouldShowLegend && (
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
           >
             <MapLegend />
           </motion.div>
@@ -1257,7 +1254,7 @@ function SurveyInfo({
         <div className="flex flex-wrap items-center gap-2">
           {statistics.area != null && (
             <Badge variant="secondary" className="px-3 py-1.5 font-normal">
-              <span className="text-xs text-muted-foreground mr-1.5">
+              <span className="text-sm text-muted-foreground mr-1.5">
                 Area:
               </span>
               <span className="font-semibold">
@@ -1268,7 +1265,7 @@ function SurveyInfo({
 
           {statistics.cropInventory > 0 && (
             <Badge variant="secondary" className="px-3 py-1.5 font-normal">
-              <span className="text-xs text-muted-foreground mr-1.5">
+              <span className="text-sm text-muted-foreground mr-1.5">
                 Plants:
               </span>
               <span className="font-semibold">
@@ -1289,8 +1286,8 @@ function SurveyInfo({
               <span className="font-semibold">
                 {statistics.healthy.toLocaleString()}
               </span>
-              <span className="text-xs text-muted-foreground ml-1">
-                healthy
+              <span className="text-sm text-muted-foreground ml-1">
+                Healthy
               </span>
             </Badge>
           )}
@@ -1307,8 +1304,8 @@ function SurveyInfo({
               <span className="font-semibold">
                 {statistics.infected.toLocaleString()}
               </span>
-              <span className="text-xs text-muted-foreground ml-1">
-                infected
+              <span className="text-sm text-muted-foreground ml-1">
+                Infected
               </span>
             </Badge>
           )}

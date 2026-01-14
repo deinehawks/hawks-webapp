@@ -57,7 +57,7 @@ import { useOrthoMapStore } from "@/providers/ortho-map-store-provider";
 import { getYear } from "date-fns";
 import Link from "next/link";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
-import { MapLegend } from "@/components/maps/shared/map-legend";
+import MapLegend from "@/components/maps/shared/map-legend";
 
 // constants
 import { PIN_ANIMATION_STYLES } from "@/lib/constants/map-animation";
@@ -1085,7 +1085,7 @@ export default function OrthoMap({
       latitude: global_y,
       longitude: global_x,
       bounds: bounds ?? undefined,
-      fitBoundsOptions: { padding: 15 },
+      fitBoundsOptions: { padding: 20 },
     }),
     [global_x, global_y, bounds]
   );
@@ -1211,11 +1211,19 @@ export default function OrthoMap({
 
                   <MapPopup />
                   <PlantPopup />
+                  <AnimatePresence>
+                    {selectedFoi && selectedFoi !== "none" && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+                      >
+                        <MapLegend selectedFoi={selectedFoi} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </Map>
-
-                {selectedFoi && selectedFoi !== "none" && (
-                  <MapLegend selectedFoi={selectedFoi} />
-                )}
               </div>
             </CardContent>
 

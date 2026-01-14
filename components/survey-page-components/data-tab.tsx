@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info, MapPinned, Cuboid, AlertCircle } from "lucide-react";
+import { MapPinned, Cuboid, AlertCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ThreeDimensionalModelCard } from "@/components/3d-model-card";
+import { ortho } from "@/data/orthomosaic";
 
 interface OrthoTabContentProps {
   survey: any;
@@ -32,9 +33,6 @@ export function OrthoTabContent({ survey }: OrthoTabContentProps) {
               </div>
               <span>Orthomosaic View</span>
             </CardTitle>
-            <CardDescription className="text-sm">
-              High-resolution aerial imagery
-            </CardDescription>
           </div>
           <Badge
             variant={hasOrthoData ? "default" : "secondary"}
@@ -46,23 +44,17 @@ export function OrthoTabContent({ survey }: OrthoTabContentProps) {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* What you're viewing */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Info className="h-4 w-4 text-muted-foreground" />
-            About this view
-          </h3>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            An orthomosaic is a geometrically corrected aerial image created by
-            stitching together multiple photographs. It provides an accurate,
-            distortion-free top-down view of the surveyed area.
-          </p>
-        </div>
+        {ortho.map((item) => (
+          <div key={item.name} className="space-y-4">
+            <h3 className="text-sm font-semibold">{item.name}</h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {item.description}
+            </p>
+            <Separator />
+          </div>
+        ))}
 
-        <Separator />
-
-        {/* Status or features */}
-        {!hasOrthoData ? (
+        {!hasOrthoData && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Data unavailable</AlertTitle>
@@ -70,17 +62,6 @@ export function OrthoTabContent({ survey }: OrthoTabContentProps) {
               This survey doesn't have orthomosaic data available yet.
             </AlertDescription>
           </Alert>
-        ) : (
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Disease Detection</h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Computer vision algorithms analyze the orthomosaic to identify
-                banana plants and detect signs of disease. Early detection
-                enables timely intervention to prevent crop losses.
-              </p>
-            </div>
-          </div>
         )}
       </CardContent>
     </Card>
@@ -105,9 +86,6 @@ export function ThreeDTabContent({ survey }: ThreeDTabContentProps) {
               </div>
               <span>3D Model View</span>
             </CardTitle>
-            <CardDescription className="text-sm">
-              Three-dimensional terrain visualization
-            </CardDescription>
           </div>
           <Badge
             variant={hasPointCloud ? "default" : "secondary"}
@@ -119,21 +97,6 @@ export function ThreeDTabContent({ survey }: ThreeDTabContentProps) {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* What you're viewing */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Info className="h-4 w-4 text-muted-foreground" />
-            About this view
-          </h3>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            A 3D model provides volumetric representation of the surveyed area,
-            allowing you to visualize terrain elevation, vegetation structure,
-            and spatial relationships in three dimensions.
-          </p>
-        </div>
-
-        <Separator />
-
         {/* Point cloud section */}
         {!survey.code ? (
           <Alert variant="destructive">
@@ -155,7 +118,7 @@ export function ThreeDTabContent({ survey }: ThreeDTabContentProps) {
         ) : (
           <div className="space-y-4">
             <div>
-              <div className="relative min-h-75 rounded-lg border bg-card p-4">
+              <div className="relative min-h-75 rounded-lg bg-card/50 p-4">
                 <ThreeDimensionalModelCard pcd={survey.point_cloud as any} />
               </div>
             </div>

@@ -1,15 +1,8 @@
 import { three_dimensional_models } from "@/data/3d-models";
 import { useSurveyMapStore } from "@/providers/survey-map-store-provider";
-import {
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { ThreeDimensionalAxesHelperSwitch } from "./selectors/3d-model-selector";
 
-export function ThreeDimensionalModelCard({ pcd }) {
+export function ThreeDimensionalModelCard() {
   const { selected3dModel } = useSurveyMapStore((state) => state);
 
   const model = three_dimensional_models.find(
@@ -18,32 +11,27 @@ export function ThreeDimensionalModelCard({ pcd }) {
 
   if (!model) return null;
 
+  const [summary, details] = model.description.split(".");
+
   return (
-    <div className="flex flex-1 my-2 flex-col gap-4">
-      <CardHeader>
-        <CardTitle>{model.name}</CardTitle>
-        <CardDescription>Generated using {model.source}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col gap-4">
-          <div>{model.description.split(".").at(0)}&#46;</div>
-          <div>{model.description.split(".").at(1)}&#46;</div>
+    <div className="flex flex-col gap-4">
+      {/* Description */}
+      <div className="space-y-2">
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          {summary}.
+        </p>
 
-          {(selected3dModel === "pcd-lidar" ||
-            selected3dModel === "pcd-odm") && (
-            <Table className="w-full table-auto text-left">
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-medium"> No. of Points </TableCell>
-                  <TableCell> {pcd?.num_points.toLocaleString()} </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          )}
+        {details && (
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {details}.
+          </p>
+        )}
+      </div>
 
-          <ThreeDimensionalAxesHelperSwitch />
-        </div>
-      </CardContent>
+      {/* Controls */}
+      <div className="pt-2 border-t">
+        <ThreeDimensionalAxesHelperSwitch />
+      </div>
     </div>
   );
 }

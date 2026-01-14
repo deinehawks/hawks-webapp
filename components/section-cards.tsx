@@ -10,13 +10,13 @@ import {
 } from "@/components/ui/card";
 import { ComputerVisionObject } from "@/lib/types";
 import { isAfter, subMonths } from "date-fns";
+import { IconTrendingDown, IconTrendingUp } from "@tabler/icons-react";
 import {
-  ArrowUpIcon,
-  ChevronDownIcon,
-  ChevronsDownIcon,
-  ChevronsUpIcon,
-  ChevronUpIcon,
-  MoveRightIcon,
+  ChevronDown,
+  ChevronsDown,
+  ChevronsUp,
+  ChevronUp,
+  Minus,
 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -34,23 +34,6 @@ export function SectionCards({
     if (percentage <= 0.6) return "Average";
     if (percentage <= 0.8) return "High";
     return "Very High";
-  };
-
-  // --- Status Color Maps ---
-  const healthyStatusColorMap: Record<string, string> = {
-    "very low": "bg-red-100 text-red-700",
-    low: "bg-orange-100 text-orange-700",
-    average: "bg-yellow-100 text-yellow-700",
-    high: "bg-green-100 text-green-700",
-    "very high": "bg-blue-100 text-blue-700",
-  };
-
-  const unhealthyStatusColorMap: Record<string, string> = {
-    "very low": "bg-green-100 text-green-700", // low unhealthy = good
-    low: "bg-green-200 text-green-800",
-    average: "bg-yellow-100 text-yellow-700",
-    high: "bg-orange-100 text-orange-700",
-    "very high": "bg-red-100 text-red-700", // high unhealthy = bad
   };
 
   // --- Surveys ---
@@ -145,15 +128,15 @@ export function SectionCards({
   const PercentageCategorizationIcon = ({ status }: { status: string }) => {
     switch (status.toLowerCase()) {
       case "very low":
-        return <ChevronsDownIcon className="size-4" />;
+        return <ChevronsDown className="size-4" />;
       case "low":
-        return <ChevronDownIcon className="size-4" />;
+        return <ChevronDown className="size-4" />;
       case "average":
-        return <ChevronsDownIcon className="size-4" />;
+        return <Minus className="size-4" />;
       case "high":
-        return <ChevronUpIcon className="size-4" />;
+        return <ChevronUp className="size-4" />;
       case "very high":
-        return <ChevronsUpIcon className="size-4" />;
+        return <ChevronsUp className="size-4" />;
       default:
         return null;
     }
@@ -169,9 +152,9 @@ export function SectionCards({
           <div className="line-clamp-1 flex gap-2 font-medium">
             <span>{numNewSurveys} new survey(s)</span>
             {numNewSurveys > 0 ? (
-              <ArrowUpIcon className="size-4" />
+              <IconTrendingUp className="size-4" />
             ) : (
-              <MoveRightIcon className="size-4" />
+              <Minus className="size-4" />
             )}
           </div>
         }
@@ -185,9 +168,9 @@ export function SectionCards({
           <div className="line-clamp-1 flex gap-2 font-medium">
             <span>{landMeasureNewSurveys.toFixed(1)} hectare(s) added</span>
             {numNewSurveys > 0 ? (
-              <ArrowUpIcon className="size-4" />
+              <IconTrendingUp className="size-4" />
             ) : (
-              <MoveRightIcon className="size-4" />
+              <Minus className="size-4" />
             )}
           </div>
         }
@@ -200,10 +183,9 @@ export function SectionCards({
         badge={
           <Badge
             variant="outline"
-            className={`flex gap-1 rounded-lg text-xs ${
-              healthyStatusColorMap[healthyBananaStatus.toLowerCase()]
-            }`}
+            className="flex gap-1 items-center rounded-lg text-xs"
           >
+            <IconTrendingUp className="size-3" />
             {`${(healthyBananaPercentage * 100).toFixed(2)}%`}
           </Badge>
         }
@@ -223,10 +205,9 @@ export function SectionCards({
         badge={
           <Badge
             variant="outline"
-            className={`flex gap-1 rounded-lg text-xs ${
-              unhealthyStatusColorMap[unhealthyBananaStatus.toLowerCase()]
-            }`}
+            className="flex gap-1 items-center rounded-lg text-xs"
           >
+            <IconTrendingDown className="size-3" />
             {`${(unhealthyBananaPercentage * 100).toFixed(2)}%`}
           </Badge>
         }
