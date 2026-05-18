@@ -12,7 +12,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error("❌ Missing environment variables!");
   console.error(
-    "Please set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY"
+    "Please set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY",
   );
   process.exit(1);
 }
@@ -97,7 +97,7 @@ async function findTileMapResources() {
             surveyId,
             "ortho",
             "sharp-corners",
-            "tilemapresource.xml"
+            "tilemapresource.xml",
           );
 
           try {
@@ -131,7 +131,7 @@ async function needsUpdate(surveyId, xmlModifiedTime, bounds) {
   const { data, error } = await supabase
     .from("surveys")
     .select(
-      "tile_min_x, tile_max_x, tile_min_y, tile_max_y, tile_bounds_updated_at"
+      "tile_min_x, tile_max_x, tile_min_y, tile_max_y, tile_bounds_updated_at",
     )
     .eq("id", surveyId)
     .single();
@@ -213,7 +213,7 @@ async function main(options = {}) {
 
   if (tileMaps.length === 0) {
     console.log(
-      "No tilemapresource.xml files found. Please check your tiles directory structure."
+      "No tilemapresource.xml files found. Please check your tiles directory structure.",
     );
     console.log(`Expected path: ${TILES_BASE_PATH}`);
     return;
@@ -227,15 +227,15 @@ async function main(options = {}) {
   for (const tileMap of tileMaps) {
     try {
       console.log(
-        `Processing: ${tileMap.surveyCode}/${tileMap.year}/${tileMap.surveyId}`
+        `Processing: ${tileMap.surveyCode}/${tileMap.year}/${tileMap.surveyId}`,
       );
 
       // Parse XML
       const bounds = await parseTileMapResource(tileMap.xmlPath);
       console.log(
         `  📍 Bounds: [${bounds.minx.toFixed(6)}, ${bounds.miny.toFixed(
-          6
-        )}] to [${bounds.maxx.toFixed(6)}, ${bounds.maxy.toFixed(6)}]`
+          6,
+        )}] to [${bounds.maxx.toFixed(6)}, ${bounds.maxy.toFixed(6)}]`,
       );
 
       // Check if update is needed (unless force update)
@@ -243,7 +243,7 @@ async function main(options = {}) {
         const updateCheck = await needsUpdate(
           tileMap.surveyId,
           tileMap.modifiedTime,
-          bounds
+          bounds,
         );
 
         if (!updateCheck.needsUpdate) {

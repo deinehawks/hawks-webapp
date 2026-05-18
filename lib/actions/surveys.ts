@@ -42,7 +42,7 @@ export async function getAllUserSurveys() {
       String(new Date(survey.flight_date).getFullYear()),
       survey.id,
       "ortho",
-      "sharp-corners"
+      "sharp-corners",
     );
 
     const maxZoom = getSurveyMaxZoom(folderPath);
@@ -82,17 +82,31 @@ export async function getObjectDetectionData(id?: string) {
 
   if (error) {
     // Return empty array instead of throwing error
-    console.log("No object detection data found yet");
+    console.log(" ");
     return [];
   }
 
   const arrayBuffer = await detected_objects.arrayBuffer();
   const jsonString = new TextDecoder("utf-8").decode(arrayBuffer);
-  const jsonObject = JSON.parse(jsonString);
+  let jsonObject = [];
+
+  try {
+    const arrayBuffer = await detected_objects.arrayBuffer();
+    const jsonString = new TextDecoder("utf-8").decode(arrayBuffer);
+
+    if (!jsonString.trim()) {
+      return [];
+    }
+
+    jsonObject = JSON.parse(jsonString);
+  } catch (error) {
+    console.error("Failed to parse object detection JSON:", error);
+    return [];
+  }
 
   if (id) {
     const filteredData = jsonObject.filter(
-      (object: any) => object.areaCode === id
+      (object: any) => object.areaCode === id,
     );
     return filteredData;
   }
