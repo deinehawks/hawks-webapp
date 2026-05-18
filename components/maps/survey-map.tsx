@@ -374,6 +374,7 @@ function SurveyMapEvents({
   const { setPopupInfo, setHoveredPairId } = useSurveyMapStore(
     (state) => state,
   );
+  const { surveyMode } = useSurveyModeStore();
 
   const handleBboxClick = useCallback(
     (e: MapMouseEvent) => {
@@ -404,7 +405,6 @@ function SurveyMapEvents({
     (e: MapMouseEvent) => {
       const pairId = e.features?.[0]?.properties?.pairId as string | undefined;
       setHoveredPairId(pairId || null);
-
       if (pairId && map) map.getCanvas().style.cursor = "pointer";
     },
     [map, setHoveredPairId],
@@ -418,13 +418,19 @@ function SurveyMapEvents({
   useEffect(() => {
     if (!map || !survey?.id) return;
 
-    const LAYER_TYPES = {
-      CLICK: ["unhealthy-fill", "unhealthy-pin", "healthy-pin"],
-      HOVER: ["unhealthy-pin", "healthy-pin"],
-    } as const;
+    const clickLayers =
+      surveyMode === "inventory"
+        ? [`${survey.id}-inventory-pin`]
+        : [
+            `${survey.id}-unhealthy-fill`,
+            `${survey.id}-unhealthy-pin`,
+            `${survey.id}-healthy-pin`,
+          ];
 
-    const clickLayers = LAYER_TYPES.CLICK.map((id) => `${survey.id}-${id}`);
-    const hoverLayers = LAYER_TYPES.HOVER.map((id) => `${survey.id}-${id}`);
+    const hoverLayers =
+      surveyMode === "inventory"
+        ? [`${survey.id}-inventory-pin`]
+        : [`${survey.id}-unhealthy-pin`, `${survey.id}-healthy-pin`];
 
     clickLayers.forEach((layer) => map.on("click", layer, handleBboxClick));
     hoverLayers.forEach((layer) => {
@@ -433,15 +439,20 @@ function SurveyMapEvents({
     });
 
     return () => {
-      clickLayers.forEach((layer) => {
-        map.off("click", layer, handleBboxClick);
-      });
+      clickLayers.forEach((layer) => map.off("click", layer, handleBboxClick));
       hoverLayers.forEach((layer) => {
         map.off("mouseenter", layer, handlePinHover);
         map.off("mouseleave", layer, handlePinLeave);
       });
     };
-  }, [map, survey.id, handleBboxClick, handlePinHover, handlePinLeave]);
+  }, [
+    map,
+    survey.id,
+    surveyMode,
+    handleBboxClick,
+    handlePinHover,
+    handlePinLeave,
+  ]);
 
   return null;
 }
@@ -652,7 +663,7 @@ function FeaturesOfInterest({
             id={`${id}-inventory-heatmap`}
             type="heatmap"
             maxzoom={allZoomLevels.heatmapMaxZoom}
-            paint={createHeatmapPaint("healthy")} // neutral heatmap color
+            paint={createHeatmapPaint("inventory")} // neutral heatmap color
           />
         </Source>
 

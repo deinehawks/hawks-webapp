@@ -33,4 +33,4 @@ export const MAP_COLORS = {
   hover: "#a78bfa", // Keep your existing hover color
 } as const; */
 
-export type PlantHealth = "healthy" | "unhealthy";
+export type PlantHealth = "healthy" | "unhealthy" | "inventory";
