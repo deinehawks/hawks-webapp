@@ -170,7 +170,7 @@ function MapEvents({ data, setPopupInfo }) {
       if (!data || !e.features?.length) return;
 
       const clickedAreaData = data.find(
-        (datum) => datum.id === e.features[0]?.properties.survey_id
+        (datum) => datum.id === e.features[0]?.properties.survey_id,
       );
 
       if (clickedAreaData) {
@@ -199,7 +199,7 @@ function MapEvents({ data, setPopupInfo }) {
         });
       }
     },
-    [data, setPopupInfo, map]
+    [data, setPopupInfo, map],
   );
 
   const handleMouseMove = useCallback(
@@ -211,16 +211,16 @@ function MapEvents({ data, setPopupInfo }) {
       if (hoveredAreaIdRef.current !== null) {
         map.setFeatureState(
           { source: "areas", id: hoveredAreaIdRef.current },
-          { hover: false }
+          { hover: false },
         );
       }
       hoveredAreaIdRef.current = e.features[0].id;
       map.setFeatureState(
         { source: "areas", id: hoveredAreaIdRef.current },
-        { hover: true }
+        { hover: true },
       );
     },
-    [map]
+    [map],
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -229,7 +229,7 @@ function MapEvents({ data, setPopupInfo }) {
     if (hoveredAreaIdRef.current !== null) {
       map.setFeatureState(
         { source: "areas", id: hoveredAreaIdRef.current },
-        { hover: false }
+        { hover: false },
       );
       hoveredAreaIdRef.current = null;
     }
@@ -256,7 +256,7 @@ function MapEvents({ data, setPopupInfo }) {
       area.geojson_boundaries.map((pair: string[]) => [
         parseFloat(pair[0]),
         parseFloat(pair[1]),
-      ])
+      ]),
     );
 
     const extremePoints = findExtremeCoordinates(bounds);

@@ -1,4 +1,3 @@
-// section-card.tsx
 "use client";
 
 import { useSurveyModeStore } from "@/stores/survey-mode-store";
@@ -20,8 +19,10 @@ import {
   ChevronUp,
   Minus,
   LayoutList,
+  Stethoscope,
 } from "lucide-react";
 import { useMemo } from "react";
+import { cn } from "@/lib/utils";
 
 export function SectionCards({
   surveys,
@@ -30,8 +31,8 @@ export function SectionCards({
   surveys: any[];
   detectedObjects: ComputerVisionObject[];
 }) {
-  const { surveyMode } = useSurveyModeStore();
-  // --- Helper Functions ---
+  const { surveyMode, setSurveyMode } = useSurveyModeStore();
+
   const getPercentageStatus = (percentage: number) => {
     if (percentage <= 0.2) return "Very Low";
     if (percentage <= 0.4) return "Low";
@@ -40,7 +41,6 @@ export function SectionCards({
     return "Very High";
   };
 
-  // --- Surveys ---
   const numNewSurveys = useMemo(
     () =>
       surveys?.filter((s) =>
@@ -59,7 +59,6 @@ export function SectionCards({
     [surveys],
   );
 
-  // --- Banana Objects ---
   const numHealthyBananas = useMemo(
     () =>
       detectedObjects?.filter(
@@ -86,7 +85,6 @@ export function SectionCards({
   const healthyBananaStatus = getPercentageStatus(healthyBananaPercentage);
   const unhealthyBananaStatus = getPercentageStatus(unhealthyBananaPercentage);
 
-  // --- Reusable Card Component ---
   const StatCard = ({
     title,
     value,
@@ -94,6 +92,7 @@ export function SectionCards({
     badge,
     footerContent,
     progress,
+    progressColor,
   }: {
     title: string;
     value: string | number;
@@ -101,6 +100,7 @@ export function SectionCards({
     badge?: React.ReactNode;
     footerContent?: React.ReactNode;
     progress?: number;
+    progressColor?: string;
   }) => (
     <Card
       className="@container/card transition-transform duration-300 hover:scale-105 hover:shadow-lg bg-gradient-to-t from-primary/5 to-card dark:bg-card shadow-xs"
@@ -116,10 +116,13 @@ export function SectionCards({
       <CardFooter className="flex-col items-start gap-1 text-sm">
         {footerContent}
         {progress !== undefined && (
-          <div className="w-full bg-muted rounded-full h-2 mt-1">
+          <div className="w-full bg-muted rounded-full h-1.5 mt-1">
             <div
-              className="bg-primary h-2 rounded-full transition-all"
-              style={{ width: `${progress * 100}%` }}
+              className="h-1.5 rounded-full transition-all duration-500"
+              style={{
+                width: `${progress * 100}%`,
+                backgroundColor: progressColor ?? "hsl(var(--primary))",
+              }}
             />
           </div>
         )}
@@ -128,7 +131,6 @@ export function SectionCards({
     </Card>
   );
 
-  // --- Icon Mapper ---
   const PercentageCategorizationIcon = ({ status }: { status: string }) => {
     switch (status.toLowerCase()) {
       case "very low":
@@ -147,110 +149,166 @@ export function SectionCards({
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 lg:px-6">
-      <StatCard
-        title="No. of Surveyed Areas"
-        value={surveys.length}
-        description="No. of surveys in the last six months"
-        footerContent={
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            <span>{numNewSurveys} new survey(s)</span>
-            {numNewSurveys > 0 ? (
-              <IconTrendingUp className="size-4" />
-            ) : (
-              <Minus className="size-4" />
-            )}
-          </div>
-        }
-      />
+    <div className="flex flex-col gap-3 px-4 lg:px-6">
+      {/* Mode toggle header */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground font-medium">
+          {surveyMode === "analysis"
+            ? "Health analysis overview"
+            : "Crop inventory overview"}
+        </p>
 
-      <StatCard
-        title="Total Area Surveyed"
-        value={`${surveys.reduce((acc, s) => acc + s.area, 0).toFixed(2)} ha`}
-        description="Land measure of new areas surveyed"
-        footerContent={
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            <span>{landMeasureNewSurveys.toFixed(1)} hectare(s) added</span>
-            {numNewSurveys > 0 ? (
-              <IconTrendingUp className="size-4" />
-            ) : (
-              <Minus className="size-4" />
+        <div className="flex items-center gap-1 rounded-lg border bg-muted p-1">
+          <button
+            onClick={() => setSurveyMode("analysis")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all",
+              surveyMode === "analysis"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
             )}
-          </div>
-        }
-      />
-
-      {surveyMode === "inventory" ? (
-        // Inventory mode: single total-count card spanning 2 columns
-        <div className="sm:col-span-2">
-          <StatCard
-            title="Total Banana Count"
-            value={totalBananas.toLocaleString()}
-            description="Total detected banana plants across all surveys"
-            badge={
-              <Badge
-                variant="outline"
-                className="flex gap-1 items-center rounded-lg text-xs"
-              >
-                <LayoutList className="size-3" />
-                Inventory
-              </Badge>
-            }
-            footerContent={
-              <div className="line-clamp-1 flex gap-2 font-medium">
-                All plants counted regardless of health status
-              </div>
-            }
-          />
+          >
+            <Stethoscope className="h-3 w-3" />
+            Analysis
+          </button>
+          <button
+            onClick={() => setSurveyMode("inventory")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all",
+              surveyMode === "inventory"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <LayoutList className="h-3 w-3" />
+            Inventory
+          </button>
         </div>
-      ) : (
-        // Analysis mode: existing healthy + unhealthy cards
-        <>
-          <StatCard
-            title="Crop Count: Healthy Banana"
-            value={numHealthyBananas.toLocaleString()}
-            description='No. of detected "healthy-looking" banana'
-            badge={
-              <Badge
-                variant="outline"
-                className="flex gap-1 items-center rounded-lg text-xs"
-              >
-                <IconTrendingUp className="size-3" />
-                {`${(healthyBananaPercentage * 100).toFixed(2)}%`}
-              </Badge>
-            }
-            footerContent={
-              <div className="line-clamp-1 flex gap-2 font-medium">
-                {healthyBananaStatus} healthy crop percentage
-                <PercentageCategorizationIcon status={healthyBananaStatus} />
-              </div>
-            }
-            progress={healthyBananaPercentage}
-          />
+      </div>
 
-          <StatCard
-            title="Crop Count: Unhealthy Banana"
-            value={numUnhealthyBananas.toLocaleString()}
-            description='No. of detected "unhealthy-looking" banana'
-            badge={
-              <Badge
-                variant="outline"
-                className="flex gap-1 items-center rounded-lg text-xs"
-              >
-                <IconTrendingDown className="size-3" />
-                {`${(unhealthyBananaPercentage * 100).toFixed(2)}%`}
-              </Badge>
-            }
-            footerContent={
-              <div className="line-clamp-1 flex gap-2 font-medium">
-                {unhealthyBananaStatus} unhealthy crop percentage
-                <PercentageCategorizationIcon status={unhealthyBananaStatus} />
-              </div>
-            }
-            progress={unhealthyBananaPercentage}
-          />
-        </>
-      )}
+      {/* Cards grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="No. of Surveyed Areas"
+          value={surveys.length}
+          description="No. of surveys in the last six months"
+          footerContent={
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              <span>{numNewSurveys} new survey(s)</span>
+              {numNewSurveys > 0 ? (
+                <IconTrendingUp className="size-4" />
+              ) : (
+                <Minus className="size-4" />
+              )}
+            </div>
+          }
+        />
+
+        <StatCard
+          title="Total Area Surveyed"
+          value={`${surveys.reduce((acc, s) => acc + s.area, 0).toFixed(2)} ha`}
+          description="Land measure of new areas surveyed"
+          footerContent={
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              <span>{landMeasureNewSurveys.toFixed(1)} ha added</span>
+              {numNewSurveys > 0 ? (
+                <IconTrendingUp className="size-4" />
+              ) : (
+                <Minus className="size-4" />
+              )}
+            </div>
+          }
+        />
+
+        {surveyMode === "inventory" ? (
+          <>
+            {/* Slot 3 — total count */}
+            <StatCard
+              title="Total Banana Plants"
+              value={totalBananas.toLocaleString()}
+              description="All detected plants across all surveys"
+              badge={
+                <Badge
+                  variant="outline"
+                  className="flex gap-1 items-center rounded-lg text-xs"
+                >
+                  <LayoutList className="size-3" />
+                  All
+                </Badge>
+              }
+              footerContent={
+                <div className="line-clamp-1 flex gap-2 font-medium">
+                  Healthy + infected combined
+                </div>
+              }
+              progress={1}
+              progressColor="hsl(var(--muted-foreground))"
+            />
+
+            {/* Slot 4 — healthy/infected ratio in a compact split view */}
+            <StatCard
+              title="Surveys Processed"
+              value={surveys.filter((s) => s.ortho != null).length}
+              description="Surveys with orthomosaic and detection data"
+              footerContent={
+                <div className="line-clamp-1 flex gap-2 font-medium">
+                  <span>of {surveys.length} total surveys</span>
+                </div>
+              }
+            />
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="Crop Count: Healthy"
+              value={numHealthyBananas.toLocaleString()}
+              description='Detected "healthy-looking" banana plants'
+              badge={
+                <Badge
+                  variant="outline"
+                  className="flex gap-1 items-center rounded-lg text-xs"
+                >
+                  <IconTrendingUp className="size-3" />
+                  {`${(healthyBananaPercentage * 100).toFixed(2)}%`}
+                </Badge>
+              }
+              footerContent={
+                <div className="line-clamp-1 flex gap-2 font-medium">
+                  {healthyBananaStatus} healthy crop percentage
+                  <PercentageCategorizationIcon status={healthyBananaStatus} />
+                </div>
+              }
+              progress={healthyBananaPercentage}
+              progressColor="#22c55e"
+            />
+
+            <StatCard
+              title="Crop Count: Infected"
+              value={numUnhealthyBananas.toLocaleString()}
+              description='Detected "infected" banana plants'
+              badge={
+                <Badge
+                  variant="outline"
+                  className="flex gap-1 items-center rounded-lg text-xs"
+                >
+                  <IconTrendingDown className="size-3" />
+                  {`${(unhealthyBananaPercentage * 100).toFixed(2)}%`}
+                </Badge>
+              }
+              footerContent={
+                <div className="line-clamp-1 flex gap-2 font-medium">
+                  {unhealthyBananaStatus} unhealthy crop percentage
+                  <PercentageCategorizationIcon
+                    status={unhealthyBananaStatus}
+                  />
+                </div>
+              }
+              progress={unhealthyBananaPercentage}
+              progressColor="#ef4444"
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }

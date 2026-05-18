@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { MAP_COLORS } from "@/lib/constants/map-colors";
 import { AnimatePresence, motion, LayoutGroup } from "framer-motion";
+import { useSurveyModeStore } from "@/stores/survey-mode-store";
 
 type MapLegendProps = {
   visible?: boolean;
@@ -29,8 +30,10 @@ export default function MapLegend({
   showHeatmapSection = true,
 }: MapLegendProps) {
   const [isOpen, setIsOpen] = useState(true);
+  const { surveyMode } = useSurveyModeStore();
 
   if (!visible) return null;
+  if (surveyMode === "inventory") return null;
 
   return (
     <div className="absolute bottom-8 left-8 z-10 flex items-end gap-3">
@@ -116,7 +119,7 @@ export default function MapLegend({
                                         backgroundColor: `rgba(${MAP_COLORS.healthy.heatmap}, ${opacity})`,
                                       }}
                                     />
-                                  )
+                                  ),
                                 )}
                               </div>
                               <span className="text-xs text-neutral-600 whitespace-nowrap font-medium">

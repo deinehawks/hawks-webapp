@@ -1554,8 +1554,16 @@ export default function SurveyMap({
           {/* RIGHT-SIDE SELECTORS + SIDEBAR TOGGLE */}
           <div className="flex items-center gap-3">
             {isOrtho && <SurveyModeToggle />}
-            {isOrtho && surveyMode === "analysis" && (
-              <FoiSelector detectedObjects={safeDetectedObjects} />
+            {isOrtho && (
+              <div
+                className={
+                  surveyMode === "inventory"
+                    ? "opacity-30 pointer-events-none grayscale"
+                    : "opacity-100"
+                }
+              >
+                <FoiSelector detectedObjects={safeDetectedObjects} />
+              </div>
             )}
             {is3D && survey.code && (
               <ThreeDimensionalModelSelector
