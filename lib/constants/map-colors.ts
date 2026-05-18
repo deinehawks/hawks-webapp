@@ -7,6 +7,10 @@ export const MAP_COLORS = {
     base: "#dc2626", // red-600
     heatmap: "255, 0, 0",
   },
+  inventory: {
+    base: "#666666",
+    heatmap: "102, 102, 102",
+  },
   boundary: "#0ea5e9", // sky-500
   hover: "#06b6d4", // cyan-500
 } as const;

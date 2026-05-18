@@ -27,7 +27,7 @@ export type SurveyMapActions = {
       areaId: string;
       centerLng: number;
       centerLat: number;
-    } | null
+    } | null,
   ) => void;
   setHoveredPairId: (hoveredPairId: string | null) => void;
   setSelectedVegetationIndex: (selectedVegetationIndex: string) => void;
@@ -59,7 +59,7 @@ export const defaultInitState: SurveyMapState = {
   activeTab: "ortho",
   selectedFoi: "none",
   popupInfo: null,
-  hoveredPairId: null, // ADD THIS LINE
+  hoveredPairId: null,
   selectedVegetationIndex: "ndvi",
   selectedDemType: "dsm",
   selectedDemColor: "viridis",
@@ -69,33 +69,23 @@ export const defaultInitState: SurveyMapState = {
 };
 
 export const createSurveyMapStore = (
-  initState: SurveyMapState = defaultInitState
+  initState: SurveyMapState = defaultInitState,
 ) => {
   return createStore<SurveyMapStore>()((set) => ({
     ...initState,
-    setActiveTab: (activeTab: string) => set(() => ({ activeTab })),
-    setSelectedFoi: (selectedFoi: string) => set(() => ({ selectedFoi })),
-    setPopupInfo: (
-      popupInfo: {
-        pairId: string;
-        areaId: string;
-        centerLng: number;
-        centerLat: number;
-      } | null
-    ) => set(() => ({ popupInfo })),
-    setHoveredPairId: (hoveredPairId: string | null) =>
-      set(() => ({ hoveredPairId })),
-    setSelectedVegetationIndex: (selectedVegetationIndex: string) =>
+    setActiveTab: (activeTab) => set(() => ({ activeTab })),
+    setSelectedFoi: (selectedFoi) => set(() => ({ selectedFoi })),
+    setPopupInfo: (popupInfo) => set(() => ({ popupInfo })),
+    setHoveredPairId: (hoveredPairId) => set(() => ({ hoveredPairId })),
+    setSelectedVegetationIndex: (selectedVegetationIndex) =>
       set(() => ({ selectedVegetationIndex })),
-    setSelectedDemType: (selectedDemType: string) =>
-      set(() => ({ selectedDemType })),
-    setSelectedDemColor: (selectedDemColor: string) =>
+    setSelectedDemType: (selectedDemType) => set(() => ({ selectedDemType })),
+    setSelectedDemColor: (selectedDemColor) =>
       set(() => ({ selectedDemColor })),
-    setSelectedDemShading: (selectedDemShading: string) =>
+    setSelectedDemShading: (selectedDemShading) =>
       set(() => ({ selectedDemShading })),
-    setSelected3dModel: (selected3dModel: string) =>
-      set(() => ({ selected3dModel })),
-    setShow3dAxesHelper: (show3dAxesHelper: boolean) =>
+    setSelected3dModel: (selected3dModel) => set(() => ({ selected3dModel })),
+    setShow3dAxesHelper: (show3dAxesHelper) =>
       set(() => ({ show3dAxesHelper })),
   }));
 };

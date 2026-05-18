@@ -1,3 +1,4 @@
+// survey-map.tsx
 "use client";
 
 import {
@@ -64,6 +65,8 @@ import {
   ThreeDTabContent,
 } from "@/components/survey-page-components/data-tab";
 import { Info } from "lucide-react";
+import { SurveyModeToggle } from "@/components/maps/shared/survey-mode-toggle";
+import { useSurveyModeStore } from "@/stores/survey-mode-store";
 
 // animation
 import { AnimatePresence, motion } from "framer-motion";
@@ -148,14 +151,14 @@ const hasValidBoundaries = (boundaries: any) => {
 
 const hasOrthoTilesAvailable = (survey: any): boolean =>
   Boolean(
-    survey.ortho !== null && survey.code && survey.id && survey.flight_date
+    survey.ortho !== null && survey.code && survey.id && survey.flight_date,
   );
 
 function calculateCentersWithOffset(
   min_lon: number,
   max_lon: number,
   min_lat: number,
-  max_lat: number
+  max_lat: number,
 ) {
   return {
     centerLng: (min_lon + max_lon) / 2,
@@ -178,7 +181,7 @@ function calculateCentroid(coordinates: number[][]) {
 function tileToBounds(
   x: number,
   y: number,
-  z: number
+  z: number,
 ): [number, number, number, number] {
   const n = Math.pow(2, z);
   const lonMin = (x / n) * 360 - 180;
@@ -202,7 +205,7 @@ type PlantPointProps = {
 
 function generatePointsWithOffset(
   detectedObjects: ComputerVisionObject[],
-  label: string
+  label: string,
 ): FeatureCollection<Point, PlantPointProps> {
   const features: Array<Feature<Point, PlantPointProps>> = (
     Array.isArray(detectedObjects) ? detectedObjects : []
@@ -213,7 +216,7 @@ function generatePointsWithOffset(
         obj.bbox.min_lon,
         obj.bbox.max_lon,
         obj.bbox.min_lat,
-        obj.bbox.max_lat
+        obj.bbox.max_lat,
       );
 
       return {
@@ -248,7 +251,7 @@ const useMapCenter = (survey: any, fallbackCenter: MapCenter) => {
           survey.min_x,
           survey.max_x,
           survey.min_y,
-          survey.max_y
+          survey.max_y,
         );
 
         if (isValidCoordinate(centerLng, centerLat)) {
@@ -271,7 +274,7 @@ const useMapCenter = (survey: any, fallbackCenter: MapCenter) => {
           survey.tile_min_x,
           survey.tile_max_x,
           survey.tile_min_y,
-          survey.tile_max_y
+          survey.tile_max_y,
         );
 
         if (isValidCoordinate(centerLng, centerLat)) {
@@ -286,7 +289,7 @@ const useMapCenter = (survey: any, fallbackCenter: MapCenter) => {
     if (hasValidBoundaries(survey.geojson_boundaries)) {
       try {
         const extremes = findExtremeCoordinates(
-          survey.geojson_boundaries as any
+          survey.geojson_boundaries as any,
         );
         if (extremes) {
           const centerLng = (extremes.minLng + extremes.maxLng) / 2;
@@ -369,7 +372,7 @@ function SurveyMapEvents({
 }) {
   const map = useSurveyMapInstance();
   const { setPopupInfo, setHoveredPairId } = useSurveyMapStore(
-    (state) => state
+    (state) => state,
   );
 
   const handleBboxClick = useCallback(
@@ -380,7 +383,7 @@ function SurveyMapEvents({
       if (!objectPairId) return;
 
       const clickedObject = detectedObjects.find(
-        (object) => object.pairId === objectPairId
+        (object) => object.pairId === objectPairId,
       );
       if (!clickedObject) return;
 
@@ -389,12 +392,12 @@ function SurveyMapEvents({
         bbox.min_lon,
         bbox.max_lon,
         bbox.min_lat,
-        bbox.max_lat
+        bbox.max_lat,
       );
 
       setPopupInfo({ pairId, areaId, centerLng, centerLat });
     },
-    [detectedObjects, setPopupInfo]
+    [detectedObjects, setPopupInfo],
   );
 
   const handlePinHover = useCallback(
@@ -404,7 +407,7 @@ function SurveyMapEvents({
 
       if (pairId && map) map.getCanvas().style.cursor = "pointer";
     },
-    [map, setHoveredPairId]
+    [map, setHoveredPairId],
   );
 
   const handlePinLeave = useCallback(() => {
@@ -485,6 +488,7 @@ function InitializeMapImages() {
 
     loadSvgImage(PIN_IMAGES.yellow, "pin-yellow");
     loadSvgImage(PIN_IMAGES.red, "pin-red");
+    loadSvgImage(PIN_IMAGES.gray, "pin-gray");
   }, [map]);
 
   return null;
@@ -498,24 +502,44 @@ function FeaturesOfInterest({
   survey: any;
 }) {
   const { selectedFoi, popupInfo, hoveredPairId } = useSurveyMapStore(
-    (state) => state
+    (state) => state,
   );
+  const { surveyMode } = useSurveyModeStore();
 
   const id = survey?.id;
   if (!id) return null;
 
+  // --- Inventory mode: merge everything into one collection ---
+  const allBananas = useMemo(
+    () =>
+      generatePointsWithOffset(
+        detectedObjects,
+        "Banana Plant (Healthy-looking)",
+      ).features.concat(
+        generatePointsWithOffset(detectedObjects, "Banana Plant (Infected)")
+          .features,
+      ),
+    [detectedObjects],
+  );
+
+  const allBananasFC = useMemo<FeatureCollection<Point, PlantPointProps>>(
+    () => ({ type: "FeatureCollection", features: allBananas }),
+    [allBananas],
+  );
+
+  // --- Analysis mode: split collections ---
   const healthyBananas = useMemo(
     () =>
       generatePointsWithOffset(
         detectedObjects,
-        "Banana Plant (Healthy-looking)"
+        "Banana Plant (Healthy-looking)",
       ),
-    [detectedObjects]
+    [detectedObjects],
   );
 
   const unhealthyBananas = useMemo(
     () => generatePointsWithOffset(detectedObjects, "Banana Plant (Infected)"),
-    [detectedObjects]
+    [detectedObjects],
   );
 
   const selectedPlantBbox = useMemo<FeatureCollection<
@@ -527,7 +551,7 @@ function FeaturesOfInterest({
     if (!selectedId) return null;
 
     const selectedObject = detectedObjects.find(
-      (obj) => obj.pairId === selectedId
+      (obj) => obj.pairId === selectedId,
     );
     if (!selectedObject) return null;
 
@@ -562,24 +586,94 @@ function FeaturesOfInterest({
   const isHealthy =
     selectedPlantBbox?.features[0]?.properties &&
     String((selectedPlantBbox.features[0].properties as any).label).includes(
-      "Healthy"
+      "Healthy",
     );
 
-  const selectedColor = isHealthy
-    ? MAP_COLORS.healthy.base
-    : MAP_COLORS.unhealthy.base;
+  // In inventory mode the bbox highlight is always blue
+  const selectedColor =
+    surveyMode === "inventory"
+      ? MAP_COLORS.inventory.base
+      : isHealthy
+        ? MAP_COLORS.healthy.base
+        : MAP_COLORS.unhealthy.base;
 
-  const healthyZoomLevels = useMemo(() => {
-    return calculateOptimalZoomLevels(healthyBananas.features as any);
-  }, [healthyBananas.features]);
+  const healthyZoomLevels = useMemo(
+    () => calculateOptimalZoomLevels(healthyBananas.features as any),
+    [healthyBananas.features],
+  );
 
-  const unhealthyZoomLevels = useMemo(() => {
-    return calculateOptimalZoomLevels(unhealthyBananas.features as any);
-  }, [unhealthyBananas.features]);
+  const unhealthyZoomLevels = useMemo(
+    () => calculateOptimalZoomLevels(unhealthyBananas.features as any),
+    [unhealthyBananas.features],
+  );
+
+  const allZoomLevels = useMemo(
+    () => calculateOptimalZoomLevels(allBananasFC.features as any),
+    [allBananasFC.features],
+  );
 
   const showHealthy = selectedFoi === "healthy" || selectedFoi === "all";
   const showUnhealthy = selectedFoi === "unhealthy" || selectedFoi === "all";
 
+  // ── INVENTORY MODE ──────────────────────────────────────────────────────────
+  if (surveyMode === "inventory") {
+    return (
+      <>
+        {selectedPlantBbox && (
+          <Source
+            id={`${id}-selected-bbox`}
+            type="geojson"
+            data={selectedPlantBbox}
+          >
+            <Layer
+              id={`${id}-selected-bbox-fill`}
+              type="fill"
+              paint={{ "fill-color": selectedColor, "fill-opacity": 0.15 }}
+            />
+            <Layer
+              id={`${id}-selected-bbox-outline`}
+              type="line"
+              paint={{
+                "line-color": selectedColor,
+                "line-width": 2,
+                "line-opacity": 0.8,
+                "line-dasharray": [2, 2],
+              }}
+            />
+          </Source>
+        )}
+
+        <Source
+          id={`${id}-inventory`}
+          type="geojson"
+          data={allBananasFC as any}
+        >
+          <Layer
+            id={`${id}-inventory-heatmap`}
+            type="heatmap"
+            maxzoom={allZoomLevels.heatmapMaxZoom}
+            paint={createHeatmapPaint("healthy")} // neutral heatmap color
+          />
+        </Source>
+
+        <Source
+          id={`${id}-inventory-pins`}
+          type="geojson"
+          data={allBananasFC as any}
+        >
+          <Layer
+            id={`${id}-inventory-pin`}
+            type="symbol"
+            minzoom={allZoomLevels.pinMinZoom}
+            layout={createPinLayout("pin-gray")}
+            paint={{ "icon-opacity": 0.9 }}
+          />
+        </Source>
+      </>
+    );
+  }
+
+  // ── ANALYSIS MODE (existing behavior) ───────────────────────────────────────
   return (
     <>
       {selectedPlantBbox && (
@@ -591,10 +685,7 @@ function FeaturesOfInterest({
           <Layer
             id={`${id}-selected-bbox-fill`}
             type="fill"
-            paint={{
-              "fill-color": selectedColor,
-              "fill-opacity": 0.15,
-            }}
+            paint={{ "fill-color": selectedColor, "fill-opacity": 0.15 }}
           />
           <Layer
             id={`${id}-selected-bbox-outline`}
@@ -623,7 +714,6 @@ function FeaturesOfInterest({
               paint={createHeatmapPaint("healthy")}
             />
           </Source>
-
           <Source
             id={`${id}-healthy-pins`}
             type="geojson"
@@ -654,7 +744,6 @@ function FeaturesOfInterest({
               paint={createHeatmapPaint("unhealthy")}
             />
           </Source>
-
           <Source
             id={`${id}-unhealthy-pins`}
             type="geojson"
@@ -930,17 +1019,17 @@ function SurveyBoundaryEvents() {
       if (hoveredFeatureIdRef.current !== null) {
         map.setFeatureState(
           { source: "survey-boundary", id: hoveredFeatureIdRef.current },
-          { hover: false }
+          { hover: false },
         );
       }
 
       hoveredFeatureIdRef.current = e.features[0].id;
       map.setFeatureState(
         { source: "survey-boundary", id: hoveredFeatureIdRef.current },
-        { hover: true }
+        { hover: true },
       );
     },
-    [map]
+    [map],
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -950,7 +1039,7 @@ function SurveyBoundaryEvents() {
     if (hoveredFeatureIdRef.current !== null) {
       map.setFeatureState(
         { source: "survey-boundary", id: hoveredFeatureIdRef.current },
-        { hover: false }
+        { hover: false },
       );
       hoveredFeatureIdRef.current = null;
     }
@@ -1018,7 +1107,7 @@ function MapView({
       },
       layers: [{ id: "osm", type: "raster", source: "osm" }],
     }),
-    []
+    [],
   );
 
   const initialViewState = useMemo<MapProps["initialViewState"]>(() => {
@@ -1090,7 +1179,7 @@ function MapView({
             padding: { top: 50, bottom: 50, left: 50, right: 50 },
             duration: 1500,
             maxZoom: 19,
-          }
+          },
         );
         setHasZoomed(true);
       } catch (error) {
@@ -1234,6 +1323,8 @@ function SurveyInfo({
   }, [survey, detectedObjects]);
 
   const showStatistics = activeTab === "ortho" && statistics.hasData;
+  const { surveyMode } = useSurveyModeStore();
+  const showHealthBreakdown = showStatistics && surveyMode === "analysis";
 
   return (
     <div className="space-y-3">
@@ -1263,6 +1354,7 @@ function SurveyInfo({
             </Badge>
           )}
 
+          {/* Always show total in both modes */}
           {statistics.cropInventory > 0 && (
             <Badge variant="secondary" className="px-3 py-1.5 font-normal">
               <span className="text-sm text-muted-foreground mr-1.5">
@@ -1274,40 +1366,45 @@ function SurveyInfo({
             </Badge>
           )}
 
-          {statistics.healthy > 0 && (
-            <Badge
-              variant="outline"
-              className="px-3 py-1.5 font-normal border-green-200 bg-green-50"
-            >
-              <div
-                className="h-2 w-2 rounded-full mr-1.5"
-                style={{ backgroundColor: MAP_COLORS.healthy.base }}
-              />
-              <span className="font-semibold">
-                {statistics.healthy.toLocaleString()}
-              </span>
-              <span className="text-sm text-muted-foreground ml-1">
-                Healthy
-              </span>
-            </Badge>
-          )}
+          {/* Only show healthy/infected split in analysis mode */}
+          {showHealthBreakdown && (
+            <>
+              {statistics.healthy > 0 && (
+                <Badge
+                  variant="outline"
+                  className="px-3 py-1.5 font-normal border-green-200 bg-green-50"
+                >
+                  <div
+                    className="h-2 w-2 rounded-full mr-1.5"
+                    style={{ backgroundColor: MAP_COLORS.healthy.base }}
+                  />
+                  <span className="font-semibold">
+                    {statistics.healthy.toLocaleString()}
+                  </span>
+                  <span className="text-sm text-muted-foreground ml-1">
+                    Healthy
+                  </span>
+                </Badge>
+              )}
 
-          {statistics.infected > 0 && (
-            <Badge
-              variant="outline"
-              className="px-3 py-1.5 font-normal border-red-200 bg-red-50"
-            >
-              <div
-                className="h-2 w-2 rounded-full mr-1.5"
-                style={{ backgroundColor: MAP_COLORS.unhealthy.base }}
-              />
-              <span className="font-semibold">
-                {statistics.infected.toLocaleString()}
-              </span>
-              <span className="text-sm text-muted-foreground ml-1">
-                Infected
-              </span>
-            </Badge>
+              {statistics.infected > 0 && (
+                <Badge
+                  variant="outline"
+                  className="px-3 py-1.5 font-normal border-red-200 bg-red-50"
+                >
+                  <div
+                    className="h-2 w-2 rounded-full mr-1.5"
+                    style={{ backgroundColor: MAP_COLORS.unhealthy.base }}
+                  />
+                  <span className="font-semibold">
+                    {statistics.infected.toLocaleString()}
+                  </span>
+                  <span className="text-sm text-muted-foreground ml-1">
+                    Infected
+                  </span>
+                </Badge>
+              )}
+            </>
           )}
         </div>
       )}
@@ -1341,7 +1438,9 @@ export default function SurveyMap({
   const safeDetectedObjects = Array.isArray(detectedObjects)
     ? detectedObjects
     : [];
+
   const { setSelectedFoi } = useSurveyMapStore((state) => state);
+  const { surveyMode } = useSurveyModeStore();
 
   useEffect(() => {
     if (activeTab === "3d") {
@@ -1443,8 +1542,10 @@ export default function SurveyMap({
 
           {/* RIGHT-SIDE SELECTORS + SIDEBAR TOGGLE */}
           <div className="flex items-center gap-3">
-            {isOrtho && <FoiSelector detectedObjects={safeDetectedObjects} />}
-
+            {isOrtho && <SurveyModeToggle />}
+            {isOrtho && surveyMode === "analysis" && (
+              <FoiSelector detectedObjects={safeDetectedObjects} />
+            )}
             {is3D && survey.code && (
               <ThreeDimensionalModelSelector
                 code={String(survey.code)}

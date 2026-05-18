@@ -1,5 +1,7 @@
+// section-card.tsx
 "use client";
 
+import { useSurveyModeStore } from "@/stores/survey-mode-store";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -17,6 +19,7 @@ import {
   ChevronsUp,
   ChevronUp,
   Minus,
+  LayoutList,
 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -27,6 +30,7 @@ export function SectionCards({
   surveys: any[];
   detectedObjects: ComputerVisionObject[];
 }) {
+  const { surveyMode } = useSurveyModeStore();
   // --- Helper Functions ---
   const getPercentageStatus = (percentage: number) => {
     if (percentage <= 0.2) return "Very Low";
@@ -40,35 +44,35 @@ export function SectionCards({
   const numNewSurveys = useMemo(
     () =>
       surveys?.filter((s) =>
-        isAfter(new Date(s.flight_date), subMonths(new Date(), 6))
+        isAfter(new Date(s.flight_date), subMonths(new Date(), 6)),
       ).length ?? 0,
-    [surveys]
+    [surveys],
   );
 
   const landMeasureNewSurveys = useMemo(
     () =>
       surveys
         ?.filter((s) =>
-          isAfter(new Date(s.flight_date), subMonths(new Date(), 6))
+          isAfter(new Date(s.flight_date), subMonths(new Date(), 6)),
         )
         .reduce((acc, s) => acc + s.area, 0) ?? 0,
-    [surveys]
+    [surveys],
   );
 
   // --- Banana Objects ---
   const numHealthyBananas = useMemo(
     () =>
       detectedObjects?.filter(
-        (obj) => obj.label === "Banana Plant (Healthy-looking)"
+        (obj) => obj.label === "Banana Plant (Healthy-looking)",
       ).length ?? 0,
-    [detectedObjects]
+    [detectedObjects],
   );
 
   const numUnhealthyBananas = useMemo(
     () =>
       detectedObjects?.filter((obj) => obj.label === "Banana Plant (Infected)")
         .length ?? 0,
-    [detectedObjects]
+    [detectedObjects],
   );
 
   const totalBananas = numHealthyBananas + numUnhealthyBananas;
@@ -176,49 +180,77 @@ export function SectionCards({
         }
       />
 
-      <StatCard
-        title="Crop Count: Healthy Banana"
-        value={numHealthyBananas.toLocaleString()}
-        description='No. of detected "healthy-looking" banana'
-        badge={
-          <Badge
-            variant="outline"
-            className="flex gap-1 items-center rounded-lg text-xs"
-          >
-            <IconTrendingUp className="size-3" />
-            {`${(healthyBananaPercentage * 100).toFixed(2)}%`}
-          </Badge>
-        }
-        footerContent={
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            {healthyBananaStatus} healthy crop percentage
-            <PercentageCategorizationIcon status={healthyBananaStatus} />
-          </div>
-        }
-        progress={healthyBananaPercentage}
-      />
+      {surveyMode === "inventory" ? (
+        // Inventory mode: single total-count card spanning 2 columns
+        <div className="sm:col-span-2">
+          <StatCard
+            title="Total Banana Count"
+            value={totalBananas.toLocaleString()}
+            description="Total detected banana plants across all surveys"
+            badge={
+              <Badge
+                variant="outline"
+                className="flex gap-1 items-center rounded-lg text-xs"
+              >
+                <LayoutList className="size-3" />
+                Inventory
+              </Badge>
+            }
+            footerContent={
+              <div className="line-clamp-1 flex gap-2 font-medium">
+                All plants counted regardless of health status
+              </div>
+            }
+          />
+        </div>
+      ) : (
+        // Analysis mode: existing healthy + unhealthy cards
+        <>
+          <StatCard
+            title="Crop Count: Healthy Banana"
+            value={numHealthyBananas.toLocaleString()}
+            description='No. of detected "healthy-looking" banana'
+            badge={
+              <Badge
+                variant="outline"
+                className="flex gap-1 items-center rounded-lg text-xs"
+              >
+                <IconTrendingUp className="size-3" />
+                {`${(healthyBananaPercentage * 100).toFixed(2)}%`}
+              </Badge>
+            }
+            footerContent={
+              <div className="line-clamp-1 flex gap-2 font-medium">
+                {healthyBananaStatus} healthy crop percentage
+                <PercentageCategorizationIcon status={healthyBananaStatus} />
+              </div>
+            }
+            progress={healthyBananaPercentage}
+          />
 
-      <StatCard
-        title="Crop Count: Unhealthy Banana"
-        value={numUnhealthyBananas.toLocaleString()}
-        description='No. of detected "unhealthy-looking" banana'
-        badge={
-          <Badge
-            variant="outline"
-            className="flex gap-1 items-center rounded-lg text-xs"
-          >
-            <IconTrendingDown className="size-3" />
-            {`${(unhealthyBananaPercentage * 100).toFixed(2)}%`}
-          </Badge>
-        }
-        footerContent={
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            {unhealthyBananaStatus} unhealthy crop percentage
-            <PercentageCategorizationIcon status={unhealthyBananaStatus} />
-          </div>
-        }
-        progress={unhealthyBananaPercentage}
-      />
+          <StatCard
+            title="Crop Count: Unhealthy Banana"
+            value={numUnhealthyBananas.toLocaleString()}
+            description='No. of detected "unhealthy-looking" banana'
+            badge={
+              <Badge
+                variant="outline"
+                className="flex gap-1 items-center rounded-lg text-xs"
+              >
+                <IconTrendingDown className="size-3" />
+                {`${(unhealthyBananaPercentage * 100).toFixed(2)}%`}
+              </Badge>
+            }
+            footerContent={
+              <div className="line-clamp-1 flex gap-2 font-medium">
+                {unhealthyBananaStatus} unhealthy crop percentage
+                <PercentageCategorizationIcon status={unhealthyBananaStatus} />
+              </div>
+            }
+            progress={unhealthyBananaPercentage}
+          />
+        </>
+      )}
     </div>
   );
 }
