@@ -50,7 +50,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateFeatureCollection } from "@/lib/helpers/geometry";
@@ -561,6 +560,8 @@ const OrthomapFoiSelector = React.memo(
       };
     }, [detectedObjects]);
 
+    const { surveyMode } = useSurveyModeStore();
+
     return (
       <Select value={selectedFoi} onValueChange={setSelectedFoi}>
         <SelectTrigger className="w-fit" id="foi-selector">
@@ -571,22 +572,26 @@ const OrthomapFoiSelector = React.memo(
           <SelectGroup>
             <SelectLabel>Feature of Interest</SelectLabel>
             <SelectItem value="none">None</SelectItem>
-            <SelectItem value="healthy">
-              Healthy Banana
-              {selectedFoi === "healthy" && (
-                <Badge variant="secondary" className="ml-2 rounded-full">
-                  {counts.healthy}
-                </Badge>
-              )}
-            </SelectItem>
-            <SelectItem value="unhealthy">
-              Unhealthy Banana
-              {selectedFoi === "unhealthy" && (
-                <Badge variant="secondary" className="ml-2 rounded-full">
-                  {counts.unhealthy}
-                </Badge>
-              )}
-            </SelectItem>
+            {surveyMode === "analysis" && (
+              <>
+                <SelectItem value="healthy">
+                  Healthy Banana
+                  {selectedFoi === "healthy" && (
+                    <Badge variant="secondary" className="ml-2 rounded-full">
+                      {counts.healthy}
+                    </Badge>
+                  )}
+                </SelectItem>
+                <SelectItem value="unhealthy">
+                  Unhealthy Banana
+                  {selectedFoi === "unhealthy" && (
+                    <Badge variant="secondary" className="ml-2 rounded-full">
+                      {counts.unhealthy}
+                    </Badge>
+                  )}
+                </SelectItem>
+              </>
+            )}
             <SelectItem value="all">
               All
               {selectedFoi === "all" && (
@@ -768,6 +773,7 @@ const FeaturesOfInterest = React.memo(
 
     // ── INVENTORY MODE ────────────────────────────────────────────────────────
     if (surveyMode === "inventory") {
+      const showInventoryPins = selectedFoi !== "none" && selectedFoi !== "";
       return (
         <>
           {selectedPlantBbox && (
@@ -793,33 +799,36 @@ const FeaturesOfInterest = React.memo(
               />
             </Source>
           )}
+          {showInventoryPins && (
+            <>
+              <Source
+                id={`${code}-inventory`}
+                type="geojson"
+                data={allBananasFC as any}
+              >
+                <Layer
+                  id={`${code}-inventory-heatmap`}
+                  type="heatmap"
+                  maxzoom={allZoomLevels.heatmapMaxZoom}
+                  paint={createHeatmapPaint("inventory")}
+                />
+              </Source>
 
-          <Source
-            id={`${code}-inventory`}
-            type="geojson"
-            data={allBananasFC as any}
-          >
-            <Layer
-              id={`${code}-inventory-heatmap`}
-              type="heatmap"
-              maxzoom={allZoomLevels.heatmapMaxZoom}
-              paint={createHeatmapPaint("inventory")}
-            />
-          </Source>
-
-          <Source
-            id={`${code}-inventory-pins`}
-            type="geojson"
-            data={allBananasFC as any}
-          >
-            <Layer
-              id={`${code}-inventory-pin`}
-              type="symbol"
-              minzoom={allZoomLevels.pinMinZoom}
-              layout={createPinLayout("pin-gray")}
-              paint={{ "icon-opacity": 0.9 }}
-            />
-          </Source>
+              <Source
+                id={`${code}-inventory-pins`}
+                type="geojson"
+                data={allBananasFC as any}
+              >
+                <Layer
+                  id={`${code}-inventory-pin`}
+                  type="symbol"
+                  minzoom={allZoomLevels.pinMinZoom}
+                  layout={createPinLayout("pin-gray")}
+                  paint={{ "icon-opacity": 0.9 }}
+                />
+              </Source>
+            </>
+          )}
         </>
       );
     }
@@ -1208,14 +1217,7 @@ export default function OrthoMap({
           </TabsList>
           <div className="flex items-center gap-2">
             <SurveyModeToggle />
-            <div
-              className={cn(
-                "transition-all duration-200",
-                surveyMode === "inventory"
-                  ? "opacity-40 grayscale pointer-events-none select-none"
-                  : "opacity-100",
-              )}
-            >
+            <div>
               <OrthomapFoiSelector detectedObjects={safeDetectedObjects} />
             </div>
             <Button
@@ -1303,6 +1305,7 @@ export default function OrthoMap({
 
                   {surveys.length > 0 && surveys[0].code && (
                     <FeaturesOfInterest
+                      key={surveyMode}
                       code={String(surveys[0].code)}
                       detectedObjects={safeDetectedObjects}
                     />

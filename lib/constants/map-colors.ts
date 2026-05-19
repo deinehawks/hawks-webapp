@@ -8,8 +8,8 @@ export const MAP_COLORS = {
     heatmap: "255, 0, 0",
   },
   inventory: {
-    base: "#666666",
-    heatmap: "102, 102, 102",
+    base: "#06b6d4",
+    heatmap: "6, 182, 212",
   },
   boundary: "#0ea5e9", // sky-500
   hover: "#06b6d4", // cyan-500

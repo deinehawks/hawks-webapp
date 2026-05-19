@@ -628,6 +628,7 @@ function FeaturesOfInterest({
 
   // ── INVENTORY MODE ──────────────────────────────────────────────────────────
   if (surveyMode === "inventory") {
+    const showInventoryPins = selectedFoi !== "none" && selectedFoi !== "";
     return (
       <>
         {selectedPlantBbox && (
@@ -653,33 +654,36 @@ function FeaturesOfInterest({
             />
           </Source>
         )}
+        {showInventoryPins && (
+          <>
+            <Source
+              id={`${id}-inventory`}
+              type="geojson"
+              data={allBananasFC as any}
+            >
+              <Layer
+                id={`${id}-inventory-heatmap`}
+                type="heatmap"
+                maxzoom={allZoomLevels.heatmapMaxZoom}
+                paint={createHeatmapPaint("inventory")} // neutral heatmap color
+              />
+            </Source>
 
-        <Source
-          id={`${id}-inventory`}
-          type="geojson"
-          data={allBananasFC as any}
-        >
-          <Layer
-            id={`${id}-inventory-heatmap`}
-            type="heatmap"
-            maxzoom={allZoomLevels.heatmapMaxZoom}
-            paint={createHeatmapPaint("inventory")} // neutral heatmap color
-          />
-        </Source>
-
-        <Source
-          id={`${id}-inventory-pins`}
-          type="geojson"
-          data={allBananasFC as any}
-        >
-          <Layer
-            id={`${id}-inventory-pin`}
-            type="symbol"
-            minzoom={allZoomLevels.pinMinZoom}
-            layout={createPinLayout("pin-gray")}
-            paint={{ "icon-opacity": 0.9 }}
-          />
-        </Source>
+            <Source
+              id={`${id}-inventory-pins`}
+              type="geojson"
+              data={allBananasFC as any}
+            >
+              <Layer
+                id={`${id}-inventory-pin`}
+                type="symbol"
+                minzoom={allZoomLevels.pinMinZoom}
+                layout={createPinLayout("pin-gray")}
+                paint={{ "icon-opacity": 0.9 }}
+              />
+            </Source>
+          </>
+        )}
       </>
     );
   }
@@ -1082,6 +1086,7 @@ function MapView({
   detectedObjects,
   hasValidCoordinates,
   hasOrthoTiles,
+  surveyMode,
 }: {
   survey: any;
   mapCenter: MapCenter;
@@ -1089,6 +1094,7 @@ function MapView({
   detectedObjects: ComputerVisionObject[];
   hasValidCoordinates: boolean;
   hasOrthoTiles: boolean;
+  surveyMode: string;
 }) {
   const [hasZoomed, setHasZoomed] = useState(false);
   const loadedTilesRef = useRef<Set<string>>(new Set());
@@ -1103,6 +1109,7 @@ function MapView({
     selectedFoi != null &&
     selectedFoi !== "" &&
     selectedFoi !== "none";
+  surveyMode === "analysis";
 
   const mapStyle = useMemo<StyleSpecification>(
     () => ({
@@ -1269,6 +1276,7 @@ function MapView({
 
             {detectedObjects.length > 0 && (
               <FeaturesOfInterest
+                key={surveyMode}
                 detectedObjects={detectedObjects}
                 survey={survey}
               />
@@ -1555,13 +1563,7 @@ export default function SurveyMap({
           <div className="flex items-center gap-3">
             {isOrtho && <SurveyModeToggle />}
             {isOrtho && (
-              <div
-                className={
-                  surveyMode === "inventory"
-                    ? "opacity-30 pointer-events-none grayscale"
-                    : "opacity-100"
-                }
-              >
+              <div>
                 <FoiSelector detectedObjects={safeDetectedObjects} />
               </div>
             )}
@@ -1633,6 +1635,7 @@ export default function SurveyMap({
                           detectedObjects={safeDetectedObjects}
                           hasValidCoordinates={hasValidCoordinates}
                           hasOrthoTiles={hasOrthoTiles}
+                          surveyMode={surveyMode}
                         />
                       </MapProvider>
                     )}
