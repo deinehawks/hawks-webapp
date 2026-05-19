@@ -448,10 +448,12 @@ const PlantPopup = React.memo(() => {
   const { plantPopupInfo, setPlantPopupInfo } = useOrthoMapStore(
     (state) => state,
   );
+  const { surveyMode } = useSurveyModeStore(); // ← add
 
   if (!plantPopupInfo) return null;
 
-  const { centerLng, centerLat } = plantPopupInfo;
+  const { centerLng, centerLat, label } = plantPopupInfo; // ← destructure label
+  const isHealthy = String(label ?? "").includes("Healthy");
 
   return (
     <Popup
@@ -461,10 +463,30 @@ const PlantPopup = React.memo(() => {
       onClose={() => setPlantPopupInfo(null)}
       closeOnClick={false}
     >
-      <div className="flex flex-col w-fit gap-1">
+      <div className="flex flex-col w-fit gap-1 min-w-40">
         <div className="font-semibold">Plant Information</div>
         <Separator />
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-1">
+          {label && (
+            <div className="grid grid-cols-2 gap-2">
+              <span>Status:</span>
+              <span
+                className={
+                  surveyMode === "inventory"
+                    ? "text-muted-foreground"
+                    : isHealthy
+                      ? "text-green-600 font-medium"
+                      : "text-red-600 font-medium"
+                }
+              >
+                {surveyMode === "inventory"
+                  ? "Plant"
+                  : isHealthy
+                    ? "Healthy"
+                    : "Infected"}
+              </span>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <span>Longitude:</span>
             <span className="text-muted-foreground">
