@@ -1223,6 +1223,8 @@ function MapView({
   }, [survey.id]);
 
   const codeLower = String(survey.code ?? "").toLowerCase();
+
+  const tileFolder = survey.ortho?.tile_folder ?? "round-corners";
   const flightYear =
     survey.flight_date != null
       ? getYear(new Date(survey.flight_date as any))
@@ -1258,7 +1260,7 @@ function MapView({
               id="ortho"
               type="raster"
               tiles={[
-                `/asimov-hawks/tiles/${codeLower}/${flightYear}/${survey.id}/ortho/sharp-corners/{z}/{x}/{y}.png`,
+                `/asimov-hawks/tiles/${codeLower}/${flightYear}/${survey.id}/ortho/${tileFolder}/{z}/{x}/{y}.png`,
               ]}
               tileSize={MAP_CONFIG.tileSize}
               scheme="tms"
