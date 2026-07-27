@@ -5,6 +5,8 @@ import hawks_logo from "@/public/hawks/logo.png";
 import hawks_typescript from "@/public/hawks/typescript.png";
 
 import { HouseIcon, LayoutDashboardIcon } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+import type { Survey, UserProfile } from "@/lib/types";
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -20,7 +22,15 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-export function AppSidebar({ surveys, user, userProfile }) {
+export function AppSidebar({
+  surveys,
+  user,
+  userProfile,
+}: {
+  surveys: Survey[];
+  user: User;
+  userProfile: UserProfile;
+}) {
   return (
     <Sidebar collapsible="offcanvas" variant="inset">
       <SidebarHeader>
@@ -80,21 +90,6 @@ export function AppSidebar({ surveys, user, userProfile }) {
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
-        {/* Overview */}
-        {/* <SidebarGroup>
-            <SidebarGroupLabel>Orthomap</SidebarGroupLabel>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href={`/dashboard/orthomap/${userProfile.access_code}`}>
-                    <Building2Icon />
-                    <span> {userProfile.access_code} </span>
-                   
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroup> */}
         <NavMain surveys={surveys} userProfile={userProfile} />
         {/* <NavAccount /> */}
       </SidebarContent>

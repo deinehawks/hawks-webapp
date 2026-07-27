@@ -49,7 +49,7 @@ function MapPopup({ popupInfo, setPopupInfo }) {
           </div>
           <div className="text-sm font-semibold">
             {" "}
-            {`${popupInfo.access_code}-${popupInfo.area_code}`}{" "}
+            {`${popupInfo.code}-${popupInfo.area_code}`}{" "}
           </div>
         </div>
         <Separator />

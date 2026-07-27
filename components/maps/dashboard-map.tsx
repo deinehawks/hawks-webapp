@@ -59,7 +59,7 @@ function MapPopup({ popupInfo, setPopupInfo }) {
                     Survey Area
                   </div>
                   <div className="text-lg font-semibold text-primary-foreground">
-                    {`${popupInfo.access_code}-${popupInfo.area_code}`}
+                    {`${popupInfo.code}-${popupInfo.area_code}`}
                   </div>
                 </div>
                 <div className="text-xs px-2.5 py-1 bg-primary-foreground/20 text-primary-foreground rounded-md font-medium">
@@ -315,7 +315,7 @@ export default function MapLibre({ data: surveys }) {
       type: "Feature",
       properties: {
         survey_id: survey.id,
-        label: `${survey.access_code}-${survey.area_code}`,
+        label: `${survey.code}-${survey.area_code}`,
       },
       geometry: {
         type: "Point",

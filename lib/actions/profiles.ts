@@ -1,7 +1,9 @@
 "use server";
 
+import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
+import type { Tables } from "@/lib/database.types";
+import type { Client, UserProfile } from "@/lib/types";
 import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
 
 function isTransientNetworkError(error: unknown) {
   const message =
@@ -22,7 +24,7 @@ export async function getUserProfile(id: string) {
   try {
     const { data: profile, error } = await supabase
       .from("profiles")
-      .select("*, organization(*)")
+      .select("*, client:clients!profiles_organization_id_fkey(*)")
       .eq("id", id)
       .maybeSingle();
 
@@ -47,7 +49,16 @@ export async function getUserProfile(id: string) {
       throw new Error("User profile not found.");
     }
 
-    return profile;
+    const typedProfile = profile as unknown as Tables<"profiles"> & {
+      client: Client | null;
+    };
+    const {
+      access_code: _legacyAccessCode,
+      organization: _legacyOrganization,
+      ...normalized
+    } = typedProfile;
+
+    return normalized as UserProfile;
   } catch (error) {
     console.error("Unexpected profile fetch error:", error);
 
@@ -62,16 +73,6 @@ export async function getUserProfile(id: string) {
 }
 
 export async function getCurrentUserProfile() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    redirect("/auth/login");
-  }
-
-  return getUserProfile(user.id);
+  const { profile } = await getAuthenticatedUserContext();
+  return profile;
 }

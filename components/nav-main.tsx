@@ -24,6 +24,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { isAfter, subMonths } from "date-fns";
+import type { Survey, UserProfile } from "@/lib/types";
 
 const data = {
   navMain: [
@@ -40,11 +41,12 @@ export function NavMain({
   surveys,
   userProfile,
 }: {
-  surveys: any[];
-  userProfile: any;
+  surveys: Survey[];
+  userProfile: UserProfile;
 }) {
   const params = useParams();
   const selectedSurvey = params.surveyId;
+  const clientCode = userProfile.client?.code;
 
   const sixMonthsAgo = subMonths(new Date(), 6);
 
@@ -52,11 +54,9 @@ export function NavMain({
   const surveyNewMap = useMemo(() => {
     const map: Record<string, boolean> = {};
     surveys?.forEach((s) => {
-      // Use created_at if available, fallback to flight_date if not
-      const date = s.created_at
-        ? new Date(s.created_at)
-        : new Date(s.flight_date);
-      map[s.id] = isAfter(date, sixMonthsAgo);
+      map[s.id] = s.flight_date
+        ? isAfter(new Date(s.flight_date), sixMonthsAgo)
+        : false;
     });
     return map;
   }, [surveys]);
@@ -66,8 +66,10 @@ export function NavMain({
     const map: Record<string, { total: number; new: number }> = {};
     if (!surveys) return map;
     surveys.forEach((s) => {
-      const key = s.access_code;
-      const isNew = isAfter(new Date(s.flight_date), subMonths(new Date(), 3));
+      const key = s.code;
+      const isNew = s.flight_date
+        ? isAfter(new Date(s.flight_date), subMonths(new Date(), 3))
+        : false;
       if (!map[key]) map[key] = { total: 0, new: 0 };
       map[key].total += 1;
       if (isNew) map[key].new += 1;
@@ -86,16 +88,16 @@ export function NavMain({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              isActive={params.plantation === userProfile.access_code}
+              isActive={params.plantation === clientCode}
               asChild
               className="transition-colors hover:bg-primary/10"
             >
               <Link
-                href={`/dashboard/orthomap/${userProfile.access_code}`}
+                href={clientCode ? `/dashboard/orthomap/${clientCode}` : "/dashboard"}
                 className="flex items-center gap-2 px-3 py-2 rounded"
               >
                 <Building2Icon className="size-4" />
-                <span className="font-medium">{userProfile.access_code}</span>
+                <span className="font-medium">{clientCode ?? "Pending assignment"}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -121,10 +123,10 @@ export function NavMain({
                   >
                     {item.icon && <item.icon className="size-4" />}
                     <span className="font-medium">{item.title}</span>
-                    {surveyCounts[userProfile.access_code] && (
+                    {clientCode && surveyCounts[clientCode] && (
                       <Badge variant="secondary" className="ml-auto flex gap-1">
                         {" "}
-                        {surveyCounts[userProfile.access_code].total}{" "}
+                        {surveyCounts[clientCode].total}{" "}
                       </Badge>
                     )}
                     <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />

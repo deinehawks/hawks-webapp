@@ -901,7 +901,7 @@ function SurveyBoundaries({ survey }: { survey: any }) {
     type: "Feature",
     properties: {
       survey_id: survey.id,
-      label: `${survey.access_code ?? ""}-${survey.area_code ?? ""}`,
+      label: `${survey.code ?? ""}-${survey.area_code ?? ""}`,
     },
     geometry: { type: "Point", coordinates: centroid },
   };

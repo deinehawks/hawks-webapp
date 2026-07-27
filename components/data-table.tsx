@@ -113,7 +113,9 @@ function includesStringFilter(row: any, key: string, filterValue: string[]) {
   return true;
 }
 
-const columns: ColumnDef<z.infer<typeof schema>>[] = [
+export type SurveyTableRow = z.infer<typeof schema>;
+
+const columns: ColumnDef<SurveyTableRow>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -245,7 +247,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
   },
 ];
 
-export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
+export function DataTable({ data }: { data: SurveyTableRow[] }) {
   const [searchInputPlaceholder, setSearchInputPlaceholder] = useState("");
 
   const [pagination, setPagination] = useState<PaginationState>({

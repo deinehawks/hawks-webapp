@@ -1,12 +1,17 @@
 import SurveyMapCaller from "@/components/callers/survey-map-caller";
-import { getUserSurvey } from "@/lib/actions/survey";
-import { getObjectDetectionData } from "@/lib/actions/surveys";
+import {
+  getObjectDetectionData,
+  getUserSurvey,
+} from "@/lib/actions/surveys";
 import { SurveyMapStoreProvider } from "@/providers/survey-map-store-provider";
 
 export default async function Page(props: { params: { surveyId: string } }) {
   const { surveyId } = await props.params;
   const survey = await getUserSurvey(surveyId);
-  const detectedObjects = await getObjectDetectionData(surveyId);
+  const detectedObjects = await getObjectDetectionData(
+    surveyId,
+    survey.client_id ?? undefined,
+  );
 
   if (!survey) {
     return (

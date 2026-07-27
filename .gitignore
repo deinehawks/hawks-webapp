@@ -63,3 +63,6 @@ next-env.d.ts
 # /public/3d/mdahi
 # /public/3d/mxl
 /public/3d
+
+# local database backups
+/backups/

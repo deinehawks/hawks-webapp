@@ -6,29 +6,15 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { getCurrentUserProfile } from "@/lib/actions/profiles";
 import { getAllUserSurveys } from "@/lib/actions/surveys";
-import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
+import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
 
 export default async function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Get authenticated user
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    redirect("/auth/login");
-  }
-
-  // Now get profile with correct user ID
-  const userProfile = await getCurrentUserProfile();
+  const { user, profile } = await getAuthenticatedUserContext();
   const surveys = await getAllUserSurveys();
 
   return (
@@ -40,7 +26,7 @@ export default async function DashboardLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar surveys={surveys} user={user} userProfile={userProfile} />
+      <AppSidebar surveys={surveys} user={user} userProfile={profile} />
       <SidebarInset>
         <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
           <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">

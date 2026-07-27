@@ -1,3 +1,5 @@
+import type { Database, Tables } from "@/lib/database.types";
+
 export type ComputerVisionObject = {
   label: string;
   bbox: {
@@ -11,6 +13,29 @@ export type ComputerVisionObject = {
   pairId: string;
   areaPairId: string;
   areaCode: string;
+};
+
+export type AppRole = Database["public"]["Enums"]["app_role"];
+export type Client = Tables<"clients">;
+export type Ortho = Tables<"orthos">;
+export type PointCloud = Tables<"point_clouds">;
+
+export type UserProfile = Omit<
+  Tables<"profiles">,
+  "access_code" | "organization"
+> & {
+  client: Client | null;
+};
+
+export type Survey = Omit<
+  Tables<"surveys">,
+  "access_code" | "code" | "organization_code" | "ortho" | "point_cloud"
+> & {
+  client: Pick<Client, "id" | "code" | "name">;
+  code: string;
+  ortho: Ortho | null;
+  point_cloud: PointCloud | null;
+  max_zoom?: number;
 };
 
 export enum GeometryType {

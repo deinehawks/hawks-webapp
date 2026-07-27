@@ -1,10 +1,35 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
-import { getUserProfile } from "./profiles";
 import path from "path";
+
+import {
+  AuthorizationError,
+  getAuthenticatedUserContext,
+  requireAccessibleClientById,
+} from "@/lib/auth/user-context";
+import type { Tables } from "@/lib/database.types";
 import { getSurveyMaxZoom } from "@/lib/helpers/get-max-zoom";
+import type {
+  Client,
+  ComputerVisionObject,
+  Ortho,
+  PointCloud,
+  Survey,
+} from "@/lib/types";
+import { createClient } from "@/utils/supabase/server";
+
+const SURVEY_SELECT = `
+  *,
+  client:clients!surveys_client_id_fkey(id, code, name),
+  orthos!orthos_survey_id_fkey(*),
+  point_clouds!point_clouds_survey_id_fkey(*)
+`;
+
+type SurveyQueryRow = Tables<"surveys"> & {
+  client: Pick<Client, "id" | "code" | "name"> | null;
+  orthos: Ortho[];
+  point_clouds: PointCloud[];
+};
 
 function isTransientNetworkError(error: unknown) {
   const message =
@@ -19,37 +44,65 @@ function isTransientNetworkError(error: unknown) {
   );
 }
 
-export async function getUserSurvey(id: string) {
+function normalizeSurvey(row: SurveyQueryRow): Survey {
+  const {
+    access_code: _legacyAccessCode,
+    code: _legacyCode,
+    organization_code: _legacyOrganizationCode,
+    ortho: _legacyOrtho,
+    point_cloud: _legacyPointCloud,
+    orthos,
+    point_clouds,
+    client,
+    ...survey
+  } = row;
+
+  if (!client) {
+    throw new Error(`Survey ${row.id} is missing its client relationship.`);
+  }
+
+  return {
+    ...survey,
+    client,
+    code: client.code,
+    ortho: orthos.find((item) => item.is_current) ?? null,
+    point_cloud: point_clouds.find((item) => item.is_current) ?? null,
+  };
+}
+
+function isDetectionObject(value: unknown): value is ComputerVisionObject {
+  if (!value || typeof value !== "object") return false;
+
+  const candidate = value as Partial<ComputerVisionObject>;
+  return (
+    typeof candidate.label === "string" &&
+    typeof candidate.areaCode === "string" &&
+    typeof candidate.pairId === "string" &&
+    typeof candidate.areaPairId === "string" &&
+    !!candidate.bbox &&
+    typeof candidate.bbox === "object"
+  );
+}
+
+export async function getUserSurvey(id: string): Promise<Survey> {
+  const { profile } = await getAuthenticatedUserContext();
   const supabase = await createClient();
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let query = supabase
+    .from("surveys")
+    .select(SURVEY_SELECT)
+    .eq("id", id);
 
-  if (authError || !user) {
-    redirect("/auth/login");
-  }
-
-  let userProfile;
-  try {
-    userProfile = await getUserProfile(user.id);
-  } catch (error) {
-    if (isTransientNetworkError(error)) {
-      throw new Error(
-        "Survey data is temporarily unavailable. Please try again.",
+  if (profile.role !== "platform_admin") {
+    if (!profile.organization_id) {
+      throw new AuthorizationError(
+        "Your profile is pending organization assignment.",
       );
     }
-    throw error;
+    query = query.eq("client_id", profile.organization_id);
   }
 
-  const { access_code } = userProfile;
-
-  const { data: survey, error } = await supabase
-    .from("surveys")
-    .select("*, ortho(*), point_cloud(*)")
-    .eq("id", id)
-    .maybeSingle();
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     if (isTransientNetworkError(error)) {
@@ -57,134 +110,116 @@ export async function getUserSurvey(id: string) {
         "Survey data is temporarily unavailable. Please try again.",
       );
     }
-    throw new Error("Failed to fetch survey data.");
+    throw new Error("Failed to fetch survey data.", { cause: error });
   }
 
-  if (!survey) {
-    throw new Error("Survey not found.");
+  if (!data) {
+    throw new Error("Survey not found or access denied.");
   }
 
-  if (survey.code !== access_code) {
-    throw new Error("Access denied to this survey data.");
+  const survey = normalizeSurvey(data as SurveyQueryRow);
+
+  if (
+    profile.role !== "platform_admin" &&
+    survey.client_id !== profile.organization_id
+  ) {
+    throw new AuthorizationError("Access denied to this survey data.");
   }
 
   return survey;
 }
 
-export async function getAllUserSurveys() {
+export async function getAllUserSurveys(
+  requestedClientId?: string,
+): Promise<Survey[]> {
+  const { profile } = await getAuthenticatedUserContext();
+  const targetClientId = requestedClientId ?? profile.organization_id;
+
+  if (!targetClientId) {
+    return [];
+  }
+
+  const client = await requireAccessibleClientById(targetClientId);
   const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    redirect("/auth/login");
-  }
-
-  let userProfile;
-  try {
-    userProfile = await getUserProfile(user.id);
-  } catch (error) {
-    if (isTransientNetworkError(error)) {
-      console.error("User profile fetch failed temporarily:", error);
-      return [];
-    }
-    throw error;
-  }
-
-  const { access_code } = userProfile;
-
-  const { data: surveys, error } = await supabase
+  const { data, error } = await supabase
     .from("surveys")
-    .select("*, ortho(*)")
-    .eq("access_code", access_code)
+    .select(SURVEY_SELECT)
+    .eq("client_id", client.id)
     .order("id");
 
   if (error) {
     if (isTransientNetworkError(error)) {
-      console.error("Survey list fetch failed temporarily:", error);
+      console.error("Survey list fetch failed temporarily:", error.message);
       return [];
     }
-    throw new Error("Failed to fetch survey data.");
+    throw new Error("Failed to fetch survey data.", { cause: error });
   }
 
   const root = path.join(process.cwd(), "public", "tiles");
 
-  const updatedSurveys = (surveys ?? []).map((survey) => {
+  return (data as SurveyQueryRow[]).map((row) => {
+    const survey = normalizeSurvey(row);
+    const flightYear = survey.flight_date
+      ? String(new Date(survey.flight_date).getFullYear())
+      : "unknown";
     const folderPath = path.join(
       root,
-      survey.code.toLowerCase(),
-      String(new Date(survey.flight_date).getFullYear()),
+      survey.client.code.toLowerCase(),
+      flightYear,
       survey.id,
       "ortho",
       survey.ortho?.tile_folder ?? "round-corners",
     );
 
-    const maxZoom = getSurveyMaxZoom(folderPath);
-
     return {
       ...survey,
-      max_zoom: maxZoom,
+      max_zoom: getSurveyMaxZoom(folderPath),
     };
   });
-
-  return updatedSurveys;
 }
 
-export async function getObjectDetectionData(id?: string) {
+export async function getObjectDetectionData(
+  surveyId?: string,
+  requestedClientId?: string,
+): Promise<ComputerVisionObject[]> {
+  const { profile } = await getAuthenticatedUserContext();
+  if (!requestedClientId && !profile.organization_id) {
+    return [];
+  }
+
+  const client = await requireAccessibleClientById(requestedClientId);
   const supabase = await createClient();
+  const bucket = supabase.storage.from("detected-objects");
+  const uuidPath = `${client.id}/detections.json`;
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    redirect("/auth/login");
-  }
-
-  let userProfile;
   try {
-    userProfile = await getUserProfile(user.id);
-  } catch (error) {
-    if (isTransientNetworkError(error)) {
-      console.error("User profile fetch failed temporarily:", error);
-      return [];
+    let { data: detectedObjects, error } = await bucket.download(uuidPath);
+
+    // Compatibility fallback for the observation window. Once the bucket is
+    // private, storage RLS intentionally prevents access to this legacy path.
+    if (error || !detectedObjects) {
+      const legacyResult = await bucket.download(
+        `${client.code.toLowerCase()}.json`,
+      );
+      detectedObjects = legacyResult.data;
+      error = legacyResult.error;
     }
-    throw error;
-  }
-
-  const { access_code } = userProfile;
-
-  if (!access_code) {
-    redirect("/error");
-  }
-
-  try {
-    const { data: detectedObjects, error } = await supabase.storage
-      .from("detected-objects")
-      .download(`${access_code.toLowerCase()}.json`);
 
     if (error || !detectedObjects) {
-      console.error("Object detection JSON unavailable:", error);
+      console.error("Object detection JSON unavailable:", error?.message);
       return [];
     }
 
     const jsonString = await detectedObjects.text();
+    if (!jsonString.trim()) return [];
 
-    if (!jsonString.trim()) {
-      return [];
-    }
+    const parsed: unknown = JSON.parse(jsonString);
+    if (!Array.isArray(parsed)) return [];
 
-    const jsonObject = JSON.parse(jsonString);
-
-    if (id) {
-      return jsonObject.filter((object: any) => object.areaCode === id);
-    }
-
-    return jsonObject;
+    const objects = parsed.filter(isDetectionObject);
+    return surveyId
+      ? objects.filter((object) => object.areaCode === surveyId)
+      : objects;
   } catch (error) {
     if (isTransientNetworkError(error)) {
       console.error("Object detection JSON fetch failed temporarily:", error);

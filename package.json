@@ -10,7 +10,14 @@
     "update-tile-bounds:force": "node scripts/update-tile-bounds.js --force",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset --local",
+    "supabase:lint": "supabase db lint --local --level warning",
+    "supabase:types": "supabase gen types typescript --local --schema public > lib/database.types.ts",
+    "migrate-detected-objects": "node scripts/migrate-detected-objects.js",
+    "migrate-detected-objects:apply": "node scripts/migrate-detected-objects.js --apply"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
@@ -67,6 +74,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.0",
+    "supabase": "^2.109.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

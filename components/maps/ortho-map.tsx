@@ -79,7 +79,6 @@ type SurveyLike = {
   boundaries?: unknown[];
   min_y?: number;
   max_y?: number;
-  access_code?: string;
   area_code?: string;
   area?: number;
   location?: string;
@@ -90,7 +89,7 @@ type PopupInfo = {
   id: string | number;
   lng: number;
   lat: number;
-  access_code?: string;
+  code?: string;
   area_code?: string;
   area?: number;
   flight_date?: string | Date;
@@ -348,7 +347,7 @@ const MapPopup = React.memo(() => {
                   Survey Area
                 </div>
                 <div className="text-lg font-semibold text-primary-foreground">
-                  {`${info.access_code ?? ""}-${info.area_code ?? ""}`}
+                  {`${info.code ?? ""}-${info.area_code ?? ""}`}
                 </div>
               </div>
               <div className="text-xs px-2.5 py-1 bg-primary-foreground/20 text-primary-foreground rounded-md font-medium">
@@ -1081,7 +1080,7 @@ export default function OrthoMap({
           properties: {
             survey_id: survey.id,
             latitude: Number(((survey.max_y ?? 0) + (survey.min_y ?? 0)) / 2),
-            label: `${survey.access_code ?? ""}-${survey.area_code ?? ""}`,
+            label: `${survey.code ?? ""}-${survey.area_code ?? ""}`,
           },
           geometry: {
             type: "Polygon",
@@ -1236,10 +1235,10 @@ export default function OrthoMap({
           <Card className="@container/card flex flex-1 flex-col h-full relative">
             <CardHeader>
               <CardTitle>
-                {userProfile?.organization?.code || "Organization"}
+                {userProfile?.client?.code || "Organization"}
               </CardTitle>
               <CardDescription>
-                {userProfile?.organization?.name || "Loading..."}
+                {userProfile?.client?.name || "Loading..."}
               </CardDescription>
             </CardHeader>
 
