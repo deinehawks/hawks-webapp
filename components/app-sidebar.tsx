@@ -4,7 +4,7 @@ import Link from "next/link";
 import hawks_logo from "@/public/hawks/logo.png";
 import hawks_typescript from "@/public/hawks/typescript.png";
 
-import { HouseIcon, LayoutDashboardIcon } from "lucide-react";
+import { HouseIcon, LayoutDashboardIcon, ShieldCheckIcon } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import type { Survey, UserProfile } from "@/lib/types";
 
@@ -91,6 +91,24 @@ export function AppSidebar({
           </SidebarMenu>
         </SidebarGroup>
         <NavMain surveys={surveys} userProfile={userProfile} />
+        {userProfile.role === "platform_admin" && (
+          <SidebarGroup>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Admin"
+                  className="transition-colors hover:bg-primary/10"
+                  asChild
+                >
+                  <Link href="/dashboard/admin">
+                    <ShieldCheckIcon />
+                    <span>Admin</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
         {/* <NavAccount /> */}
       </SidebarContent>
       <SidebarFooter>
