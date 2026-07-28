@@ -26,6 +26,9 @@ approved.
 - Separate approval for Auth provisioning, output/report lifecycle, audit
   retention, invitation delivery, and protected asset delivery before those
   capabilities are implemented.
+- An approved workshop manifest listing only invited accounts, organizations,
+  surveys, maps, tiles, point clouds, detections, outputs, and required metadata.
+  Do not place secrets or unnecessary personal data in the checked-in manifest.
 
 ## Domain approval gate
 
@@ -54,12 +57,16 @@ domain or authorization decision remains unresolved.
 
 ## Delivery gates
 
-- Production deployment target: September 28-30, 2026.
+- Limited public-internet workshop deployment target: September 28-30, 2026.
 - Stabilization, documentation, and handoff: October 1-9, 2026.
 - Final completion deadline: October 9, 2026.
 - Initial rollout: internal/platform administrators, followed by one known
-  cooperative or organization.
+  cooperative or organization, then the approved invited workshop cohort.
 - Rollback authority: technical owner/project lead.
+- Infrastructure gate: Dockerized Next.js, NGINX, Cloudflare DNS/HTTPS/proxying
+  and basic protection, Supabase, and an approved protected asset origin.
+- Data-scope gate: migrate only manifest-listed workshop records and assets.
+  Full historical and non-invited client migration remains deferred.
 
 Reduce MVP scope before reducing RLS, compatibility, audit, verification,
 backup, recovery, or rollback requirements.
@@ -274,16 +281,29 @@ Storage finalization remains blocked until the approved RLS design accounts for
 organization membership and explicit survey grants. An organization UUID path
 alone cannot safely provide narrow access to one survey.
 
-1. Run `npm run migrate-detected-objects` for a dry-run report.
-2. Run `npm run migrate-detected-objects:apply`.
-3. Verify every source and destination SHA-256 digest matches.
-4. Deploy the UUID-compatible application.
-5. Apply `supabase/deferred/secure_detected_objects_storage.sql`.
-6. Verify anonymous and cross-organization downloads fail. Organization members
+For the workshop release, prepare a reviewed manifest that links every selected
+asset to its retained legacy source, canonical survey, authorized organization
+or explicit grant, intended stable URL, object version, file count, total bytes,
+and checksum set. The manifest is the migration allowlist; absence from it means
+the dataset does not move before the workshop.
+
+1. Run the approved migration tooling in dry-run mode against the workshop
+   manifest only.
+2. Review source/destination counts, bytes, paths, and authorization metadata.
+3. Apply the approved migration to the isolated/staging asset origin only.
+4. Verify every source and destination checksum matches.
+5. Deploy the UUID-compatible application to staging behind NGINX and Cloudflare.
+6. Apply only the separately approved protected storage/asset policy.
+7. Verify anonymous and cross-organization downloads fail. Organization members
    may retain the compatible organization object; explicit survey grants require
    separately verified survey-scoped detection objects before download access.
+8. Test maps, tiles, detections, point clouds, and outputs through the public
+   staging hostname from an external internet connection.
+9. Rehearse switching the application and asset routes back to the previous
+   image, object version, and retained legacy source.
 
-Do not delete legacy root objects during this phase.
+Do not delete legacy root objects, source assets, full-history records, or
+non-manifest datasets during this phase.
 
 ## Contract phase
 
@@ -339,6 +359,12 @@ clouds, and any new people/farm/output/admin views. Test representative phone,
 tablet, laptop, and desktop layouts plus constrained-network and large-file
 behavior. Record pre-existing lint, type-check, and build failures separately:
 
+For the workshop release, repeat the user-facing checks through the public
+Cloudflare hostname from at least one network outside the origin environment.
+Verify DNS, HTTPS, NGINX routing, cache headers, session expiry, removed-member
+denial, anonymous denial, cross-organization denial, stable asset URLs, and
+manifest completeness for every selected asset class.
+
 ```powershell
 npm run lint
 npx tsc --noEmit
@@ -362,3 +388,10 @@ to roll back application code.
 For database integrity or authorization failure, disable the affected release,
 stop writes, preserve logs, and restore the tested pre-migration backup into an
 isolated project before deciding whether to restore staging.
+
+For workshop asset or internet-delivery failure, disable the affected dataset or
+route, reactivate the previous application image and asset version/source,
+invalidate only the affected Cloudflare cache entries, preserve NGINX/Cloudflare/
+application/asset logs, and verify the rollback externally. Authorization
+leakage, manifest mismatch, checksum failure, missing backup, broken stable URLs,
+or failed external access tests block production promotion.

@@ -6,7 +6,7 @@ ASIMOV-HAWKS is a Next.js dashboard for authenticated users to inspect agricultu
 
 Primary users and beneficiaries include individual banana farmers, plantation owners, cooperative and association members, organization representatives, and field personnel in Mindanao. A person, organization, farm/plantation area, mission/survey, output, and application account are distinct domain concepts even where the current schema does not yet model them separately. Treat accessibility, responsive behavior, constrained networks, memory use, and performance across phones, tablets/iPads, laptops, and desktops as product requirements.
 
-Delivery targets are production deployment on September 28-30, 2026, followed by stabilization, documentation, and handoff on October 1-9, 2026. Final completion is due October 9, 2026. Protect the deadline by keeping the first release focused on the approved Admin Dashboard MVP and deferring infrastructure, DAM, destructive workflows, advanced analytics, and multi-organization access.
+Delivery targets are a limited public-internet workshop deployment on September 28-30, 2026, followed by stabilization, documentation, and handoff on October 1-9, 2026. Final completion is due October 9, 2026. The workshop release includes Dockerized Next.js, NGINX, Cloudflare DNS/HTTPS/proxying/basic protection, Supabase, and MinIO or another approved protected asset origin. Protect the deadline by migrating only approved invited-client datasets and deferring the full historical dataset, broad infrastructure automation, DAM, destructive workflows, advanced analytics, and multi-organization access.
 
 Keep this file practical. Put detailed investigation and one-off findings in a separate assessment or plan.
 
@@ -47,6 +47,12 @@ The repository includes a reconstructed Supabase baseline, additive UUID tenant 
 7. Zustand providers isolate map state per page. `stores/survey-mode-store.ts` persists only the analysis/inventory preference to local storage.
 
 The application has `basePath: "/asimov-hawks"`. Preserve base-path behavior in routes and asset URLs. There are no general `/api` routes in the current tree; `app/auth/confirm/route.ts` is the only route handler.
+
+## Workshop deployment boundary
+
+The October 2026 workshop is not LAN-only. Treat the September release as a limited public-internet deployment for invited users. Stable public application and asset URLs must work through Cloudflare and NGINX from external networks, while Supabase authentication, organization membership, explicit grants, and protected asset delivery remain fail-closed.
+
+Migrate only the clients, organizations, accounts, surveys, metadata, tiles, point clouds, detections, maps, and outputs listed in an approved workshop manifest. Verify file counts, bytes, checksums, relational references, authorization scope, and rollback sources for that manifest. Preserve current routes and asset sources until each selected dataset passes parity and internet-delivery checks. Full historical/client migration remains deferred.
 
 ## Domain-model gate
 
@@ -147,6 +153,8 @@ There is no automated test suite. Record all failed checks and distinguish pre-e
 - Database/storage: review the authoritative migration/policy diff, test apply and rollback/recovery in a non-production environment, verify RLS and bucket policies, then exercise affected server actions. Never validate by mutating production.
 - Geospatial/3D: manually test representative surveys with and without boundaries, tile bounds, orthos, detections, and point clouds; check tile requests, layer ordering, popups, both survey modes, accessibility, touch interaction, constrained-network behavior, memory/GPU use, and browser console/network errors across representative phone, tablet/iPad, laptop, and desktop viewports.
 - Build/deployment: run lint, type-check, and `npm run build`; then smoke-test `/asimov-hawks`, auth confirmation, protected routes, static tiles, point clouds, and required environment variables in a preview environment.
+
+- Workshop internet delivery: test from at least one network outside the origin environment; verify Cloudflare DNS/TLS/proxy behavior, NGINX routing, authenticated organization access, denied anonymous/cross-organization asset access, cache behavior, selected-dataset completeness, backup restore, and application/asset rollback.
 
 Do not treat `next.config.ts`'s ignored lint/type failures as validation.
 

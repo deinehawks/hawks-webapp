@@ -2,13 +2,13 @@
 
 Status: Domain revision draft for discovery and approval
 Scope: Planning only; no application, database, or infrastructure changes are authorized by this document
-Reviewed source: `ASIMOV-HAWKS_Web_App_Deployment_Plan_Final.docx` (owner-supplied; not copied into this repository)
+Reviewed source: `docs/ASIMOV-HAWKS_Web_App_Deployment_Plan_Final.docx` (owner-supplied)
 
 Repository evidence in this document describes checked-in contracts only. It does not prove the current state of any remote staging or production Supabase project.
 
 ## 1. Purpose
 
-Integrate the interns' Admin Dashboard into the main ASIMOV-HAWKS application without disrupting existing authentication, survey access, geospatial visualization, or production data. The work must reconcile two independently developed Next.js/Supabase systems, preserve the main Supabase project as the source of truth, and prepare the combined application for the proposed Docker/NGINX/MinIO/Cloudflare deployment architecture.
+Integrate the interns' Admin Dashboard into the main ASIMOV-HAWKS application without disrupting existing authentication, survey access, geospatial visualization, or production data. The work must reconcile two independently developed Next.js/Supabase systems, preserve the main Supabase project as the source of truth, and deliver the combined application through the proposed Docker/NGINX/MinIO/Cloudflare architecture for invited users over the public internet during the October 2026 workshop.
 
 This is a gated plan. Implementation must not begin until the interns' repository and Supabase schema have been inspected and the target authorization model has been approved.
 
@@ -51,6 +51,14 @@ The owner-supplied deployment plan proposes:
 - Immutable asset versions, checksums, backups, recovery testing, load testing, and rollback gates before production.
 
 The document reports approximately six million files and 200 GB in the current public asset tree. Treat those values as an owner-supplied infrastructure baseline to remeasure before migration.
+
+### Workshop deployment clarification
+
+The September 28-30 release is a limited public-internet production deployment for invited workshop users, not a LAN-only trial. Dockerized Next.js, NGINX, Cloudflare DNS/HTTPS/proxying/basic protection, Supabase, and MinIO or another approved asset origin are therefore workshop-critical scope.
+
+Only an approved manifest of invited clients and their required organizations, accounts, surveys, maps, tiles, point clouds, detections, outputs, and metadata must move before the workshop. The full historical dataset and all other clients remain deferred. Reliability, organization-based authorization, stable URLs, external-internet testing, backup, and rollback take priority over complete infrastructure automation.
+
+Cloudflare must not turn restricted survey assets into public cache entries. Cache rules and asset URLs must preserve the approved organization and explicit-grant access model. The exact signed URL, signed cookie, authorization gateway, or equivalent protected-delivery mechanism remains a blocking security design decision before workshop asset cutover.
 
 ## 3. Recommended target architecture
 
@@ -154,7 +162,7 @@ surveys 1--M orthos, point_clouds, and survey_outputs
 
 ### Implement now versus defer
 
-The first domain release should establish reviewed legacy-client mappings, canonical people and organizations, one active organization membership per normal account, farms, multi-farm survey linkage, explicit access grants, basic output/report metadata, RLS, and audit foundations through additive migrations. Defer general multi-organization user access, Auth-user creation, custom organization-type administration, a separate mission-planning table, advanced DAM/publication, crop taxonomy, destructive deletion, infrastructure migration, and legacy-column removal.
+The first domain release should establish reviewed legacy-client mappings, canonical people and organizations, one active organization membership per normal account, farms, multi-farm survey linkage, explicit access grants, basic output/report metadata, RLS, and audit foundations through additive migrations. Defer general multi-organization user access, Auth-user creation, custom organization-type administration, a separate mission-planning table, advanced DAM/publication, crop taxonomy, destructive deletion, full-history asset migration, complete infrastructure automation, and legacy-column removal.
 
 ### Admin information architecture
 
@@ -164,12 +172,12 @@ The practical first-release navigation is Organizations, Farmers & Contacts, Far
 
 The MVP includes a protected admin route, legacy-client and organization visibility/classification, member management, user/profile visibility, farm and survey visibility, maps/output visibility, compatible basic statistics, and an audit foundation for implemented mutations. Every intern feature must first be classified as adopt, adapt, rebuild, or drop against a pinned commit.
 
-Defer Auth-user creation, full DAM, MinIO migration, Cloudflare/NGINX production work, advanced analytics, bulk import/export, destructive delete workflows, complex publication, full asset management, and multi-organization user access.
+Defer Auth-user creation, full DAM, full-history MinIO migration, complete Cloudflare/NGINX automation, advanced analytics, bulk import/export, destructive delete workflows, complex publication, full asset management, and multi-organization user access. The minimum Docker/NGINX/Cloudflare and protected asset-origin path needed for invited workshop users is included in the MVP.
 
 - Production deployment target: September 28-30, 2026.
 - Stabilization, documentation, and handoff: October 1-9, 2026.
 - Final completion deadline: October 9, 2026.
-- Rollout order: internal/platform administrators, then one known cooperative or organization, then broader access after acceptance.
+- Rollout order: internal/platform administrators, then one known cooperative or organization, then the approved invited workshop cohort after acceptance.
 - Rollback authority: technical owner/project lead.
 
 Deadline protection requires scope reduction before security, backward compatibility, RLS verification, audit coverage, or recovery rehearsal is reduced.
@@ -370,6 +378,8 @@ No production migration may occur until backup, rollback/recovery, and ownership
 | Client/organization classification | `feature/admin-organizations` | August 31-September 4 | Commit one read-only or mutation slice at a time; push after RLS and audit checks pass |
 | Membership workflow | `feature/admin-memberships` | September 7-11 | Separate invitation/status logic from UI; push after transition, escalation, and cross-org denial tests pass |
 | Farms, surveys, and outputs visibility | `feature/admin-surveys-outputs` | September 14-18 | Commit compatibility data access before UI; push after legacy map/output parity tests pass |
+| Workshop container and edge delivery | `feature/workshop-infrastructure` | August 24-September 18 | Commit Docker/NGINX, Cloudflare-origin, and operational-runbook slices separately; push after local/staging health, routing, TLS, and access tests pass |
+| Selected workshop asset migration | `feature/workshop-assets` | September 7-18 | Commit manifests and migration tooling separately from data; push only after dry-run, checksum, stable-URL, authorization, and rollback checks pass |
 | Staging release candidate | `release/admin-mvp-2026-09` | September 21-25 | Merge only accepted MVP branches; allow fixes and documentation only after the release candidate is cut |
 | Production promotion | merge release branch to `main` | September 28-30 | Merge and tag only after staging sign-off, backup/recovery confirmation, and rollback approval |
 | Stabilization and handoff | `hotfix/<issue>` from `main`, merged back to `development` | October 1-9 | Use one focused hotfix commit per production issue; push after targeted regression checks |
@@ -385,6 +395,8 @@ Actions:
 - Connect read-only to both Supabase projects.
 - Record current main application, database, storage, and asset baselines.
 - Confirm the deployment-plan assumptions, including actual file count, bytes, traffic, hardware, and target regions.
+- Record the invited workshop users, approved organizations, and selected dataset manifest without copying secrets or personal data into Git.
+- Confirm external DNS, origin hosting, Cloudflare account ownership, public URL, and workshop test locations.
 
 Deliverables:
 
@@ -404,7 +416,7 @@ Actions:
 - Demonstrate each intern admin feature.
 - Classify features as adopt/adapt/rebuild/drop.
 - Define the minimum production-worthy Admin Dashboard release.
-- Explicitly defer nonessential DAM, analytics, or infrastructure features.
+- Include only the minimum workshop internet-delivery infrastructure; explicitly defer nonessential DAM, analytics, full-history migration, and broad automation.
 
 Deliverables:
 
@@ -423,7 +435,8 @@ Actions:
 - Decide integrated `/admin` versus separately deployed admin application.
 - Classify whether each legacy `clients` record is an organization, plantation area, or unresolved historical tenant.
 - Record the approved mixed-client bridge, separate canonical people/organizations, single-organization membership, multi-farm survey, and explicit-grant semantics.
-- Keep Auth provisioning, output/report lifecycle, audit retention, invitation delivery, and protected asset delivery as explicit deferred gates.
+- Keep Auth provisioning, output/report lifecycle, audit retention, and invitation delivery as explicit deferred gates.
+- Approve the protected workshop asset-delivery mechanism before implementation or migration.
 - Produce a page/permission/data matrix.
 - Decide Auth-user provisioning under the service-role restriction.
 - Define audit requirements.
@@ -453,6 +466,7 @@ Actions:
 - Add test tooling and CI gates.
 - Containerize Next.js without geospatial datasets.
 - Create health/readiness checks and environment validation.
+- Establish the NGINX route contract and Cloudflare origin/TLS requirements for the workshop public URL.
 
 Deliverables:
 
@@ -511,27 +525,30 @@ Exit gate:
 
 - Each slice independently meets acceptance criteria before the next begins.
 
-### Phase 6: Post-MVP asset and infrastructure alignment
+### Phase 6: Workshop asset and public-internet delivery
 
 Actions:
 
-- Deploy MinIO with approved redundancy, backup, lifecycle, and least-privilege policies.
+- Deploy MinIO or another approved asset origin with backup, recovery, least-privilege access, and enough resilience for the selected workshop datasets.
 - Establish immutable object naming for tiles, point clouds, exports, and manifests.
 - Store asset identifiers/active versions in Supabase rather than local filesystem paths.
 - Configure NGINX to preserve stable asset URLs.
-- Configure Cloudflare cache, origin protection, invalidation, and signed/restricted delivery as needed.
+- Configure Cloudflare DNS, HTTPS, proxying, basic protection, safe cache rules, origin protection, invalidation, and the approved signed/restricted delivery mechanism.
 - Decide whether the interns' DAM complements catalog/approval/publication; do not allow it to replace MinIO without proving S3 compatibility, integrity, lifecycle, concurrency, and recovery.
-- Migrate assets in validated batches while retaining the current source.
+- Create an approved workshop manifest covering only invited clients and required surveys, maps, tiles, point clouds, detections, outputs, and metadata.
+- Migrate only manifest-listed datasets in validated batches while retaining the current source and full historical dataset.
+- Test application and protected asset delivery from external internet connections before the workshop.
 
 Deliverables:
 
 - Dedicated asset origin.
 - Asset manifest/publication workflow.
 - Batch migration reports and rollback paths.
+- Stable public application and asset URLs with recorded Cloudflare/NGINX configuration and ownership.
 
 Exit gate:
 
-- Checksums/file counts match, access controls pass, cache behavior is predictable, and the application no longer depends on container-local production assets.
+- Manifest checksums/file counts match, organization and explicit-grant access controls pass, cache behavior is predictable, external internet tests pass, and the workshop application no longer depends on container-local copies of the selected production assets.
 
 ### Phase 7: CI/CD and observability
 
@@ -590,6 +607,8 @@ Performance and accessibility:
 - Admin tables and queries at production-like data volumes.
 - Tile and point-cloud payloads, cache behavior, and concurrent usage.
 - The deployment plan's initial approximately 1,000-concurrent-user target must be treated as a hypothesis until load tests establish safe limits.
+- External tests through the public hostname from networks outside the origin environment, including mobile data or another independent ISP.
+- Anonymous, expired-session, removed-member, and cross-organization attempts against application routes and every selected asset class.
 
 Reliability:
 
@@ -611,8 +630,8 @@ Exit gate:
 3. Enable read-only access for internal administrators.
 4. Observe errors, latency, audit events, and support feedback.
 5. Enable approved mutations for a small administrator cohort.
-6. Pilot with one organization if roles are organization-scoped.
-7. Expand access gradually after defined observation windows.
+6. Pilot through the public internet with one approved organization.
+7. Enable only the approved invited workshop cohort and manifest-listed datasets after the pilot observation window.
 8. Keep old asset routes/data and the previous application image available through the rollback window.
 9. Remove compatibility paths only in a later approved cleanup release.
 
@@ -645,6 +664,9 @@ Rollback triggers must include authorization leakage, data-integrity failures, e
 - Required CI checks and production smoke tests pass.
 - Mobile/tablet/desktop accessibility and performance targets pass agreed thresholds.
 - Monitoring, alerts, ownership, backup, restore, and rollback runbooks are operational.
+- The public workshop hostname passes external DNS, HTTPS, NGINX routing, authentication, organization authorization, protected-asset, cache, and rollback tests.
+- Every migrated workshop asset and metadata record appears in the approved manifest and passes file-count, byte-count, checksum, relational, and access-scope verification.
+- Non-invited clients and the full historical dataset remain outside the workshop migration without breaking their retained source records.
 
 ## 11. Key risks
 
@@ -652,7 +674,7 @@ Rollback triggers must include authorization leakage, data-integrity failures, e
 |---|---|
 | Farmers, organizations, farms, and surveys are conflated | Separate domain records; human-reviewed legacy classification before backfill |
 | Legacy UUID contract conflicts with mixed clients and explicit grants | Keep expand columns and legacy policy paths; replace the deferred contract only after reviewed mappings and new RLS pass |
-| Deadline pressure expands scope or weakens verification | Freeze the MVP, defer infrastructure and advanced workflows, and reduce features before reducing security/recovery gates |
+| Deadline pressure expands scope or weakens verification | Freeze the workshop manifest, defer full-history migration and broad automation, and reduce features before reducing security/recovery gates |
 | Intern schema overwrites canonical relationships | Main schema remains authoritative; additive mapping and staged migration |
 | UI-only authorization | RLS plus server checks plus direct-call tests |
 | Undefined role semantics | Approval gate before schema and UI work |
@@ -664,6 +686,8 @@ Rollback triggers must include authorization leakage, data-integrity failures, e
 | Cache serves stale/wrong datasets | Immutable versions and controlled active-version switch |
 | Low-end devices fail on maps/point clouds | Representative-device tests, payload budgets, progressive/fallback behavior |
 | Infrastructure exceeds team capacity | Phase mature components; defer Kubernetes |
+| Restricted assets become publicly cacheable | Approve protected delivery, separate cache policies by asset class, and test anonymous/cross-organization requests through Cloudflare |
+| Workshop depends on untested local-network assumptions | Test the production hostname, authentication, maps, assets, latency, and rollback from independent internet connections before invitations are issued |
 
 ## 12. Decisions still required
 
@@ -671,7 +695,9 @@ Rollback triggers must include authorization leakage, data-integrity failures, e
 2. Output/report approval, publication, retention, and audit-retention requirements.
 3. Invitation delivery mechanics and whether public self-signup remains enabled.
 4. Protected delivery for survey-scoped detections and currently public tile/point-cloud assets.
+5. Exact invited-user/organization list and selected workshop dataset manifest.
+6. Asset-origin hosting, capacity, backup location, operational owner, and approved public hostname.
 
 ## 13. Immediate next step
 
-Do not start schema or Admin Dashboard implementation until this documentation gate is reviewed. Then pin and inspect the intern repository, prepare the human-reviewed legacy-client mapping register, and design one additive local migration/RLS slice at a time. No staging action occurs without separate approval. Work backward from the September 28-30 deployment window and preserve October 1-9 for stabilization, documentation, and handoff.
+Continue reviewing the additive Phase 3A schema/RLS draft locally. In parallel, approve the workshop dataset manifest and protected asset-delivery design so Docker, NGINX, Cloudflare, and the selected asset origin do not become late release blockers. No staging, asset migration, or infrastructure cutover occurs without separate approval. Work backward from the September 28-30 public deployment window and preserve October 1-9 for stabilization, documentation, workshop support, and handoff.
