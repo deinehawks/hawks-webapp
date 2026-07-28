@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
 import {
   Building2,
@@ -135,6 +136,20 @@ function formatPersonName(person: PeopleListRow): string {
 
 function StatusBadge({ value }: { value: string | null }) {
   return <Badge variant="outline">{formatLabel(value)}</Badge>;
+}
+
+function DetailLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: ReactNode;
+}) {
+  return (
+    <Link className="font-medium text-primary hover:underline" href={href}>
+      {children}
+    </Link>
+  );
 }
 
 function ReadOnlyTable<T extends { id: string }>({
@@ -425,7 +440,14 @@ export default async function AdminPage() {
           rows={clientList}
           emptyLabel="No legacy client records are visible."
           columns={[
-            { header: "Code", cell: (row) => row.code },
+            {
+              header: "Code",
+              cell: (row) => (
+                <DetailLink href={`/dashboard/admin/clients/${row.id}`}>
+                  {row.code}
+                </DetailLink>
+              ),
+            },
             { header: "Name", cell: (row) => row.name ?? "Unnamed client" },
             {
               header: "Classification",
@@ -441,7 +463,14 @@ export default async function AdminPage() {
           rows={profileList}
           emptyLabel="No profile records are visible."
           columns={[
-            { header: "Email", cell: (row) => row.email ?? "No email" },
+            {
+              header: "Email",
+              cell: (row) => (
+                <DetailLink href={`/dashboard/admin/profiles/${row.id}`}>
+                  {row.email ?? "No email"}
+                </DetailLink>
+              ),
+            },
             {
               header: "Legacy Role",
               cell: (row) => <StatusBadge value={row.role} />,
@@ -463,7 +492,14 @@ export default async function AdminPage() {
           rows={surveyList}
           emptyLabel="No survey records are visible."
           columns={[
-            { header: "Survey", cell: (row) => formatShortId(row.id) },
+            {
+              header: "Survey",
+              cell: (row) => (
+                <DetailLink href={`/dashboard/admin/surveys/${row.id}`}>
+                  {formatShortId(row.id)}
+                </DetailLink>
+              ),
+            },
             {
               header: "Client",
               cell: (row) => row.client?.code ?? formatShortId(row.client_id),
@@ -483,7 +519,14 @@ export default async function AdminPage() {
           rows={organizationList}
           emptyLabel="No canonical organizations yet. This is expected until reviewed mappings are created."
           columns={[
-            { header: "Name", cell: (row) => row.name },
+            {
+              header: "Name",
+              cell: (row) => (
+                <DetailLink href={`/dashboard/admin/organizations/${row.id}`}>
+                  {row.name}
+                </DetailLink>
+              ),
+            },
             {
               header: "Type",
               cell: (row) => <StatusBadge value={row.type_code} />,
@@ -502,7 +545,14 @@ export default async function AdminPage() {
           rows={peopleList}
           emptyLabel="No canonical people yet. Farmers and contacts will be added only after reviewed mapping."
           columns={[
-            { header: "Name", cell: formatPersonName },
+            {
+              header: "Name",
+              cell: (row) => (
+                <DetailLink href={`/dashboard/admin/people/${row.id}`}>
+                  {formatPersonName(row)}
+                </DetailLink>
+              ),
+            },
             { header: "Email", cell: (row) => row.email ?? "Not set" },
             {
               header: "Status",
@@ -518,7 +568,14 @@ export default async function AdminPage() {
           rows={farmList}
           emptyLabel="No farms or plantation areas yet. Survey-farm mapping is deferred until reviewed data exists."
           columns={[
-            { header: "Name", cell: (row) => row.name },
+            {
+              header: "Name",
+              cell: (row) => (
+                <DetailLink href={`/dashboard/admin/farms/${row.id}`}>
+                  {row.name}
+                </DetailLink>
+              ),
+            },
             { header: "Code", cell: (row) => row.code ?? "Not set" },
             { header: "Crop", cell: (row) => formatLabel(row.crop) },
             {
@@ -541,7 +598,14 @@ export default async function AdminPage() {
           rows={membershipList}
           emptyLabel="No organization memberships yet. Current access still works through compatible profile organization ownership."
           columns={[
-            { header: "Profile", cell: (row) => formatShortId(row.profile_id) },
+            {
+              header: "Profile",
+              cell: (row) => (
+                <DetailLink href={`/dashboard/admin/memberships/${row.id}`}>
+                  {formatShortId(row.profile_id)}
+                </DetailLink>
+              ),
+            },
             {
               header: "Organization",
               cell: (row) => formatShortId(row.organization_id),
@@ -560,7 +624,14 @@ export default async function AdminPage() {
           rows={outputList}
           emptyLabel="No generic output records yet. Existing orthos, point clouds, detections, and tiles remain compatible."
           columns={[
-            { header: "Title", cell: (row) => row.title ?? "Untitled output" },
+            {
+              header: "Title",
+              cell: (row) => (
+                <DetailLink href={`/dashboard/admin/outputs/${row.id}`}>
+                  {row.title ?? "Untitled output"}
+                </DetailLink>
+              ),
+            },
             { header: "Type", cell: (row) => formatLabel(row.output_type) },
             { header: "Survey", cell: (row) => formatShortId(row.survey_id) },
             {
