@@ -1,7 +1,7 @@
 # Admin Dashboard Integration and Production Rollout Plan
 
-Status: Domain revision draft for discovery and approval
-Scope: Planning only; no application, database, or infrastructure changes are authorized by this document
+Status: Phase 3F controlled legacy-client classification implemented for review
+Scope: Current plan plus completed additive foundation. Classification, membership, asset, and destructive mutations still require separate approval.
 Reviewed source: `docs/ASIMOV-HAWKS_Web_App_Deployment_Plan_Final.docx` (owner-supplied)
 
 Repository evidence in this document describes checked-in contracts only. It does not prove the current state of any remote staging or production Supabase project.
@@ -10,7 +10,7 @@ Repository evidence in this document describes checked-in contracts only. It doe
 
 Integrate the interns' Admin Dashboard into the main ASIMOV-HAWKS application without disrupting existing authentication, survey access, geospatial visualization, or production data. The work must reconcile two independently developed Next.js/Supabase systems, preserve the main Supabase project as the source of truth, and deliver the combined application through the proposed Docker/NGINX/MinIO/Cloudflare architecture for invited users over the public internet during the October 2026 workshop.
 
-This is a gated plan. Implementation must not begin until the interns' repository and Supabase schema have been inspected and the target authorization model has been approved.
+This remains a gated plan. Phase 3A established the additive domain foundation, Phase 3B-3D added platform-admin read-only visibility, Phase 3E added classification readiness, and Phase 3F enables only audited legacy-client classification-field updates. Canonical mapping, membership, asset, and destructive workflows still require separate approval.
 
 ## 2. Confirmed baseline
 
@@ -19,7 +19,7 @@ This is a gated plan. Implementation must not begin until the interns' repositor
 - Next.js 15 App Router, React 19, TypeScript, Tailwind CSS, and shadcn/Radix UI.
 - Supabase provides authentication, relational data, and detected-object storage.
 - The compatible application uses `profiles.organization_id` and `surveys.client_id` as UUID tenant keys while legacy code columns remain during the expand phase.
-- Database roles and RLS are checked in for `platform_admin`, `org_admin`, `editor`, and `viewer`; Admin Dashboard pages and member-management workflows are not implemented.
+- Database roles and RLS are checked in for `platform_admin`, `org_admin`, `editor`, and `viewer`; additive domain tables and platform-admin Admin Dashboard list/detail pages are implemented. Phase 3F adds a platform-admin-only legacy-client classification-field mutation. Member-management and canonical mapping workflows are not implemented.
 - Server Components and server actions perform protected reads; MapLibre and Three.js views are dynamically loaded as client-only modules.
 - Orthomosaic tiles and PCD point clouds are served from ignored `public/tiles` and `public/3d` directories.
 - The repository contains a reconstructed Supabase baseline, UUID tenant migrations, hardened RLS, deferred contract/storage SQL, generated types, verification SQL, and pgTAP authorization tests. There is no general application test suite or CI workflow.
@@ -109,14 +109,14 @@ flowchart LR
 ### Confirmed repository facts
 
 - **Application users and profiles:** Supabase `auth.users` provides login identity. `app_private.handle_new_user()` in `supabase/migrations/20260727002000_harden_uuid_authorization.sql` creates one unassigned `profiles` row with role `viewer`. `profiles.id` is the Auth user ID and the table contains account/contact fields, preferences, one `organization_id`, and one role. It is an application-account record, not a general farmer registry.
-- **Historical clients:** `clients` has only `id`, `code`, `name`, and `created_at` in `lib/database.types.ts`. `lib/auth/user-context.ts` and `lib/actions/clients.ts` treat it as the tenant boundary. Confirmed product knowledge says these rows are mixed and may represent cooperatives, associations, organizations, or individuals.
+- **Historical clients:** `clients` now retains compatibility fields plus additive classification fields in `lib/database.types.ts`. `lib/auth/user-context.ts` and `lib/actions/clients.ts` still treat `profiles.organization_id` and `surveys.client_id` as the operating tenant boundary. Confirmed product knowledge says legacy clients are mixed and may represent cooperatives, associations, organizations, or individuals.
 - **Membership and access:** the current relationship is one profile to at most one client through `profiles.organization_id`. No person-to-organization or profile-to-multiple-organizations junction exists. RLS and server checks support `platform_admin`, `org_admin`, `editor`, and `viewer` for that single-organization model.
-- **Farmers, contacts, and stakeholders:** no independent table exists. A person without an application account cannot be represented cleanly, and no model links cooperative members or representatives to organizations.
-- **Farms and plantation areas:** no independent table or survey-farm join exists. A survey can span multiple farms, so one canonical `surveys.farm_id` would be insufficient. Despite its name, `app/dashboard/orthomap/[plantation]/page.tsx` resolves `[plantation]` through `clients.code`; this is a tenant route, not proof of a farm entity.
+- **Farmers, contacts, and stakeholders:** Phase 3A added `people`, `client_people`, `organization_people`, and `farm_people`, but existing records are not yet classified or populated by an approved workflow. A person can be represented without a login once reviewed data entry is approved.
+- **Farms and plantation areas:** Phase 3A added `farms`, `farm_people`, `farm_organizations`, and `survey_farms`. Existing survey routes still resolve through compatible clients and survey records; no current user workflow depends on `survey_farms` yet. Despite its name, `app/dashboard/orthomap/[plantation]/page.tsx` resolves `[plantation]` through `clients.code`; this remains a tenant route, not proof of a farm entity.
 - **Missions and surveys:** `surveys` is the current combined mission/survey record. It stores status, flight date, area, location, boundaries, `client_id`, and legacy code relationships. `getUserSurvey()` and `getAllUserSurveys()` in `lib/actions/surveys.ts` authorize directly through `client_id`.
 - **Outputs and reports:** `orthos.survey_id` and `point_clouds.survey_id` trace those specialized outputs to surveys. Tile paths derive from client code, year, survey ID, and `orthos.tile_folder`. Detected objects are stored as organization-level JSON and filtered by `areaCode`. Generic model outputs, analytics, disease/crop outputs, and reports have no relational catalog.
 - **Storage:** `getObjectDetectionData()` reads `<client-uuid>/detections.json` with a temporary `<client-code>.json` fallback. `supabase/deferred/secure_detected_objects_storage.sql` authorizes the UUID path by organization only.
-- **Admin and audit:** no `/admin` route or audit table exists. `components/nav-main.tsx` presents orthomap and survey navigation only.
+- **Admin and audit:** Phase 3A added `admin_audit_log`; Phase 3B-3D added platform-admin read-only Admin Dashboard overview, lists, and detail pages under `app/dashboard/admin`; Phase 3F adds a server-side legacy-client classification-field update path. Audit coverage for future `client_people` and `client_organizations` mapping mutations still needs review before those writes are enabled.
 
 ### Answers to the domain questions
 
@@ -162,11 +162,11 @@ surveys 1--M orthos, point_clouds, and survey_outputs
 
 ### Implement now versus defer
 
-The first domain release should establish reviewed legacy-client mappings, canonical people and organizations, one active organization membership per normal account, farms, multi-farm survey linkage, explicit access grants, basic output/report metadata, RLS, and audit foundations through additive migrations. Defer general multi-organization user access, Auth-user creation, custom organization-type administration, a separate mission-planning table, advanced DAM/publication, crop taxonomy, destructive deletion, full-history asset migration, complete infrastructure automation, and legacy-column removal.
+The first domain release has established the additive tables, RLS foundation, generated types, read-only readiness, and a narrow platform-admin mutation for legacy-client classification fields. The next release slice should design canonical person/organization mapping writes with explicit audit coverage before any mapping mutation is enabled. Defer general multi-organization user access, Auth-user creation, custom organization-type administration, a separate mission-planning table, advanced DAM/publication, crop taxonomy, destructive deletion, full-history asset migration, complete infrastructure automation, and legacy-column removal.
 
 ### Admin information architecture
 
-The practical first-release navigation is Organizations, Farmers & Contacts, Farms & Plantation Areas, Missions & Surveys, Outputs & Reports, Users & Roles, and Audit Log. Organization lists must display type; people views must distinguish farmer/contact identity from login status; farm details must show reviewed owners/operators and related surveys; survey details must show farm and organization context plus generated outputs. Do not label every farmer as an organization, every cooperative as a user, every farm as a survey, or outputs as directly organization-owned when they derive from a survey.
+The practical first-release navigation remains Organizations, Farmers & Contacts, Farms & Plantation Areas, Missions & Surveys, Outputs & Reports, Users & Roles, and Audit Log. Current Phase 3B-3D implementation exposes platform-admin read-only list/detail visibility for the first six domain areas; Audit Log and mutations remain gated. Organization lists must display type; people views must distinguish farmer/contact identity from login status; farm details must show reviewed owners/operators and related surveys; survey details must show farm and organization context plus generated outputs. Do not label every farmer as an organization, every cooperative as a user, every farm as a survey, or outputs as directly organization-owned when they derive from a survey.
 
 ### MVP and delivery milestones
 
@@ -484,7 +484,7 @@ Exit gate:
 
 Actions:
 
-- Apply additive canonical organization/people mappings, single-organization membership, farm, `survey_farms`, `survey_organizations`, explicit grant, output/report, and audit migrations in non-production.
+- Preserve the applied additive organization/people mapping, single-organization membership, farm, `survey_farms`, `survey_organizations`, explicit grant, output/report, and audit foundation while future write workflows are reviewed in non-production.
 - Preserve current UUID tenant columns, legacy code relationships, routes, and asset paths throughout the expand phase.
 - Implement and test RLS policies.
 - Add centralized server-side authorization helpers.
@@ -700,4 +700,4 @@ Rollback triggers must include authorization leakage, data-integrity failures, e
 
 ## 13. Immediate next step
 
-Continue reviewing the additive Phase 3A schema/RLS draft locally. In parallel, approve the workshop dataset manifest and protected asset-delivery design so Docker, NGINX, Cloudflare, and the selected asset origin do not become late release blockers. No staging, asset migration, or infrastructure cutover occurs without separate approval. Work backward from the September 28-30 public deployment window and preserve October 1-9 for stabilization, documentation, workshop support, and handoff.
+Proceed with Phase 3F review: verify the platform-admin-only legacy-client classification mutation, then design Phase 3G for canonical person/organization mapping writes with explicit audit coverage. In parallel, approve the workshop dataset manifest and protected asset-delivery design so Docker, NGINX, Cloudflare, and the selected asset origin do not become late release blockers. No asset migration or infrastructure cutover occurs without separate approval. Work backward from the September 28-30 public deployment window and preserve October 1-9 for stabilization, documentation, workshop support, and handoff.

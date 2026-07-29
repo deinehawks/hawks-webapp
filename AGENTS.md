@@ -59,12 +59,12 @@ Migrate only the clients, organizations, accounts, surveys, metadata, tiles, poi
 Treat these as separate concepts in planning, schema, authorization, and UI:
 
 - `profiles`: authenticated application accounts and preferences.
-- People/farmers/contacts: real individuals who may or may not have an account; no separate table exists yet.
-- `clients`: mixed historical tenant records that may represent organizations or individuals; preserve them and map reviewed records to future canonical people or organizations.
-- Organization membership access: one active organization per normal account in the first release; no table exists yet.
-- Farms/plantation areas: monitored land or production areas; no table or survey foreign key exists yet.
-- `surveys`: the current combined mission/survey record; future `survey_farms` must support multiple farms per survey.
-- `orthos` and `point_clouds`: specialized survey outputs; other outputs and reports need a future relational catalog.
+- `people`: canonical farmers, contacts, and stakeholders who may or may not have an application account.
+- `clients`: mixed historical tenant records that may represent organizations or individuals; preserve them and map reviewed records to canonical people or organizations through reviewed junction tables.
+- Organization membership access: one active organization per normal account in the first release through `organization_memberships`; general multi-organization access remains deferred.
+- `farms`: monitored land or production areas, separate from people, organizations, and surveys.
+- `surveys`: the current combined mission/survey record; `survey_farms` supports multiple farms per survey while legacy `surveys.client_id` remains compatible.
+- `orthos` and `point_clouds`: specialized survey outputs; `survey_outputs` is the additive catalog for generic outputs and reports.
 
 Future account roles separate global `platform_admin`/`individual` state from organization-scoped `org_admin`/`member` membership. Farm owner/operator/contact metadata never grants application access automatically. Explicit farm grants expose only the farm record; a separate survey grant is required for a shared multi-farm survey and its outputs. Only platform admins may promote organization admins in the first release.
 
@@ -113,19 +113,19 @@ npm run start
 - `public.app_role` contains `platform_admin`, `org_admin`, `editor`, and `viewer`. RLS helpers and policies are checked in under `supabase/migrations/20260727002000_harden_uuid_authorization.sql`, and server-side tenant checks are centralized in `lib/auth/user-context.ts`. The current model still permits only one organization per profile.
 - The first-release target replaces ambiguous global viewer/editor semantics with global `platform_admin`/`individual` account roles and organization-scoped `org_admin`/`member` memberships. Preserve current roles and policies during expansion; do not remove compatibility behavior before a separately approved contract release.
 - Profiles are application accounts, not a general farmer/contact directory. Do not represent every farmer as a `profiles` row or every farmer as a `clients` row.
-- The schema has no independent person/contact, organization type, organization membership, farm/plantation area, generic output/report, or audit model. Domain migrations and Admin Dashboard mutations are blocked until the approved planning gates are satisfied.
+- The additive domain foundation now includes `organization_types`, `people`, `organizations`, client mapping tables, memberships, farms, survey/farm and survey/organization junctions, explicit grants, `survey_outputs`, and `admin_audit_log`. Phase 3F enables only platform-admin legacy-client classification-field updates on `clients`; canonical mapping, membership, farm, grant, output, asset, and destructive mutations remain blocked until controlled workflows, audit coverage, local/staging validation, and rollback paths are reviewed.
 - UI filtering is not an authorization boundary. Preserve or strengthen database RLS and server-side checks; never rely on route parameters, hidden controls, or client state.
 - Preserve the cookie-copying sequence and `auth.getUser()` call in `utils/supabase/middleware.ts`; its comments describe a session-integrity requirement.
 - Treat signup exposure and redirect targets as security-sensitive. Validate redirect destinations before changing OTP handling.
 
 ## Database and Supabase rules
 
-- Checked-in public tables are `clients`, `profiles`, `surveys`, `orthos`, and `point_clouds`. Checked-in storage SQL concerns the `detected-objects` bucket.
-- `clients` contains mixed historical tenants, including organizations and individuals. Preserve it as the compatibility boundary and use separate reviewed client-to-organization or client-to-person mappings in the future model.
-- `surveys` has `client_id` but no farm relationship. Future `survey_farms` must support multiple farms per survey; do not add a single canonical `surveys.farm_id`. `orthos` and `point_clouds` link to surveys through `survey_id`; detected objects, local tiles, generic model outputs, analytics, and reports do not have a complete relational output catalog.
+- Checked-in compatibility tables are `clients`, `profiles`, `surveys`, `orthos`, and `point_clouds`; the additive domain foundation adds canonical people, organizations, farms, memberships, mappings, grants, generic outputs, and audit tables. Checked-in storage SQL concerns the `detected-objects` bucket.
+- `clients` contains mixed historical tenants, including organizations and individuals. Preserve it as the compatibility boundary and use separate reviewed `client_organizations` or `client_people` mappings before changing behavior.
+- `surveys` has `client_id` for compatibility and additive multi-farm relationships through `survey_farms`; do not add a single canonical `surveys.farm_id`. `orthos` and `point_clouds` link to surveys through `survey_id`; detected objects and local tiles still require protected delivery work before workshop cutover.
 - Checked-in migrations, RLS policies, private helper functions, generated types, tests, and verification SQL are evidence of the repository contract. The linked remote project must still be inspected before future database work; never infer current production or staging state from repository files alone.
 - When database work is authorized, prefer establishing a Supabase CLI connection so the current schema, RLS/storage policies, functions, foreign keys, indexes, grants, and triggers can be inspected before planning changes. Confirm the target project and keep inspection read-only until mutation is explicitly approved.
-- `docs/supabase-migration-runbook.md` defines the existing UUID expand-phase backup, rehearsal, verification, storage, contract, and recovery procedure. It must be revised and approved for the farmer/organization/farm domain before any new domain migration or deferred contract operation.
+- `docs/supabase-migration-runbook.md` defines the UUID expand-phase, additive domain foundation, backup, rehearsal, verification, storage, contract, and recovery procedure. Revise and approve it before any additional domain migration, classification mutation, storage cutover, or deferred contract operation.
 - Do not apply `supabase/deferred/contract_uuid_tenant_keys.sql` or `supabase/deferred/secure_detected_objects_storage.sql` until their documented domain, compatibility, and authorization gates pass and the exact target environment is approved.
 - `SUPABASE_SERVICE_ROLE_KEY` is for local operations and administrative tasks only. It must not be used by deployment jobs or exposed through `NEXT_PUBLIC_*`, browser code, logs, or generated artifacts.
 - Do not manually invent generated database types. If an approved generator is introduced or exists outside this checkout, regenerate through it and review the diff.
