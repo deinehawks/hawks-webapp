@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -22,6 +23,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { createOrganizationMembership } from "@/lib/actions/admin-memberships";
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
 import type { Tables } from "@/lib/database.types";
 import { createClient } from "@/utils/supabase/server";
@@ -100,6 +102,9 @@ type MembershipOrganizationRow = Pick<
   Tables<"organizations">,
   "id" | "name" | "type_code" | "status"
 >;
+
+type MembershipProfileOption = MembershipProfileRow;
+type MembershipOrganizationOption = MembershipOrganizationRow;
 
 type MembershipListRow = Pick<
   Tables<"organization_memberships">,
@@ -378,6 +383,114 @@ function AdminListSection<T extends { id: string }>({
   );
 }
 
+function CreateMembershipForm({
+  profileOptions,
+  organizationOptions,
+}: {
+  profileOptions: MembershipProfileOption[];
+  organizationOptions: MembershipOrganizationOption[];
+}) {
+  const disabled = profileOptions.length === 0 || organizationOptions.length === 0;
+
+  return (
+    <Card className="rounded-lg">
+      <CardHeader>
+        <CardDescription>Phase 3H-B Controlled Membership</CardDescription>
+        <CardTitle>Create ordinary member access</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form action={createOrganizationMembership} className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="profileId">
+              Existing user account
+            </label>
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              disabled={disabled}
+              id="profileId"
+              name="profileId"
+              required
+            >
+              <option value="">
+                {profileOptions.length === 0 ? "No eligible users" : "Select user"}
+              </option>
+              {profileOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.email ?? formatShortId(option.id)} ({formatLabel(option.account_role)})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="organizationId">
+              Existing organization
+            </label>
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              disabled={disabled}
+              id="organizationId"
+              name="organizationId"
+              required
+            >
+              <option value="">
+                {organizationOptions.length === 0 ? "No organizations" : "Select organization"}
+              </option>
+              {organizationOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name} ({formatLabel(option.type_code)})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="status">
+              Initial status
+            </label>
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              defaultValue="pending"
+              disabled={disabled}
+              id="status"
+              name="status"
+              required
+            >
+              <option value="pending">Pending</option>
+              <option value="active">Active</option>
+            </select>
+          </div>
+
+          <div className="grid gap-2 lg:row-span-2">
+            <label className="text-sm font-medium" htmlFor="membershipNotes">
+              Notes
+            </label>
+            <textarea
+              className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              id="membershipNotes"
+              maxLength={2000}
+              name="membershipNotes"
+              rows={3}
+            />
+          </div>
+
+          <div className="flex flex-col gap-3 lg:col-span-2 lg:flex-row lg:items-center lg:justify-between">
+            <p className="max-w-3xl text-sm text-muted-foreground">
+              This creates only an ordinary organization member record for an
+              existing user and existing organization. Organization-admin
+              promotion, Auth-user creation, invite email delivery, and removal
+              workflows remain blocked.
+            </p>
+            <Button className="w-fit" disabled={disabled} type="submit">
+              Create membership
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
 function ReadinessCard({ metric }: { metric: ReadinessMetric }) {
   const isWarning = metric.variant === "warning";
   const iconClassName = isWarning
@@ -434,6 +547,9 @@ export default async function AdminPage() {
     farmRows,
     membershipRows,
     outputRows,
+    membershipProfileOptionsResponse,
+    membershipOrganizationOptionsResponse,
+    liveMembershipProfileIdsResponse,
   ] = await Promise.all([
     getTableCount("clients"),
     getTableCount("profiles"),
@@ -505,6 +621,24 @@ export default async function AdminPage() {
       .select("id, title, output_type, survey_id, status, is_current")
       .order("updated_at", { ascending: false })
       .limit(8),
+    supabase
+      .from("profiles")
+      .select("id, email, role, account_role")
+      .neq("role", "platform_admin")
+      .neq("account_role", "platform_admin")
+      .order("email", { ascending: true, nullsFirst: false })
+      .limit(100),
+    supabase
+      .from("organizations")
+      .select("id, name, type_code, status")
+      .eq("status", "active")
+      .order("name", { ascending: true })
+      .limit(100),
+    supabase
+      .from("organization_memberships")
+      .select("profile_id")
+      .in("status", ["invited", "pending", "active", "suspended"])
+      .limit(1000),
   ]);
 
   const listResponses = [
@@ -520,6 +654,9 @@ export default async function AdminPage() {
     ["reviewed client count", reviewedClients],
     ["confirmed person mappings count", confirmedPersonMappings],
     ["confirmed organization mappings count", confirmedOrganizationMappings],
+    ["membership profile options", membershipProfileOptionsResponse],
+    ["membership organization options", membershipOrganizationOptionsResponse],
+    ["live membership profile ids", liveMembershipProfileIdsResponse],
   ] as const;
 
   for (const [label, response] of listResponses) {
@@ -587,6 +724,15 @@ export default async function AdminPage() {
   const farmList = (farmRows.data ?? []) as FarmListRow[];
   const membershipList = (membershipRows.data ?? []) as MembershipListRow[];
   const outputList = (outputRows.data ?? []) as OutputListRow[];
+  const liveMembershipProfileIds = new Set(
+    ((liveMembershipProfileIdsResponse.data ?? []) as Pick<
+      Tables<"organization_memberships">,
+      "profile_id"
+    >[]).map((row) => row.profile_id),
+  );
+  const membershipProfileOptions = ((membershipProfileOptionsResponse.data ?? []) as MembershipProfileOption[])
+    .filter((option) => !liveMembershipProfileIds.has(option.id));
+  const membershipOrganizationOptions = (membershipOrganizationOptionsResponse.data ?? []) as MembershipOrganizationOption[];
   const readinessMetrics: ReadinessMetric[] = [
     {
       label: "Unclassified Clients",
@@ -622,13 +768,13 @@ export default async function AdminPage() {
           <h1 className="text-2xl font-semibold tracking-normal">
             Admin Dashboard
           </h1>
-          <Badge variant="secondary">Read-only readiness</Badge>
+          <Badge variant="secondary">Controlled membership</Badge>
         </div>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Phase 3E adds platform-admin visibility into legacy-client
-          classification readiness and canonical mappings. Record creation,
-          membership changes, asset migration, and destructive actions remain
-          gated.
+          Phase 3H-B enables platform admins to create ordinary member
+          access for existing users and existing organizations. Org-admin
+          promotion, Auth-user creation, invite delivery, asset migration, and
+          destructive actions remain gated.
         </p>
       </div>
 
@@ -662,6 +808,11 @@ export default async function AdminPage() {
       </section>
 
       <section className="grid gap-4">
+        <CreateMembershipForm
+          profileOptions={membershipProfileOptions}
+          organizationOptions={membershipOrganizationOptions}
+        />
+
         <AdminListSection
           title="Legacy Clients"
           description="Historical mixed tenant records with reviewed canonical mapping status"
@@ -887,7 +1038,7 @@ export default async function AdminPage() {
         <Card className="rounded-lg lg:col-span-2">
           <CardHeader>
             <CardDescription>Current Gate</CardDescription>
-            <CardTitle>Phase 3H-A keeps membership management read-only</CardTitle>
+            <CardTitle>Phase 3H-B enables ordinary member creation</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
@@ -914,7 +1065,7 @@ export default async function AdminPage() {
             </div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="size-4" />
-              <span>No member mutation</span>
+              <span>No org-admin promotion or removal</span>
             </div>
             <div className="flex items-center gap-2">
               <FileBarChart className="size-4" />

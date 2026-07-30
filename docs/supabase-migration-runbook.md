@@ -15,8 +15,11 @@ update path for platform admins. Phase 3G-A adds audit infrastructure for
 that map a legacy client to an existing canonical person or organization.
 Phase 3G-C authorizes checked RPCs that create minimal canonical people or
 organizations and immediately map them to a legacy client. Phase 3H-A adds
-read-only membership review views only. Future SQL or server actions for
-membership, farm, grant, output, storage, or destructive mutations
+read-only membership review views. Phase 3H-B adds a platform-admin-only
+server action for creating ordinary member memberships for existing profiles and
+existing organizations. Future SQL or server actions for org-admin promotion,
+removal/suspension, Auth-user creation, farm, grant, output, storage, or
+destructive mutations
 must be created, reviewed, and rehearsed only after the blocking human decisions
 below are approved.
 
@@ -283,10 +286,12 @@ role escalation, farm reassignment, output access, RPC execution, and storage
 downloads. The Phase 3F `clients` classification-field update must produce the existing
 `audit_clients_domain_fields` trigger record. Phase 3G-A mapping table inserts,
 updates, and deletes must produce composite-key audit records. Phase 3G-B and 3G-C RPCs
-must reject non-platform callers and conflicting confirmed mappings. Phase 3H-A
-membership review remains read-only and must not expose invitation, approval,
-removal, promotion, Auth-user creation, service-role, or membership mutation
-paths. Every future
+must reject non-platform callers and conflicting confirmed mappings. Phase 3H-B
+membership creation must be platform-admin only, limited to ordinary `member`
+records for existing profiles and organizations, audited by the existing
+membership trigger, and rejected when a normal account already has a live
+membership. It must not expose org-admin promotion, removal, suspension,
+Auth-user creation, service-role, or invite-email delivery paths. Every future
 privileged mutation must produce an expected audit record; audit logging does
 not make an otherwise unauthorized operation acceptable.
 
