@@ -10,10 +10,12 @@ Contract cleanup, storage finalization, and deletion of legacy objects require
 separate approval.
 
 Phase 3F authorizes only the application-level `clients` classification-field
-update path for platform admins. Future SQL or server actions for canonical
-mapping, membership, farm, grant, output, storage, or destructive mutations must
-be created, reviewed, and rehearsed only after the blocking human decisions
-below are approved.
+update path for platform admins. Phase 3G-A adds audit infrastructure for
+`client_people` and `client_organizations`; it does not authorize canonical
+mapping writes by itself. Future SQL or server actions for canonical mapping,
+membership, farm, grant, output, storage, or destructive mutations must be
+created, reviewed, and rehearsed only after the blocking human decisions below
+are approved.
 
 ## Required inputs
 
@@ -198,10 +200,10 @@ client mappings, one primary farm per survey, grants, farm codes, and current
 outputs. Nullable expand-phase fields must become required only in
 a later contract migration after zero unresolved records are verified.
 
-Before any canonical mapping or membership mutation is enabled, create or
-update `supabase/verification/verify_domain_expand.sql` with expected-zero
-assertions equivalent to the following templates, adjusted to the approved table
-and column names:
+Before any canonical mapping or membership mutation is enabled, run the
+Phase 3G-A audit migration locally and keep `supabase/verification/verify_domain_expand.sql`
+expected-zero assertions equivalent to the following templates, adjusted to the
+approved table and column names:
 
 ```sql
 -- Classified clients without exactly one matching canonical mapping.
@@ -276,9 +278,10 @@ including a second live membership, cross-organization IDs, farm ownership
 without grants, farm grants without survey grants, profile/person relinking,
 role escalation, farm reassignment, output access, RPC execution, and storage
 downloads. The Phase 3F `clients` classification-field update must produce the existing
-`audit_clients_domain_fields` trigger record. Every future privileged mutation
-must produce an expected audit record; audit logging does not make an otherwise
-unauthorized operation acceptable.
+`audit_clients_domain_fields` trigger record. Phase 3G-A mapping table inserts,
+updates, and deletes must produce composite-key audit records. Every future
+privileged mutation must produce an expected audit record; audit logging does
+not make an otherwise unauthorized operation acceptable.
 
 ## Storage transition
 

@@ -197,6 +197,7 @@ join pg_namespace as namespace
   on namespace.oid = procedure.pronamespace
 where namespace.nspname = 'app_private'
   and procedure.proname in (
+    'domain_audit_client_mapping_row',
     'domain_audit_row',
     'enforce_organization_protected_fields',
     'enforce_profile_protected_fields',
@@ -209,3 +210,29 @@ where namespace.nspname = 'app_private'
     procedure.oid,
     'EXECUTE'
   );
+
+-- EXPECT ZERO: client mapping tables must have composite-key audit triggers.
+select count(*) as missing_client_mapping_audit_triggers
+from (
+  values
+    ('client_people', 'audit_client_people'),
+    ('client_organizations', 'audit_client_organizations')
+) as expected(table_name, trigger_name)
+where not exists (
+  select 1
+  from pg_trigger as trigger
+  join pg_class as table_class
+    on table_class.oid = trigger.tgrelid
+  join pg_namespace as namespace
+    on namespace.oid = table_class.relnamespace
+  join pg_proc as procedure
+    on procedure.oid = trigger.tgfoid
+  join pg_namespace as procedure_namespace
+    on procedure_namespace.oid = procedure.pronamespace
+  where namespace.nspname = 'public'
+    and table_class.relname = expected.table_name
+    and trigger.tgname = expected.trigger_name
+    and not trigger.tgisinternal
+    and procedure_namespace.nspname = 'app_private'
+    and procedure.proname = 'domain_audit_client_mapping_row'
+);

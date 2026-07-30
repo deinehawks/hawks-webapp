@@ -1,6 +1,6 @@
 # Admin Dashboard Integration and Production Rollout Plan
 
-Status: Phase 3F controlled legacy-client classification implemented for review
+Status: Phase 3G-A client mapping audit coverage implemented for review
 Scope: Current plan plus completed additive foundation. Classification, membership, asset, and destructive mutations still require separate approval.
 Reviewed source: `docs/ASIMOV-HAWKS_Web_App_Deployment_Plan_Final.docx` (owner-supplied)
 
@@ -10,7 +10,7 @@ Repository evidence in this document describes checked-in contracts only. It doe
 
 Integrate the interns' Admin Dashboard into the main ASIMOV-HAWKS application without disrupting existing authentication, survey access, geospatial visualization, or production data. The work must reconcile two independently developed Next.js/Supabase systems, preserve the main Supabase project as the source of truth, and deliver the combined application through the proposed Docker/NGINX/MinIO/Cloudflare architecture for invited users over the public internet during the October 2026 workshop.
 
-This remains a gated plan. Phase 3A established the additive domain foundation, Phase 3B-3D added platform-admin read-only visibility, Phase 3E added classification readiness, and Phase 3F enables only audited legacy-client classification-field updates. Canonical mapping, membership, asset, and destructive workflows still require separate approval.
+This remains a gated plan. Phase 3A established the additive domain foundation, Phase 3B-3D added platform-admin read-only visibility, Phase 3E added classification readiness, Phase 3F enables only audited legacy-client classification-field updates, and Phase 3G-A adds audit coverage for canonical client mapping tables. Canonical mapping, membership, asset, and destructive workflows still require separate approval.
 
 ## 2. Confirmed baseline
 
@@ -116,7 +116,7 @@ flowchart LR
 - **Missions and surveys:** `surveys` is the current combined mission/survey record. It stores status, flight date, area, location, boundaries, `client_id`, and legacy code relationships. `getUserSurvey()` and `getAllUserSurveys()` in `lib/actions/surveys.ts` authorize directly through `client_id`.
 - **Outputs and reports:** `orthos.survey_id` and `point_clouds.survey_id` trace those specialized outputs to surveys. Tile paths derive from client code, year, survey ID, and `orthos.tile_folder`. Detected objects are stored as organization-level JSON and filtered by `areaCode`. Generic model outputs, analytics, disease/crop outputs, and reports have no relational catalog.
 - **Storage:** `getObjectDetectionData()` reads `<client-uuid>/detections.json` with a temporary `<client-code>.json` fallback. `supabase/deferred/secure_detected_objects_storage.sql` authorizes the UUID path by organization only.
-- **Admin and audit:** Phase 3A added `admin_audit_log`; Phase 3B-3D added platform-admin read-only Admin Dashboard overview, lists, and detail pages under `app/dashboard/admin`; Phase 3F adds a server-side legacy-client classification-field update path. Audit coverage for future `client_people` and `client_organizations` mapping mutations still needs review before those writes are enabled.
+- **Admin and audit:** Phase 3A added `admin_audit_log`; Phase 3B-3D added platform-admin read-only Admin Dashboard overview, lists, and detail pages under `app/dashboard/admin`; Phase 3F adds a server-side legacy-client classification-field update path. Phase 3G-A adds dedicated composite-key audit coverage for future `client_people` and `client_organizations` mapping mutations, but those write workflows still require separate UI/server-action review before they are enabled.
 
 ### Answers to the domain questions
 
@@ -700,4 +700,4 @@ Rollback triggers must include authorization leakage, data-integrity failures, e
 
 ## 13. Immediate next step
 
-Proceed with Phase 3F review: verify the platform-admin-only legacy-client classification mutation, then design Phase 3G for canonical person/organization mapping writes with explicit audit coverage. In parallel, approve the workshop dataset manifest and protected asset-delivery design so Docker, NGINX, Cloudflare, and the selected asset origin do not become late release blockers. No asset migration or infrastructure cutover occurs without separate approval. Work backward from the September 28-30 public deployment window and preserve October 1-9 for stabilization, documentation, workshop support, and handoff.
+Proceed with Phase 3G-A review: verify mapping audit triggers locally, then design Phase 3G-B for canonical person/organization mapping writes on top of the audited tables. In parallel, approve the workshop dataset manifest and protected asset-delivery design so Docker, NGINX, Cloudflare, and the selected asset origin do not become late release blockers. No asset migration or infrastructure cutover occurs without separate approval. Work backward from the September 28-30 public deployment window and preserve October 1-9 for stabilization, documentation, workshop support, and handoff.
