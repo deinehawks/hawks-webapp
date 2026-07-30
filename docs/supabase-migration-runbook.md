@@ -303,25 +303,30 @@ Storage finalization and workshop asset cutover remain blocked until the approve
 organization membership and explicit survey grants. An organization UUID path
 alone cannot safely provide narrow access to one survey.
 
-For the workshop release, prepare a reviewed manifest that links every selected
-asset to its retained legacy source, canonical survey, authorized organization
-or explicit grant, intended stable URL, object version, file count, total bytes,
-and checksum set. The manifest is the migration allowlist; absence from it means
-the dataset does not move before the workshop.
+For the workshop release, prepare a reviewed manifest from
+`docs/workshop-manifest-template.md` that links every selected asset to its
+retained legacy source, canonical survey, authorized organization or explicit
+grant, intended stable URL, object version, file count, total bytes, and
+checksum set. The sanitized machine-readable shape is in
+`docs/workshop-manifest.example.json`. The approved populated manifest is the
+migration allowlist; absence from it means the dataset does not move before the
+workshop.
 
-1. Run the approved migration tooling in dry-run mode against the workshop
+1. Validate the approved manifest shape and approval state before any asset or
+   storage operation.
+2. Run the approved migration tooling in dry-run mode against the workshop
    manifest only.
-2. Review source/destination counts, bytes, paths, and authorization metadata.
-3. Apply the approved migration to the isolated/staging asset origin only.
-4. Verify every source and destination checksum matches.
-5. Deploy the UUID-compatible application to staging behind NGINX and Cloudflare.
-6. Apply only the separately approved protected storage/asset policy.
-7. Verify anonymous and cross-organization downloads fail. Organization members
+3. Review source/destination counts, bytes, paths, and authorization metadata.
+4. Apply the approved migration to the isolated/staging asset origin only.
+5. Verify every source and destination checksum matches.
+6. Deploy the UUID-compatible application to staging behind NGINX and Cloudflare.
+7. Apply only the separately approved protected storage/asset policy.
+8. Verify anonymous and cross-organization downloads fail. Organization members
    may retain the compatible organization object; explicit survey grants require
    separately verified survey-scoped detection objects before download access.
-8. Test maps, tiles, detections, point clouds, and outputs through the public
+9. Test maps, tiles, detections, point clouds, and outputs through the public
    staging hostname from an external internet connection.
-9. Rehearse switching the application and asset routes back to the previous
+10. Rehearse switching the application and asset routes back to the previous
    image, object version, and retained legacy source.
 
 Do not delete legacy root objects, source assets, full-history records, or
