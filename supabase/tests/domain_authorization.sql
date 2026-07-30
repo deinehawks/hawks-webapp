@@ -204,7 +204,7 @@ values (
   true
 );
 
-select extensions.plan(26);
+select extensions.plan(29);
 
 set local role authenticated;
 
@@ -402,6 +402,48 @@ select extensions.is(
   'client classification update is audited'
 );
 
+insert into public.client_organizations (
+  client_id,
+  organization_id,
+  review_status,
+  is_primary
+)
+values (
+  '10000000-0000-0000-0000-000000000012',
+  '30000000-0000-0000-0000-000000000012',
+  'confirmed',
+  true
+);
+
+select extensions.is(
+  (select count(*) from public.admin_audit_log
+   where table_name = 'client_organizations'
+     and action = 'INSERT'
+     and record_pk @> jsonb_build_object(
+       'client_id', '10000000-0000-0000-0000-000000000012',
+       'organization_id', '30000000-0000-0000-0000-000000000012'
+     )),
+  1::bigint,
+  'client organization mapping insert is audited with composite identity'
+);
+
+update public.client_people
+set notes = 'reviewed during audit coverage test'
+where client_id = '10000000-0000-0000-0000-000000000011'
+  and person_id = '35000000-0000-0000-0000-000000000011';
+
+select extensions.is(
+  (select count(*) from public.admin_audit_log
+   where table_name = 'client_people'
+     and action = 'UPDATE'
+     and record_pk @> jsonb_build_object(
+       'client_id', '10000000-0000-0000-0000-000000000011',
+       'person_id', '35000000-0000-0000-0000-000000000011'
+     )),
+  1::bigint,
+  'client person mapping update is audited with composite identity'
+);
+
 select extensions.throws_ok(
   $$insert into public.organization_memberships (
       profile_id,
@@ -447,6 +489,16 @@ select extensions.is(
   ),
   false,
   'authenticated role cannot execute trigger-only audit function'
+);
+
+select extensions.is(
+  has_function_privilege(
+    'authenticated',
+    'app_private.domain_audit_client_mapping_row()',
+    'EXECUTE'
+  ),
+  false,
+  'authenticated role cannot execute client mapping audit trigger function'
 );
 
 set local role anon;
