@@ -3,12 +3,14 @@ import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
 import {
   Building2,
+  CheckCircle2,
   ClipboardList,
   Database,
   FileBarChart,
   Landmark,
   Map,
   ShieldCheck,
+  TriangleAlert,
   Users,
 } from "lucide-react";
 
@@ -31,10 +33,30 @@ type AdminCount = {
   icon: ComponentType<{ className?: string }>;
 };
 
+type ClientPersonMappingRow = Pick<
+  Tables<"client_people">,
+  "is_primary" | "relationship_type" | "review_status"
+> & {
+  person: Pick<
+    Tables<"people">,
+    "id" | "display_name" | "first_name" | "last_name"
+  > | null;
+};
+
+type ClientOrganizationMappingRow = Pick<
+  Tables<"client_organizations">,
+  "is_primary" | "relationship_type" | "review_status"
+> & {
+  organization: Pick<Tables<"organizations">, "id" | "name" | "type_code"> | null;
+};
+
 type ClientListRow = Pick<
   Tables<"clients">,
   "id" | "code" | "name" | "classification_kind" | "created_at"
->;
+> & {
+  client_people: ClientPersonMappingRow[] | null;
+  client_organizations: ClientOrganizationMappingRow[] | null;
+};
 
 type ProfileListRow = Pick<
   Tables<"profiles">,
@@ -85,6 +107,14 @@ type ListColumn<T> = {
   cell: (row: T) => ReactNode;
 };
 
+type ReadinessMetric = {
+  label: string;
+  value: number;
+  description: string;
+  icon: ComponentType<{ className?: string }>;
+  variant?: "default" | "warning";
+};
+
 async function getTableCount(table: string): Promise<number> {
   const supabase = await createClient();
   const { count, error } = await supabase
@@ -132,6 +162,65 @@ function formatPersonName(person: PeopleListRow): string {
 
   const name = [person.first_name, person.last_name].filter(Boolean).join(" ");
   return name || "Unnamed person";
+}
+
+function formatMappedPerson(
+  person: ClientPersonMappingRow["person"],
+): string {
+  if (!person) {
+    return "Missing person";
+  }
+
+  if (person.display_name) {
+    return person.display_name;
+  }
+
+  const name = [person.first_name, person.last_name].filter(Boolean).join(" ");
+  return name || formatShortId(person.id);
+}
+
+function getReviewedMappingLabel(client: ClientListRow): string {
+  const organizationMappings = client.client_organizations ?? [];
+  const personMappings = client.client_people ?? [];
+  const confirmedOrganizations = organizationMappings.filter(
+    (mapping) => mapping.review_status === "confirmed",
+  );
+  const confirmedPeople = personMappings.filter(
+    (mapping) => mapping.review_status === "confirmed",
+  );
+
+  if (confirmedOrganizations.length > 0 && confirmedPeople.length > 0) {
+    return "Conflicting confirmed mappings";
+  }
+
+  const primaryOrganization =
+    confirmedOrganizations.find((mapping) => mapping.is_primary) ??
+    confirmedOrganizations[0];
+  const primaryPerson =
+    confirmedPeople.find((mapping) => mapping.is_primary) ?? confirmedPeople[0];
+
+  if (primaryOrganization?.organization) {
+    return (
+      primaryOrganization.organization.name +
+      " (" +
+      formatLabel(primaryOrganization.organization.type_code) +
+      ")"
+    );
+  }
+
+  if (primaryPerson?.person) {
+    return formatMappedPerson(primaryPerson.person);
+  }
+
+  if (client.classification_kind === "organization") {
+    return "Missing organization mapping";
+  }
+
+  if (client.classification_kind === "individual") {
+    return "Missing person mapping";
+  }
+
+  return "Needs review";
 }
 
 function StatusBadge({ value }: { value: string | null }) {
@@ -236,6 +325,32 @@ function AdminListSection<T extends { id: string }>({
   );
 }
 
+function ReadinessCard({ metric }: { metric: ReadinessMetric }) {
+  const isWarning = metric.variant === "warning";
+  const iconClassName = isWarning
+    ? "mt-1 size-5 text-amber-600"
+    : "mt-1 size-5 text-muted-foreground";
+
+  return (
+    <Card className="rounded-lg">
+      <CardHeader className="gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <CardDescription>{metric.label}</CardDescription>
+            <CardTitle className="text-3xl tabular-nums">
+              {metric.value.toLocaleString()}
+            </CardTitle>
+          </div>
+          <metric.icon className={iconClassName} />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">{metric.description}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default async function AdminPage() {
   const { profile } = await getAuthenticatedUserContext();
 
@@ -254,6 +369,10 @@ export default async function AdminPage() {
     farms,
     memberships,
     outputs,
+    unclassifiedClients,
+    reviewedClients,
+    confirmedPersonMappings,
+    confirmedOrganizationMappings,
     clientRows,
     profileRows,
     surveyRows,
@@ -273,7 +392,23 @@ export default async function AdminPage() {
     getTableCount("survey_outputs"),
     supabase
       .from("clients")
-      .select("id, code, name, classification_kind, created_at")
+      .select("*", { count: "exact", head: true })
+      .eq("classification_kind", "unclassified"),
+    supabase
+      .from("clients")
+      .select("*", { count: "exact", head: true })
+      .neq("classification_kind", "unclassified"),
+    supabase
+      .from("client_people")
+      .select("*", { count: "exact", head: true })
+      .eq("review_status", "confirmed"),
+    supabase
+      .from("client_organizations")
+      .select("*", { count: "exact", head: true })
+      .eq("review_status", "confirmed"),
+    supabase
+      .from("clients")
+      .select("id, code, name, classification_kind, created_at, client_people(is_primary, relationship_type, review_status, person:people(id, display_name, first_name, last_name)), client_organizations(is_primary, relationship_type, review_status, organization:organizations(id, name, type_code))")
       .order("code", { ascending: true })
       .limit(8),
     supabase
@@ -326,6 +461,10 @@ export default async function AdminPage() {
     ["farms", farmRows],
     ["memberships", membershipRows],
     ["outputs", outputRows],
+    ["unclassified client count", unclassifiedClients],
+    ["reviewed client count", reviewedClients],
+    ["confirmed person mappings count", confirmedPersonMappings],
+    ["confirmed organization mappings count", confirmedOrganizationMappings],
   ] as const;
 
   for (const [label, response] of listResponses) {
@@ -393,6 +532,33 @@ export default async function AdminPage() {
   const farmList = (farmRows.data ?? []) as FarmListRow[];
   const membershipList = (membershipRows.data ?? []) as MembershipListRow[];
   const outputList = (outputRows.data ?? []) as OutputListRow[];
+  const readinessMetrics: ReadinessMetric[] = [
+    {
+      label: "Unclassified Clients",
+      value: unclassifiedClients.count ?? 0,
+      description: "Legacy tenant records still waiting for human review.",
+      icon: TriangleAlert,
+      variant: "warning",
+    },
+    {
+      label: "Reviewed Clients",
+      value: reviewedClients.count ?? 0,
+      description: "Clients marked as organization, individual, or other.",
+      icon: CheckCircle2,
+    },
+    {
+      label: "Person Mappings",
+      value: confirmedPersonMappings.count ?? 0,
+      description: "Confirmed legacy-client links to canonical people.",
+      icon: Users,
+    },
+    {
+      label: "Organization Mappings",
+      value: confirmedOrganizationMappings.count ?? 0,
+      description: "Confirmed legacy-client links to canonical organizations.",
+      icon: Landmark,
+    },
+  ];
 
   return (
     <main className="@container/main flex flex-1 flex-col gap-6 p-4 md:p-6">
@@ -401,12 +567,13 @@ export default async function AdminPage() {
           <h1 className="text-2xl font-semibold tracking-normal">
             Admin Dashboard
           </h1>
-          <Badge variant="secondary">Read-only lists</Badge>
+          <Badge variant="secondary">Read-only readiness</Badge>
         </div>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Phase 3C adds platform-admin visibility into the current compatibility
-          records and the empty domain foundation. Record creation, membership
-          changes, asset migration, and destructive actions remain gated.
+          Phase 3E adds platform-admin visibility into legacy-client
+          classification readiness and canonical mappings. Record creation,
+          membership changes, asset migration, and destructive actions remain
+          gated.
         </p>
       </div>
 
@@ -433,10 +600,16 @@ export default async function AdminPage() {
         ))}
       </section>
 
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {readinessMetrics.map((metric) => (
+          <ReadinessCard key={metric.label} metric={metric} />
+        ))}
+      </section>
+
       <section className="grid gap-4">
         <AdminListSection
           title="Legacy Clients"
-          description="Historical mixed tenant records"
+          description="Historical mixed tenant records with reviewed canonical mapping status"
           rows={clientList}
           emptyLabel="No legacy client records are visible."
           columns={[
@@ -452,6 +625,10 @@ export default async function AdminPage() {
             {
               header: "Classification",
               cell: (row) => <StatusBadge value={row.classification_kind} />,
+            },
+            {
+              header: "Canonical Mapping",
+              cell: (row) => getReviewedMappingLabel(row),
             },
             { header: "Created", cell: (row) => formatDate(row.created_at) },
           ]}
@@ -650,7 +827,7 @@ export default async function AdminPage() {
         <Card className="rounded-lg lg:col-span-2">
           <CardHeader>
             <CardDescription>Current Gate</CardDescription>
-            <CardTitle>Phase 3C keeps admin data read-only</CardTitle>
+            <CardTitle>Phase 3E keeps classification read-only</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
@@ -658,9 +835,9 @@ export default async function AdminPage() {
               clients, surveys, maps, detections, tile paths, and point clouds.
             </p>
             <p>
-              The next reviewable step is a controlled classification workflow
-              for legacy clients and domain records, still without destructive
-              cleanup.
+              The next reviewable step is a controlled mutation workflow for
+              legacy-client classification and canonical mapping, with atomic
+              validation and audit coverage.
             </p>
           </CardContent>
         </Card>

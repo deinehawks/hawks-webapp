@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { updateClientClassification } from "@/lib/actions/admin-classification";
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
 import type { Json, Tables } from "@/lib/database.types";
 import { createClient } from "@/utils/supabase/server";
@@ -36,10 +37,38 @@ type ResourceDetail = {
   description: string;
   badge: string;
   fields: DetailField[];
+  client?: ClientDetailRow;
 };
 
 type SurveyDetailRow = Tables<"surveys"> & {
   client: Pick<Tables<"clients">, "code" | "name"> | null;
+};
+
+type ClientMappedPerson = Pick<
+  Tables<"people">,
+  "id" | "display_name" | "first_name" | "last_name"
+>;
+
+type ClientDetailRow = Tables<"clients"> & {
+  client_people:
+    | (Pick<
+        Tables<"client_people">,
+        "is_primary" | "relationship_type" | "review_status"
+      > & {
+        person: ClientMappedPerson | null;
+      })[]
+    | null;
+  client_organizations:
+    | (Pick<
+        Tables<"client_organizations">,
+        "is_primary" | "relationship_type" | "review_status"
+      > & {
+        organization: Pick<
+          Tables<"organizations">,
+          "id" | "name" | "type_code"
+        > | null;
+      })[]
+    | null;
 };
 
 const resourceLabels: Record<ResourceName, string> = {
@@ -111,6 +140,99 @@ function formatPersonName(person: Tables<"people">): string {
   return name || "Unnamed person";
 }
 
+function formatMappedPersonName(person: ClientMappedPerson): string {
+  if (person.display_name) {
+    return person.display_name;
+  }
+
+  const name = [person.first_name, person.last_name].filter(Boolean).join(" ");
+  return name || formatShortId(person.id);
+}
+
+function formatClientMappingState(client: ClientDetailRow): string {
+  const organizationMappings = client.client_organizations ?? [];
+  const personMappings = client.client_people ?? [];
+  const confirmedOrganizations = organizationMappings.filter(
+    (mapping) => mapping.review_status === "confirmed",
+  );
+  const confirmedPeople = personMappings.filter(
+    (mapping) => mapping.review_status === "confirmed",
+  );
+
+  if (confirmedOrganizations.length > 0 && confirmedPeople.length > 0) {
+    return "Review required: confirmed person and organization mappings both exist.";
+  }
+
+  if (client.classification_kind === "organization" && confirmedOrganizations.length === 0) {
+    return "Review required: classified as organization without a confirmed organization mapping.";
+  }
+
+  if (client.classification_kind === "individual" && confirmedPeople.length === 0) {
+    return "Review required: classified as individual without a confirmed person mapping.";
+  }
+
+  if (client.classification_kind === "unclassified") {
+    return "Needs human classification review.";
+  }
+
+  return "Ready for the future controlled classification workflow.";
+}
+
+function formatClientOrganizationMappings(client: ClientDetailRow): string {
+  const mappings = client.client_organizations ?? [];
+
+  if (mappings.length === 0) {
+    return "No organization mappings";
+  }
+
+  return mappings
+    .map((mapping) => {
+      const name = mapping.organization?.name ?? "Missing organization";
+      const type = mapping.organization?.type_code
+        ? formatLabel(mapping.organization.type_code)
+        : "No type";
+      const primary = mapping.is_primary ? "primary" : "secondary";
+
+      return (
+        name +
+        " (" +
+        type +
+        ", " +
+        formatLabel(mapping.review_status) +
+        ", " +
+        primary +
+        ")"
+      );
+    })
+    .join("; ");
+}
+
+function formatClientPersonMappings(client: ClientDetailRow): string {
+  const mappings = client.client_people ?? [];
+
+  if (mappings.length === 0) {
+    return "No person mappings";
+  }
+
+  return mappings
+    .map((mapping) => {
+      const name = mapping.person
+        ? formatMappedPersonName(mapping.person)
+        : "Missing person";
+      const primary = mapping.is_primary ? "primary" : "secondary";
+
+      return (
+        name +
+        " (" +
+        formatLabel(mapping.review_status) +
+        ", " +
+        primary +
+        ")"
+      );
+    })
+    .join("; ");
+}
+
 async function getResourceDetail(
   resource: ResourceName,
   id: string,
@@ -121,10 +243,10 @@ async function getResourceDetail(
     case "clients": {
       const { data, error } = (await supabase
         .from("clients")
-        .select("*")
+        .select("*, client_people(is_primary, relationship_type, review_status, person:people(id, display_name, first_name, last_name)), client_organizations(is_primary, relationship_type, review_status, organization:organizations(id, name, type_code))")
         .eq("id", id)
         .maybeSingle()) as {
-        data: Tables<"clients"> | null;
+        data: ClientDetailRow | null;
         error: PostgrestError | null;
       };
 
@@ -140,6 +262,7 @@ async function getResourceDetail(
         title: data.name ?? data.code,
         description: "Mixed historical tenant record.",
         badge: formatLabel(data.classification_kind),
+        client: data,
         fields: [
           { label: "ID", value: data.id },
           { label: "Code", value: data.code },
@@ -147,6 +270,9 @@ async function getResourceDetail(
           { label: "Classification", value: formatLabel(data.classification_kind) },
           { label: "Classification Notes", value: data.classification_notes },
           { label: "Classification Reviewed At", value: formatDate(data.classification_reviewed_at) },
+          { label: "Mapping Readiness", value: formatClientMappingState(data) },
+          { label: "Organization Mappings", value: formatClientOrganizationMappings(data) },
+          { label: "Person Mappings", value: formatClientPersonMappings(data) },
           { label: "Created", value: formatDate(data.created_at) },
         ],
       };
@@ -408,6 +534,70 @@ async function getResourceDetail(
   }
 }
 
+function ClientClassificationForm({ client }: { client: ClientDetailRow }) {
+  return (
+    <Card className="rounded-lg">
+      <CardHeader>
+        <CardDescription>Phase 3F Controlled Mutation</CardDescription>
+        <CardTitle>Classify legacy client</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form action={updateClientClassification} className="grid gap-4">
+          <input name="clientId" type="hidden" value={client.id} />
+
+          <div className="grid gap-2">
+            <label
+              className="text-sm font-medium"
+              htmlFor="classificationKind"
+            >
+              Classification
+            </label>
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:max-w-sm"
+              defaultValue={client.classification_kind}
+              id="classificationKind"
+              name="classificationKind"
+            >
+              <option value="unclassified">Unclassified</option>
+              <option value="organization">Organization</option>
+              <option value="individual">Individual</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div className="grid gap-2">
+            <label
+              className="text-sm font-medium"
+              htmlFor="classificationNotes"
+            >
+              Review notes
+            </label>
+            <textarea
+              className="border-input bg-background min-h-24 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              defaultValue={client.classification_notes ?? ""}
+              id="classificationNotes"
+              maxLength={2000}
+              name="classificationNotes"
+              rows={4}
+            />
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              This updates only the legacy client classification fields. It does
+              not create people, organizations, memberships, farms, or canonical
+              mapping rows.
+            </p>
+            <Button className="w-fit" type="submit">
+              Save classification
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default async function AdminDetailPage({
   params,
 }: {
@@ -450,8 +640,9 @@ export default async function AdminDetailPage({
             <Badge variant="outline">{detail.badge}</Badge>
           </div>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            {detail.description} This page is read-only. Mutations remain
-            blocked until a separately reviewed workflow is approved.
+            {detail.description} Most admin detail data remains read-only.
+            Legacy client classification is the only Phase 3F mutation enabled
+            here.
           </p>
         </div>
       </div>
@@ -482,6 +673,8 @@ export default async function AdminDetailPage({
           </dl>
         </CardContent>
       </Card>
+
+      {detail.client ? <ClientClassificationForm client={detail.client} /> : null}
     </main>
   );
 }

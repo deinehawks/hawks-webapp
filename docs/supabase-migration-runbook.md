@@ -2,15 +2,18 @@
 
 Target staging project: `llealjcaqvltrtdwwzrh`
 
-This runbook records the existing additive UUID migration and the gates required
-before any farmer, organization, farm, survey-output, contract, or storage
-change. Repository files do not prove current staging or production state.
+This runbook records the existing additive UUID migration, the additive Phase 3A
+domain foundation, and the gates required before any classification, membership,
+contract, storage, or asset-delivery change. Repository files do not prove
+current staging or production state.
 Contract cleanup, storage finalization, and deletion of legacy objects require
 separate approval.
 
-No domain migration is authorized by this document. Future SQL must be created,
-reviewed, and rehearsed only after the blocking human decisions below are
-approved.
+Phase 3F authorizes only the application-level `clients` classification-field
+update path for platform admins. Future SQL or server actions for canonical
+mapping, membership, farm, grant, output, storage, or destructive mutations must
+be created, reviewed, and rehearsed only after the blocking human decisions
+below are approved.
 
 ## Required inputs
 
@@ -167,11 +170,10 @@ where id = '<confirmed auth.users.id>'::uuid;
 Require exactly one affected row and verify the user can sign in before
 continuing.
 
-## Future additive domain migration checklist
+## Applied additive domain foundation and next gate
 
-This section applies only after a separately approved migration introduces the
-reviewed domain schema. Add structures without renaming or removing existing
-columns in the first release:
+Phase 3A introduced the reviewed domain schema additively. Keep these structures
+non-destructive and do not rename or remove existing columns in the first release:
 
 - A non-destructive client classification state plus separate
   `client_people`/`client_organizations` mappings to canonical records.
@@ -196,9 +198,10 @@ client mappings, one primary farm per survey, grants, farm codes, and current
 outputs. Nullable expand-phase fields must become required only in
 a later contract migration after zero unresolved records are verified.
 
-Create `supabase/verification/verify_domain_expand.sql` with expected-zero
-assertions equivalent to the following templates, adjusted to the approved
-table and column names:
+Before any canonical mapping or membership mutation is enabled, create or
+update `supabase/verification/verify_domain_expand.sql` with expected-zero
+assertions equivalent to the following templates, adjusted to the approved table
+and column names:
 
 ```sql
 -- Classified clients without exactly one matching canonical mapping.
@@ -272,12 +275,14 @@ select/insert/update/delete operations through direct SQL/REST-equivalent calls,
 including a second live membership, cross-organization IDs, farm ownership
 without grants, farm grants without survey grants, profile/person relinking,
 role escalation, farm reassignment, output access, RPC execution, and storage
-downloads. Every privileged mutation must produce the expected audit record;
-audit logging does not make an otherwise unauthorized operation acceptable.
+downloads. The Phase 3F `clients` classification-field update must produce the existing
+`audit_clients_domain_fields` trigger record. Every future privileged mutation
+must produce an expected audit record; audit logging does not make an otherwise
+unauthorized operation acceptable.
 
 ## Storage transition
 
-Storage finalization remains blocked until the approved RLS design accounts for
+Storage finalization and workshop asset cutover remain blocked until the approved RLS design accounts for
 organization membership and explicit survey grants. An organization UUID path
 alone cannot safely provide narrow access to one survey.
 
