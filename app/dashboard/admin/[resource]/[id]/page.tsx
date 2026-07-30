@@ -12,7 +12,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { updateClientClassification } from "@/lib/actions/admin-classification";
+import {
+  confirmClientOrganizationMapping,
+  confirmClientPersonMapping,
+  createOrganizationForClientMapping,
+  createPersonForClientMapping,
+  updateClientClassification,
+} from "@/lib/actions/admin-classification";
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
 import type { Json, Tables } from "@/lib/database.types";
 import { createClient } from "@/utils/supabase/server";
@@ -38,6 +44,9 @@ type ResourceDetail = {
   badge: string;
   fields: DetailField[];
   client?: ClientDetailRow;
+  organizationOptions?: MappingOrganizationOption[];
+  organizationTypeOptions?: MappingOrganizationTypeOption[];
+  personOptions?: MappingPersonOption[];
 };
 
 type SurveyDetailRow = Tables<"surveys"> & {
@@ -48,6 +57,36 @@ type ClientMappedPerson = Pick<
   Tables<"people">,
   "id" | "display_name" | "first_name" | "last_name"
 >;
+
+type MappingOrganizationOption = Pick<
+  Tables<"organizations">,
+  "id" | "name" | "type_code" | "status"
+>;
+
+type MappingOrganizationTypeOption = Pick<
+  Tables<"organization_types">,
+  "code" | "label"
+>;
+
+type MappingPersonOption = Pick<
+  Tables<"people">,
+  "id" | "display_name" | "first_name" | "last_name" | "status"
+>;
+
+type MembershipProfileDetail = Pick<
+  Tables<"profiles">,
+  "id" | "email" | "role" | "account_role" | "person_id" | "organization_id"
+>;
+
+type MembershipOrganizationDetail = Pick<
+  Tables<"organizations">,
+  "id" | "name" | "type_code" | "status"
+>;
+
+type MembershipDetailRow = Tables<"organization_memberships"> & {
+  profile: MembershipProfileDetail | null;
+  organization: MembershipOrganizationDetail | null;
+};
 
 type ClientDetailRow = Tables<"clients"> & {
   client_people:
@@ -207,6 +246,38 @@ function formatClientOrganizationMappings(client: ClientDetailRow): string {
     .join("; ");
 }
 
+function formatMembershipReadiness(membership: MembershipDetailRow): string {
+  if (!membership.profile) {
+    return "Review required: missing user account reference.";
+  }
+
+  if (!membership.organization) {
+    return "Review required: missing organization reference.";
+  }
+
+  if (membership.status === "active") {
+    return "Active membership. This is the intended organization access path.";
+  }
+
+  if (membership.status === "pending") {
+    return "Pending approval. It should not be treated as active access.";
+  }
+
+  if (membership.status === "invited") {
+    return "Invited membership. It needs acceptance or approval before active use.";
+  }
+
+  if (membership.status === "suspended") {
+    return "Suspended membership. Access should remain blocked.";
+  }
+
+  if (membership.status === "removed") {
+    return "Removed membership retained for review and audit history.";
+  }
+
+  return "Review membership state before enabling mutations.";
+}
+
 function formatClientPersonMappings(client: ClientDetailRow): string {
   const mappings = client.client_people ?? [];
 
@@ -258,11 +329,56 @@ async function getResourceDetail(
 
       if (!data) return null;
 
+      const [
+        organizationsResponse,
+        organizationTypesResponse,
+        peopleResponse,
+      ] = await Promise.all([
+        supabase
+          .from("organizations")
+          .select("id, name, type_code, status")
+          .order("name", { ascending: true })
+          .limit(100),
+        supabase
+          .from("organization_types")
+          .select("code, label")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true }),
+        supabase
+          .from("people")
+          .select("id, display_name, first_name, last_name, status")
+          .order("display_name", { ascending: true, nullsFirst: false })
+          .limit(100),
+      ]);
+
+      if (organizationsResponse.error) {
+        throw new Error("Failed to load organization mapping options.", {
+          cause: organizationsResponse.error,
+        });
+      }
+
+      if (organizationTypesResponse.error) {
+        throw new Error("Failed to load organization type options.", {
+          cause: organizationTypesResponse.error,
+        });
+      }
+
+      if (peopleResponse.error) {
+        throw new Error("Failed to load person mapping options.", {
+          cause: peopleResponse.error,
+        });
+      }
+
       return {
         title: data.name ?? data.code,
         description: "Mixed historical tenant record.",
         badge: formatLabel(data.classification_kind),
         client: data,
+        organizationOptions:
+          (organizationsResponse.data ?? []) as MappingOrganizationOption[],
+        organizationTypeOptions:
+          (organizationTypesResponse.data ?? []) as MappingOrganizationTypeOption[],
+        personOptions: (peopleResponse.data ?? []) as MappingPersonOption[],
         fields: [
           { label: "ID", value: data.id },
           { label: "Code", value: data.code },
@@ -464,10 +580,12 @@ async function getResourceDetail(
     case "memberships": {
       const { data, error } = (await supabase
         .from("organization_memberships")
-        .select("*")
+        .select(
+          "*, profile:profiles!organization_memberships_profile_id_fkey(id, email, role, account_role, person_id, organization_id), organization:organizations!organization_memberships_organization_id_fkey(id, name, type_code, status)",
+        )
         .eq("id", id)
         .maybeSingle()) as {
-        data: Tables<"organization_memberships"> | null;
+        data: MembershipDetailRow | null;
         error: PostgrestError | null;
       };
 
@@ -478,18 +596,28 @@ async function getResourceDetail(
       if (!data) return null;
 
       return {
-        title: formatShortId(data.id),
-        description: "Organization-scoped access record.",
+        title: data.profile?.email ?? formatShortId(data.profile_id),
+        description: "Read-only organization-scoped access record.",
         badge: formatLabel(data.status),
         fields: [
           { label: "ID", value: data.id },
+          { label: "User Email", value: data.profile?.email },
           { label: "Profile ID", value: data.profile_id },
+          { label: "Legacy Profile Role", value: formatLabel(data.profile?.role ?? null) },
+          { label: "Account Role", value: formatLabel(data.profile?.account_role ?? null) },
+          { label: "Profile Person ID", value: data.profile?.person_id },
+          { label: "Legacy Profile Organization ID", value: data.profile?.organization_id },
+          { label: "Organization", value: data.organization?.name },
           { label: "Organization ID", value: data.organization_id },
-          { label: "Role", value: formatLabel(data.role) },
-          { label: "Status", value: formatLabel(data.status) },
+          { label: "Organization Type", value: formatLabel(data.organization?.type_code ?? null) },
+          { label: "Organization Status", value: formatLabel(data.organization?.status ?? null) },
+          { label: "Membership Role", value: formatLabel(data.role) },
+          { label: "Membership Status", value: formatLabel(data.status) },
+          { label: "Readiness", value: formatMembershipReadiness(data) },
           { label: "Invited At", value: formatDate(data.invited_at) },
           { label: "Approved At", value: formatDate(data.approved_at) },
           { label: "Removed At", value: formatDate(data.removed_at) },
+          { label: "Notes", value: data.notes },
           { label: "Created", value: formatDate(data.created_at) },
           { label: "Updated", value: formatDate(data.updated_at) },
         ],
@@ -532,6 +660,15 @@ async function getResourceDetail(
       };
     }
   }
+}
+
+function formatMappingPersonOption(person: MappingPersonOption): string {
+  if (person.display_name) {
+    return person.display_name;
+  }
+
+  const name = [person.first_name, person.last_name].filter(Boolean).join(" ");
+  return name || formatShortId(person.id);
 }
 
 function ClientClassificationForm({ client }: { client: ClientDetailRow }) {
@@ -598,6 +735,307 @@ function ClientClassificationForm({ client }: { client: ClientDetailRow }) {
   );
 }
 
+function ClientMappingForm({
+  client,
+  organizationOptions,
+  organizationTypeOptions,
+  personOptions,
+}: {
+  client: ClientDetailRow;
+  organizationOptions: MappingOrganizationOption[];
+  organizationTypeOptions: MappingOrganizationTypeOption[];
+  personOptions: MappingPersonOption[];
+}) {
+  const hasConfirmedOrganizationMapping = (client.client_organizations ?? [])
+    .some((mapping) => mapping.review_status === "confirmed");
+  const hasConfirmedPersonMapping = (client.client_people ?? []).some(
+    (mapping) => mapping.review_status === "confirmed",
+  );
+  const organizationMappingDisabled = hasConfirmedPersonMapping;
+  const personMappingDisabled = hasConfirmedOrganizationMapping;
+
+  return (
+    <Card className="rounded-lg">
+      <CardHeader>
+        <CardDescription>Phase 3G-C Controlled Mapping</CardDescription>
+        <CardTitle>Map to canonical record</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-6 lg:grid-cols-2">
+        {organizationMappingDisabled || personMappingDisabled ? (
+          <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground lg:col-span-2">
+            This legacy client already has a confirmed canonical mapping. A
+            client can be mapped to either one organization or one person during
+            this phase, not both.
+          </p>
+        ) : null}
+
+        <form action={createOrganizationForClientMapping} className="grid gap-4 rounded-md border p-4">
+          <input name="clientId" type="hidden" value={client.id} />
+          <div>
+            <h3 className="text-sm font-medium">Create organization</h3>
+            <p className="text-sm text-muted-foreground">
+              Use this when the cooperative, association, company, or partner is
+              not in the existing organization list yet.
+            </p>
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="organizationName">
+              Organization name
+            </label>
+            <input
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              id="organizationName"
+              maxLength={200}
+              name="organizationName"
+              required
+            />
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="organizationTypeCode">
+              Organization type
+            </label>
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              id="organizationTypeCode"
+              name="organizationTypeCode"
+              required
+            >
+              {organizationTypeOptions.map((type) => (
+                <option key={type.code} value={type.code}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="organizationCode">
+              Organization code
+            </label>
+            <input
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              id="organizationCode"
+              maxLength={80}
+              name="organizationCode"
+            />
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="newOrganizationNotes">
+              Organization notes
+            </label>
+            <textarea
+              className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              id="newOrganizationNotes"
+              maxLength={2000}
+              name="organizationNotes"
+              rows={3}
+            />
+          </div>
+          <Button
+            className="w-fit"
+            disabled={
+              organizationMappingDisabled ||
+              organizationTypeOptions.length === 0
+            }
+            type="submit"
+          >
+            Create and map organization
+          </Button>
+        </form>
+
+        <form action={createPersonForClientMapping} className="grid gap-4 rounded-md border p-4">
+          <input name="clientId" type="hidden" value={client.id} />
+          <div>
+            <h3 className="text-sm font-medium">Create person</h3>
+            <p className="text-sm text-muted-foreground">
+              Use this for an individual farmer, owner, representative, or
+              contact who is not in the existing people list yet.
+            </p>
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="personDisplayName">
+              Display name
+            </label>
+            <input
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              id="personDisplayName"
+              maxLength={200}
+              name="personDisplayName"
+              required
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium" htmlFor="personFirstName">
+                First name
+              </label>
+              <input
+                className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                id="personFirstName"
+                maxLength={120}
+                name="personFirstName"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium" htmlFor="personLastName">
+                Last name
+              </label>
+              <input
+                className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                id="personLastName"
+                maxLength={120}
+                name="personLastName"
+              />
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="personMobile">
+              Mobile
+            </label>
+            <input
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              id="personMobile"
+              maxLength={80}
+              name="personMobile"
+            />
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="newPersonNotes">
+              Person notes
+            </label>
+            <textarea
+              className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              id="newPersonNotes"
+              maxLength={2000}
+              name="personNotes"
+              rows={3}
+            />
+          </div>
+          <Button
+            className="w-fit"
+            disabled={personMappingDisabled}
+            type="submit"
+          >
+            Create and map person
+          </Button>
+        </form>
+
+        <form action={confirmClientOrganizationMapping} className="grid gap-4">
+          <input name="clientId" type="hidden" value={client.id} />
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="organizationId">
+              Existing organization
+            </label>
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              disabled={
+                organizationOptions.length === 0 || organizationMappingDisabled
+              }
+              id="organizationId"
+              name="organizationId"
+              required
+            >
+              <option value="">
+                {organizationOptions.length === 0
+                  ? "No organizations available yet"
+                  : "Select organization"}
+              </option>
+              {organizationOptions.map((organization) => (
+                <option key={organization.id} value={organization.id}>
+                  {organization.name} ({formatLabel(organization.type_code)})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="organizationMappingNotes">
+              Mapping notes
+            </label>
+            <textarea
+              className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              id="organizationMappingNotes"
+              maxLength={2000}
+              name="mappingNotes"
+              rows={3}
+            />
+          </div>
+          {organizationOptions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Create a canonical organization before mapping this legacy client.
+            </p>
+          ) : null}
+          <Button
+            className="w-fit"
+            disabled={
+              organizationOptions.length === 0 || organizationMappingDisabled
+            }
+            type="submit"
+          >
+            Confirm organization mapping
+          </Button>
+        </form>
+
+        <form action={confirmClientPersonMapping} className="grid gap-4">
+          <input name="clientId" type="hidden" value={client.id} />
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="personId">
+              Existing person
+            </label>
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              disabled={personOptions.length === 0 || personMappingDisabled}
+              id="personId"
+              name="personId"
+              required
+            >
+              <option value="">
+                {personOptions.length === 0
+                  ? "No people available yet"
+                  : "Select person"}
+              </option>
+              {personOptions.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {formatMappingPersonOption(person)} ({formatLabel(person.status)})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="personMappingNotes">
+              Mapping notes
+            </label>
+            <textarea
+              className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              id="personMappingNotes"
+              maxLength={2000}
+              name="mappingNotes"
+              rows={3}
+            />
+          </div>
+          {personOptions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Create a canonical person before mapping this legacy client.
+            </p>
+          ) : null}
+          <Button
+            className="w-fit"
+            disabled={personOptions.length === 0 || personMappingDisabled}
+            type="submit"
+          >
+            Confirm person mapping
+          </Button>
+        </form>
+
+        <p className="text-sm text-muted-foreground lg:col-span-2">
+          These actions only confirm mappings to existing canonical records. If
+          the dropdowns are empty, create the canonical person or organization
+          first. Conflicting confirmed mappings are rejected and every mapping
+          write is audited.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default async function AdminDetailPage({
   params,
 }: {
@@ -641,8 +1079,9 @@ export default async function AdminDetailPage({
           </div>
           <p className="max-w-3xl text-sm text-muted-foreground">
             {detail.description} Most admin detail data remains read-only.
-            Legacy client classification is the only Phase 3F mutation enabled
-            here.
+            Legacy client classification and canonical client mapping are the
+            only controlled mutations enabled here; membership detail remains
+            read-only in Phase 3H-A.
           </p>
         </div>
       </div>
@@ -675,6 +1114,15 @@ export default async function AdminDetailPage({
       </Card>
 
       {detail.client ? <ClientClassificationForm client={detail.client} /> : null}
+
+      {detail.client ? (
+        <ClientMappingForm
+          client={detail.client}
+          organizationOptions={detail.organizationOptions ?? []}
+          organizationTypeOptions={detail.organizationTypeOptions ?? []}
+          personOptions={detail.personOptions ?? []}
+        />
+      ) : null}
     </main>
   );
 }

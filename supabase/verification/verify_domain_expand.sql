@@ -236,3 +236,29 @@ where not exists (
     and procedure_namespace.nspname = 'app_private'
     and procedure.proname = 'domain_audit_client_mapping_row'
 );
+
+
+-- EXPECT ZERO: anonymous callers cannot execute public admin mapping RPCs.
+select count(*) as anon_executable_admin_mapping_functions
+from pg_proc as procedure
+join pg_namespace as namespace
+  on namespace.oid = procedure.pronamespace
+where namespace.nspname = 'public'
+  and procedure.proname in (
+    'admin_confirm_client_organization_mapping',
+    'admin_confirm_client_person_mapping'
+  )
+  and has_function_privilege('anon', procedure.oid, 'EXECUTE');
+
+
+-- EXPECT ZERO: anonymous callers cannot execute public admin create-and-map RPCs.
+select count(*) as anon_executable_admin_create_mapping_functions
+from pg_proc as procedure
+join pg_namespace as namespace
+  on namespace.oid = procedure.pronamespace
+where namespace.nspname = 'public'
+  and procedure.proname in (
+    'admin_create_organization_for_client_mapping',
+    'admin_create_person_for_client_mapping'
+  )
+  and has_function_privilege('anon', procedure.oid, 'EXECUTE');
