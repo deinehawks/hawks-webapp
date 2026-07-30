@@ -52,7 +52,7 @@ The application has `basePath: "/asimov-hawks"`. Preserve base-path behavior in 
 
 The October 2026 workshop is not LAN-only. Treat the September release as a limited public-internet deployment for invited users. Stable public application and asset URLs must work through Cloudflare and NGINX from external networks, while Supabase authentication, organization membership, explicit grants, and protected asset delivery remain fail-closed.
 
-Migrate only the clients, organizations, accounts, surveys, metadata, tiles, point clouds, detections, maps, and outputs listed in an approved workshop manifest. Verify file counts, bytes, checksums, relational references, authorization scope, and rollback sources for that manifest. Preserve current routes and asset sources until each selected dataset passes parity and internet-delivery checks. Full historical/client migration remains deferred.
+Migrate only the clients, organizations, accounts, surveys, metadata, tiles, point clouds, detections, maps, and outputs listed in an approved workshop manifest. Phase 3I-A adds the sanitized gate files `docs/workshop-manifest-template.md` and `docs/workshop-manifest.example.json`; keep populated manifests outside Git when they contain personal, private, or operationally sensitive data. Verify file counts, bytes, checksums, relational references, authorization scope, and rollback sources for that manifest. Preserve current routes and asset sources until each selected dataset passes parity and internet-delivery checks. Full historical/client migration remains deferred.
 
 ## Domain-model gate
 

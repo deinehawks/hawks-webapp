@@ -1,6 +1,6 @@
 # Admin Dashboard Integration and Production Rollout Plan
 
-Status: Phase 3H-C ordinary membership status management implemented for review
+Status: Phase 3I-A workshop manifest gate implemented for review
 Scope: Current plan plus completed additive foundation. Classification, membership, asset, and destructive mutations still require separate approval.
 Reviewed source: `docs/ASIMOV-HAWKS_Web_App_Deployment_Plan_Final.docx` (owner-supplied)
 
@@ -10,7 +10,7 @@ Repository evidence in this document describes checked-in contracts only. It doe
 
 Integrate the interns' Admin Dashboard into the main ASIMOV-HAWKS application without disrupting existing authentication, survey access, geospatial visualization, or production data. The work must reconcile two independently developed Next.js/Supabase systems, preserve the main Supabase project as the source of truth, and deliver the combined application through the proposed Docker/NGINX/MinIO/Cloudflare architecture for invited users over the public internet during the October 2026 workshop.
 
-This remains a gated plan. Phase 3A established the additive domain foundation, Phase 3B-3D added platform-admin read-only visibility, Phase 3E added classification readiness, Phase 3F enables only audited legacy-client classification-field updates, Phase 3G-A adds audit coverage for canonical client mapping tables, Phase 3G-B maps legacy clients to existing canonical people or organizations, Phase 3G-C creates minimal canonical people/organizations before immediately mapping them to a legacy client, Phase 3H-A adds read-only membership readiness visibility, Phase 3H-B enables platform-admin creation of ordinary member memberships for existing profiles and existing organizations, and Phase 3H-C enables platform-admin status changes for ordinary memberships. Organization-admin promotion, Auth-user creation, farm, grant, asset, and destructive workflows still require separate approval.
+This remains a gated plan. Phase 3A established the additive domain foundation, Phase 3B-3D added platform-admin read-only visibility, Phase 3E added classification readiness, Phase 3F enables only audited legacy-client classification-field updates, Phase 3G-A adds audit coverage for canonical client mapping tables, Phase 3G-B maps legacy clients to existing canonical people or organizations, Phase 3G-C creates minimal canonical people/organizations before immediately mapping them to a legacy client, Phase 3H-A adds read-only membership readiness visibility, Phase 3H-B enables platform-admin creation of ordinary member memberships for existing profiles and existing organizations, Phase 3H-C enables platform-admin status changes for ordinary memberships, and Phase 3I-A adds a sanitized workshop manifest gate. Organization-admin promotion, Auth-user creation, farm, grant, asset migration, infrastructure cutover, and destructive workflows still require separate approval.
 
 ## 2. Confirmed baseline
 
@@ -56,7 +56,7 @@ The document reports approximately six million files and 200 GB in the current p
 
 The September 28-30 release is a limited public-internet production deployment for invited workshop users, not a LAN-only trial. Dockerized Next.js, NGINX, Cloudflare DNS/HTTPS/proxying/basic protection, Supabase, and MinIO or another approved asset origin are therefore workshop-critical scope.
 
-Only an approved manifest of invited clients and their required organizations, accounts, surveys, maps, tiles, point clouds, detections, outputs, and metadata must move before the workshop. The full historical dataset and all other clients remain deferred. Reliability, organization-based authorization, stable URLs, external-internet testing, backup, and rollback take priority over complete infrastructure automation.
+Only an approved manifest of invited clients and their required organizations, accounts, surveys, maps, tiles, point clouds, detections, outputs, and metadata must move before the workshop. Phase 3I-A records the sanitized manifest gate in `docs/workshop-manifest-template.md` and the machine-readable example shape in `docs/workshop-manifest.example.json`. The full historical dataset and all other clients remain deferred. Reliability, organization-based authorization, stable URLs, external-internet testing, backup, and rollback take priority over complete infrastructure automation.
 
 Cloudflare must not turn restricted survey assets into public cache entries. Cache rules and asset URLs must preserve the approved organization and explicit-grant access model. The exact signed URL, signed cookie, authorization gateway, or equivalent protected-delivery mechanism remains a blocking security design decision before workshop asset cutover.
 
@@ -379,7 +379,8 @@ No production migration may occur until backup, rollback/recovery, and ownership
 | Membership workflow | `feature/admin-memberships` | September 7-11 | Separate invitation/status logic from UI; push after transition, escalation, and cross-org denial tests pass |
 | Farms, surveys, and outputs visibility | `feature/admin-surveys-outputs` | September 14-18 | Commit compatibility data access before UI; push after legacy map/output parity tests pass |
 | Workshop container and edge delivery | `feature/workshop-infrastructure` | August 24-September 18 | Commit Docker/NGINX, Cloudflare-origin, and operational-runbook slices separately; push after local/staging health, routing, TLS, and access tests pass |
-| Selected workshop asset migration | `feature/workshop-assets` | September 7-18 | Commit manifests and migration tooling separately from data; push only after dry-run, checksum, stable-URL, authorization, and rollback checks pass |
+| Workshop manifest gate | `feature/workshop-manifest-gate` | August 3-7 | Commit sanitized manifest template and approval checklist only; do not commit populated private rosters, assets, or migration outputs |
+| Selected workshop asset migration | `feature/workshop-assets` | September 7-18 | Commit migration tooling separately from data; push only after approved manifest, dry-run, checksum, stable-URL, authorization, and rollback checks pass |
 | Staging release candidate | `release/admin-mvp-2026-09` | September 21-25 | Merge only accepted MVP branches; allow fixes and documentation only after the release candidate is cut |
 | Production promotion | merge release branch to `main` | September 28-30 | Merge and tag only after staging sign-off, backup/recovery confirmation, and rollback approval |
 | Stabilization and handoff | `hotfix/<issue>` from `main`, merged back to `development` | October 1-9 | Use one focused hotfix commit per production issue; push after targeted regression checks |
@@ -395,7 +396,7 @@ Actions:
 - Connect read-only to both Supabase projects.
 - Record current main application, database, storage, and asset baselines.
 - Confirm the deployment-plan assumptions, including actual file count, bytes, traffic, hardware, and target regions.
-- Record the invited workshop users, approved organizations, and selected dataset manifest without copying secrets or personal data into Git.
+- Record the invited workshop users, approved organizations, and selected dataset manifest using the Phase 3I-A template; keep populated private rosters and sensitive operational values outside Git.
 - Confirm external DNS, origin hosting, Cloudflare account ownership, public URL, and workshop test locations.
 
 Deliverables:
@@ -535,7 +536,7 @@ Actions:
 - Configure NGINX to preserve stable asset URLs.
 - Configure Cloudflare DNS, HTTPS, proxying, basic protection, safe cache rules, origin protection, invalidation, and the approved signed/restricted delivery mechanism.
 - Decide whether the interns' DAM complements catalog/approval/publication; do not allow it to replace MinIO without proving S3 compatibility, integrity, lifecycle, concurrency, and recovery.
-- Create an approved workshop manifest covering only invited clients and required surveys, maps, tiles, point clouds, detections, outputs, and metadata.
+- Create an approved workshop manifest from `docs/workshop-manifest-template.md` covering only invited clients and required surveys, maps, tiles, point clouds, detections, outputs, and metadata.
 - Migrate only manifest-listed datasets in validated batches while retaining the current source and full historical dataset.
 - Test application and protected asset delivery from external internet connections before the workshop.
 
@@ -700,4 +701,4 @@ Rollback triggers must include authorization leakage, data-integrity failures, e
 
 ## 13. Immediate next step
 
-Proceed with Phase 3H-C review and smoke testing: use an existing ordinary membership detail page to approve a pending member, suspend an active member, reactivate a suspended member, and mark a live membership removed without deleting records. Confirm org-admin promotion, Auth-user creation, duplicate live memberships, cross-organization access, and non-platform admin access remain blocked. In parallel, approve the workshop dataset manifest and protected asset-delivery design so Docker, NGINX, Cloudflare, and the selected asset origin do not become late release blockers. No asset migration or infrastructure cutover occurs without separate approval. Work backward from the September 28-30 public deployment window and preserve October 1-9 for stabilization, documentation, workshop support, and handoff.
+Proceed with Phase 3I-A review: confirm the workshop manifest template captures invited accounts, organizations, legacy clients, surveys, farms, assets, outputs, authorization tests, external-internet checks, and rollback fields without requiring secrets or unnecessary personal data in Git. After approval, populate the real manifest in the agreed secure location and separately approve protected asset delivery before Docker, NGINX, Cloudflare, or selected asset-origin work begins. No asset migration or infrastructure cutover occurs without separate approval. Work backward from the September 28-30 public deployment window and preserve October 1-9 for stabilization, documentation, workshop support, and handoff.
