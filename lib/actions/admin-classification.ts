@@ -19,6 +19,35 @@ type ClientUpdateTable = {
   };
 };
 
+type AdminMappingRpcName =
+  | "admin_confirm_client_organization_mapping"
+  | "admin_confirm_client_person_mapping"
+  | "admin_create_organization_for_client_mapping"
+  | "admin_create_person_for_client_mapping";
+
+type AdminMappingRpcArgs = {
+  target_client_id: string;
+  target_organization_id?: string;
+  target_person_id?: string;
+  organization_name?: string;
+  organization_type_code?: string;
+  organization_code?: string | null;
+  organization_notes?: string | null;
+  person_display_name?: string;
+  person_first_name?: string | null;
+  person_last_name?: string | null;
+  person_mobile?: string | null;
+  person_notes?: string | null;
+  mapping_notes: string | null;
+};
+
+type AdminMappingRpcClient = {
+  rpc(
+    functionName: AdminMappingRpcName,
+    args: AdminMappingRpcArgs,
+  ): PromiseLike<{ error: PostgrestError | null }>;
+};
+
 const clientClassificationKinds = [
   "unclassified",
   "organization",
@@ -46,6 +75,14 @@ function parseClassificationKind(value: string): ClientClassificationKind {
   throw new Error("Invalid client classification kind.");
 }
 
+function readOptionalNotes(formData: FormData, key: string): string | null {
+  const value = formData.get(key);
+
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim().slice(0, 2000)
+    : null;
+}
+
 export async function updateClientClassification(formData: FormData) {
   const { profile } = await getAuthenticatedUserContext();
 
@@ -57,11 +94,10 @@ export async function updateClientClassification(formData: FormData) {
   const classificationKind = parseClassificationKind(
     readRequiredString(formData, "classificationKind"),
   );
-  const notesValue = formData.get("classificationNotes");
-  const classificationNotes =
-    typeof notesValue === "string" && notesValue.trim().length > 0
-      ? notesValue.trim().slice(0, 2000)
-      : null;
+  const classificationNotes = readOptionalNotes(
+    formData,
+    "classificationNotes",
+  );
 
   const supabase = await createClient();
   const { data: existingClient, error: loadError } = await supabase
@@ -100,4 +136,139 @@ export async function updateClientClassification(formData: FormData) {
 
   revalidatePath("/dashboard/admin");
   revalidatePath(`/dashboard/admin/clients/${clientId}`);
+}
+
+export async function confirmClientOrganizationMapping(formData: FormData) {
+  const { profile } = await getAuthenticatedUserContext();
+
+  if (profile.role !== "platform_admin") {
+    throw new Error("Only platform admins can map legacy clients.");
+  }
+
+  const clientId = readRequiredString(formData, "clientId");
+  const organizationId = readRequiredString(formData, "organizationId");
+  const mappingNotes = readOptionalNotes(formData, "mappingNotes");
+  const supabase = (await createClient()) as unknown as AdminMappingRpcClient;
+  const { error } = await supabase.rpc(
+    "admin_confirm_client_organization_mapping",
+    {
+      target_client_id: clientId,
+      target_organization_id: organizationId,
+      mapping_notes: mappingNotes,
+    },
+  );
+
+  if (error) {
+    throw new Error("Failed to confirm legacy client organization mapping.", {
+      cause: error,
+    });
+  }
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/clients/" + clientId);
+}
+
+export async function confirmClientPersonMapping(formData: FormData) {
+  const { profile } = await getAuthenticatedUserContext();
+
+  if (profile.role !== "platform_admin") {
+    throw new Error("Only platform admins can map legacy clients.");
+  }
+
+  const clientId = readRequiredString(formData, "clientId");
+  const personId = readRequiredString(formData, "personId");
+  const mappingNotes = readOptionalNotes(formData, "mappingNotes");
+  const supabase = (await createClient()) as unknown as AdminMappingRpcClient;
+  const { error } = await supabase.rpc("admin_confirm_client_person_mapping", {
+    target_client_id: clientId,
+    target_person_id: personId,
+    mapping_notes: mappingNotes,
+  });
+
+  if (error) {
+    throw new Error("Failed to confirm legacy client person mapping.", {
+      cause: error,
+    });
+  }
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/clients/" + clientId);
+}
+
+
+export async function createOrganizationForClientMapping(formData: FormData) {
+  const { profile } = await getAuthenticatedUserContext();
+
+  if (profile.role !== "platform_admin") {
+    throw new Error("Only platform admins can create mapped organizations.");
+  }
+
+  const clientId = readRequiredString(formData, "clientId");
+  const organizationName = readRequiredString(formData, "organizationName");
+  const organizationTypeCode = readRequiredString(
+    formData,
+    "organizationTypeCode",
+  );
+  const organizationCode = readOptionalNotes(formData, "organizationCode");
+  const organizationNotes = readOptionalNotes(formData, "organizationNotes");
+  const mappingNotes = readOptionalNotes(formData, "mappingNotes");
+  const supabase = (await createClient()) as unknown as AdminMappingRpcClient;
+  const { error } = await supabase.rpc(
+    "admin_create_organization_for_client_mapping",
+    {
+      target_client_id: clientId,
+      organization_name: organizationName,
+      organization_type_code: organizationTypeCode,
+      organization_code: organizationCode,
+      organization_notes: organizationNotes,
+      mapping_notes: mappingNotes,
+    },
+  );
+
+  if (error) {
+    throw new Error("Failed to create and map canonical organization.", {
+      cause: error,
+    });
+  }
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/clients/" + clientId);
+}
+
+export async function createPersonForClientMapping(formData: FormData) {
+  const { profile } = await getAuthenticatedUserContext();
+
+  if (profile.role !== "platform_admin") {
+    throw new Error("Only platform admins can create mapped people.");
+  }
+
+  const clientId = readRequiredString(formData, "clientId");
+  const personDisplayName = readRequiredString(formData, "personDisplayName");
+  const personFirstName = readOptionalNotes(formData, "personFirstName");
+  const personLastName = readOptionalNotes(formData, "personLastName");
+  const personMobile = readOptionalNotes(formData, "personMobile");
+  const personNotes = readOptionalNotes(formData, "personNotes");
+  const mappingNotes = readOptionalNotes(formData, "mappingNotes");
+  const supabase = (await createClient()) as unknown as AdminMappingRpcClient;
+  const { error } = await supabase.rpc(
+    "admin_create_person_for_client_mapping",
+    {
+      target_client_id: clientId,
+      person_display_name: personDisplayName,
+      person_first_name: personFirstName,
+      person_last_name: personLastName,
+      person_mobile: personMobile,
+      person_notes: personNotes,
+      mapping_notes: mappingNotes,
+    },
+  );
+
+  if (error) {
+    throw new Error("Failed to create and map canonical person.", {
+      cause: error,
+    });
+  }
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/clients/" + clientId);
 }

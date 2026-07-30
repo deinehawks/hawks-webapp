@@ -5,7 +5,8 @@ create extension if not exists pgtap with schema extensions;
 insert into public.clients (id, code, name)
 values
   ('10000000-0000-0000-0000-000000000011', 'DOM-A', 'Domain Client A'),
-  ('10000000-0000-0000-0000-000000000012', 'DOM-B', 'Domain Client B');
+  ('10000000-0000-0000-0000-000000000012', 'DOM-B', 'Domain Client B'),
+  ('10000000-0000-0000-0000-000000000013', 'DOM-C', 'Domain Client C');
 
 insert into auth.users (
   id,
@@ -204,7 +205,7 @@ values (
   true
 );
 
-select extensions.plan(29);
+select extensions.plan(34);
 
 set local role authenticated;
 
@@ -351,8 +352,25 @@ select extensions.throws_ok(
   'organization admin cannot change organization classification'
 );
 
+set local request.jwt.claims =
+  '{"sub":"20000000-0000-0000-0000-000000000012","role":"authenticated"}';
+
 select extensions.throws_ok(
-  $$insert into public.organization_memberships (
+  $sql$select public.admin_confirm_client_organization_mapping(
+      '10000000-0000-0000-0000-000000000011',
+      '30000000-0000-0000-0000-000000000011',
+      'org admin direct call attempt'
+    )$sql$,
+  '42501',
+  null,
+  'organization admin cannot call controlled client mapping rpc'
+);
+
+set local request.jwt.claims =
+  '{"sub":"20000000-0000-0000-0000-000000000011","role":"authenticated"}';
+
+select extensions.throws_ok(
+  $sql$insert into public.organization_memberships (
       profile_id,
       organization_id,
       role,
@@ -363,7 +381,7 @@ select extensions.throws_ok(
       '30000000-0000-0000-0000-000000000011',
       'org_admin',
       'pending'
-    )$$,
+    )$sql$,
   '42501',
   null,
   'organization admin cannot create another organization admin'
@@ -442,6 +460,53 @@ select extensions.is(
      )),
   1::bigint,
   'client person mapping update is audited with composite identity'
+);
+
+select extensions.lives_ok(
+  $sql$select public.admin_confirm_client_organization_mapping(
+      '10000000-0000-0000-0000-000000000012',
+      '30000000-0000-0000-0000-000000000012',
+      'confirmed through controlled rpc'
+    )$sql$,
+  'platform admin can confirm an existing client organization mapping'
+);
+
+select extensions.throws_ok(
+  $sql$select public.admin_confirm_client_person_mapping(
+      '10000000-0000-0000-0000-000000000012',
+      '35000000-0000-0000-0000-000000000011',
+      'conflicting mapping attempt'
+    )$sql$,
+  '23514',
+  null,
+  'controlled mapping rpc rejects conflicting canonical mapping type'
+);
+
+select extensions.lives_ok(
+  $sql$select public.admin_create_organization_for_client_mapping(
+      '10000000-0000-0000-0000-000000000013',
+      'New Cooperative for RPC Test',
+      'cooperative',
+      'NEW-COOP-RPC',
+      'created by controlled rpc',
+      'mapped by controlled rpc'
+    )$sql$,
+  'platform admin can create and map a canonical organization'
+);
+
+select extensions.throws_ok(
+  $sql$select public.admin_create_person_for_client_mapping(
+      '10000000-0000-0000-0000-000000000013',
+      'Conflicting Person RPC Test',
+      null,
+      null,
+      null,
+      null,
+      'conflicting create and map attempt'
+    )$sql$,
+  '23514',
+  null,
+  'create and map person rpc rejects existing confirmed organization mapping'
 );
 
 select extensions.throws_ok(
