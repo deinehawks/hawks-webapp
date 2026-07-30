@@ -1,6 +1,6 @@
 # Admin Dashboard Integration and Production Rollout Plan
 
-Status: Phase 3G-C canonical create-and-map implemented for review
+Status: Phase 3H-A read-only membership review gate implemented for review
 Scope: Current plan plus completed additive foundation. Classification, membership, asset, and destructive mutations still require separate approval.
 Reviewed source: `docs/ASIMOV-HAWKS_Web_App_Deployment_Plan_Final.docx` (owner-supplied)
 
@@ -10,7 +10,7 @@ Repository evidence in this document describes checked-in contracts only. It doe
 
 Integrate the interns' Admin Dashboard into the main ASIMOV-HAWKS application without disrupting existing authentication, survey access, geospatial visualization, or production data. The work must reconcile two independently developed Next.js/Supabase systems, preserve the main Supabase project as the source of truth, and deliver the combined application through the proposed Docker/NGINX/MinIO/Cloudflare architecture for invited users over the public internet during the October 2026 workshop.
 
-This remains a gated plan. Phase 3A established the additive domain foundation, Phase 3B-3D added platform-admin read-only visibility, Phase 3E added classification readiness, Phase 3F enables only audited legacy-client classification-field updates, Phase 3G-A adds audit coverage for canonical client mapping tables, and Phase 3G-B maps legacy clients to existing canonical people or organizations, and Phase 3G-C creates minimal canonical people/organizations before immediately mapping them to a legacy client. Membership, farm, grant, asset, and destructive workflows still require separate approval.
+This remains a gated plan. Phase 3A established the additive domain foundation, Phase 3B-3D added platform-admin read-only visibility, Phase 3E added classification readiness, Phase 3F enables only audited legacy-client classification-field updates, Phase 3G-A adds audit coverage for canonical client mapping tables, and Phase 3G-B maps legacy clients to existing canonical people or organizations, Phase 3G-C creates minimal canonical people/organizations before immediately mapping them to a legacy client, and Phase 3H-A adds read-only membership readiness visibility. Membership mutations, farm, grant, asset, and destructive workflows still require separate approval.
 
 ## 2. Confirmed baseline
 
@@ -116,7 +116,7 @@ flowchart LR
 - **Missions and surveys:** `surveys` is the current combined mission/survey record. It stores status, flight date, area, location, boundaries, `client_id`, and legacy code relationships. `getUserSurvey()` and `getAllUserSurveys()` in `lib/actions/surveys.ts` authorize directly through `client_id`.
 - **Outputs and reports:** `orthos.survey_id` and `point_clouds.survey_id` trace those specialized outputs to surveys. Tile paths derive from client code, year, survey ID, and `orthos.tile_folder`. Detected objects are stored as organization-level JSON and filtered by `areaCode`. Generic model outputs, analytics, disease/crop outputs, and reports have no relational catalog.
 - **Storage:** `getObjectDetectionData()` reads `<client-uuid>/detections.json` with a temporary `<client-code>.json` fallback. `supabase/deferred/secure_detected_objects_storage.sql` authorizes the UUID path by organization only.
-- **Admin and audit:** Phase 3A added `admin_audit_log`; Phase 3B-3D added platform-admin read-only Admin Dashboard overview, lists, and detail pages under `app/dashboard/admin`; Phase 3F adds a server-side legacy-client classification-field update path. Phase 3G-A adds dedicated composite-key audit coverage for `client_people` and `client_organizations`; Phase 3G-B adds checked RPCs and platform-admin UI for confirming mappings to existing canonical records. Phase 3G-C adds checked create-and-map RPCs and UI for minimal canonical people and organizations.
+- **Admin and audit:** Phase 3A added `admin_audit_log`; Phase 3B-3D added platform-admin read-only Admin Dashboard overview, lists, and detail pages under `app/dashboard/admin`; Phase 3F adds a server-side legacy-client classification-field update path. Phase 3G-A adds dedicated composite-key audit coverage for `client_people` and `client_organizations`; Phase 3G-B adds checked RPCs and platform-admin UI for confirming mappings to existing canonical records. Phase 3G-C adds checked create-and-map RPCs and UI for minimal canonical people and organizations. Phase 3H-A adds read-only organization membership review views with profile and organization context.
 
 ### Answers to the domain questions
 
@@ -700,4 +700,4 @@ Rollback triggers must include authorization leakage, data-integrity failures, e
 
 ## 13. Immediate next step
 
-Proceed with Phase 3G-C review and smoke testing: create a canonical organization/person from a legacy client, verify the mapping appears, then decide whether Phase 3H should start organization membership workflow or workshop dataset manifest work. In parallel, approve the workshop dataset manifest and protected asset-delivery design so Docker, NGINX, Cloudflare, and the selected asset origin do not become late release blockers. No asset migration or infrastructure cutover occurs without separate approval. Work backward from the September 28-30 public deployment window and preserve October 1-9 for stabilization, documentation, workshop support, and handoff.
+Proceed with Phase 3H-A review and smoke testing: verify membership list/detail views show profile, organization, role, status, and readiness without exposing invite, approval, removal, Auth-user creation, or service-role flows. In parallel, approve the workshop dataset manifest and protected asset-delivery design so Docker, NGINX, Cloudflare, and the selected asset origin do not become late release blockers. No asset migration or infrastructure cutover occurs without separate approval. Work backward from the September 28-30 public deployment window and preserve October 1-9 for stabilization, documentation, workshop support, and handoff.

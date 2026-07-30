@@ -73,6 +73,21 @@ type MappingPersonOption = Pick<
   "id" | "display_name" | "first_name" | "last_name" | "status"
 >;
 
+type MembershipProfileDetail = Pick<
+  Tables<"profiles">,
+  "id" | "email" | "role" | "account_role" | "person_id" | "organization_id"
+>;
+
+type MembershipOrganizationDetail = Pick<
+  Tables<"organizations">,
+  "id" | "name" | "type_code" | "status"
+>;
+
+type MembershipDetailRow = Tables<"organization_memberships"> & {
+  profile: MembershipProfileDetail | null;
+  organization: MembershipOrganizationDetail | null;
+};
+
 type ClientDetailRow = Tables<"clients"> & {
   client_people:
     | (Pick<
@@ -229,6 +244,38 @@ function formatClientOrganizationMappings(client: ClientDetailRow): string {
       );
     })
     .join("; ");
+}
+
+function formatMembershipReadiness(membership: MembershipDetailRow): string {
+  if (!membership.profile) {
+    return "Review required: missing user account reference.";
+  }
+
+  if (!membership.organization) {
+    return "Review required: missing organization reference.";
+  }
+
+  if (membership.status === "active") {
+    return "Active membership. This is the intended organization access path.";
+  }
+
+  if (membership.status === "pending") {
+    return "Pending approval. It should not be treated as active access.";
+  }
+
+  if (membership.status === "invited") {
+    return "Invited membership. It needs acceptance or approval before active use.";
+  }
+
+  if (membership.status === "suspended") {
+    return "Suspended membership. Access should remain blocked.";
+  }
+
+  if (membership.status === "removed") {
+    return "Removed membership retained for review and audit history.";
+  }
+
+  return "Review membership state before enabling mutations.";
 }
 
 function formatClientPersonMappings(client: ClientDetailRow): string {
@@ -533,10 +580,12 @@ async function getResourceDetail(
     case "memberships": {
       const { data, error } = (await supabase
         .from("organization_memberships")
-        .select("*")
+        .select(
+          "*, profile:profiles!organization_memberships_profile_id_fkey(id, email, role, account_role, person_id, organization_id), organization:organizations!organization_memberships_organization_id_fkey(id, name, type_code, status)",
+        )
         .eq("id", id)
         .maybeSingle()) as {
-        data: Tables<"organization_memberships"> | null;
+        data: MembershipDetailRow | null;
         error: PostgrestError | null;
       };
 
@@ -547,18 +596,28 @@ async function getResourceDetail(
       if (!data) return null;
 
       return {
-        title: formatShortId(data.id),
-        description: "Organization-scoped access record.",
+        title: data.profile?.email ?? formatShortId(data.profile_id),
+        description: "Read-only organization-scoped access record.",
         badge: formatLabel(data.status),
         fields: [
           { label: "ID", value: data.id },
+          { label: "User Email", value: data.profile?.email },
           { label: "Profile ID", value: data.profile_id },
+          { label: "Legacy Profile Role", value: formatLabel(data.profile?.role ?? null) },
+          { label: "Account Role", value: formatLabel(data.profile?.account_role ?? null) },
+          { label: "Profile Person ID", value: data.profile?.person_id },
+          { label: "Legacy Profile Organization ID", value: data.profile?.organization_id },
+          { label: "Organization", value: data.organization?.name },
           { label: "Organization ID", value: data.organization_id },
-          { label: "Role", value: formatLabel(data.role) },
-          { label: "Status", value: formatLabel(data.status) },
+          { label: "Organization Type", value: formatLabel(data.organization?.type_code ?? null) },
+          { label: "Organization Status", value: formatLabel(data.organization?.status ?? null) },
+          { label: "Membership Role", value: formatLabel(data.role) },
+          { label: "Membership Status", value: formatLabel(data.status) },
+          { label: "Readiness", value: formatMembershipReadiness(data) },
           { label: "Invited At", value: formatDate(data.invited_at) },
           { label: "Approved At", value: formatDate(data.approved_at) },
           { label: "Removed At", value: formatDate(data.removed_at) },
+          { label: "Notes", value: data.notes },
           { label: "Created", value: formatDate(data.created_at) },
           { label: "Updated", value: formatDate(data.updated_at) },
         ],
@@ -1020,8 +1079,9 @@ export default async function AdminDetailPage({
           </div>
           <p className="max-w-3xl text-sm text-muted-foreground">
             {detail.description} Most admin detail data remains read-only.
-            Legacy client classification and existing canonical mapping are the
-            only controlled mutations enabled here.
+            Legacy client classification and canonical client mapping are the
+            only controlled mutations enabled here; membership detail remains
+            read-only in Phase 3H-A.
           </p>
         </div>
       </div>

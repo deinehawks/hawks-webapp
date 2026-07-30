@@ -91,10 +91,31 @@ type FarmListRow = Pick<
   "id" | "name" | "code" | "crop" | "area_hectares" | "status"
 >;
 
+type MembershipProfileRow = Pick<
+  Tables<"profiles">,
+  "id" | "email" | "role" | "account_role"
+>;
+
+type MembershipOrganizationRow = Pick<
+  Tables<"organizations">,
+  "id" | "name" | "type_code" | "status"
+>;
+
 type MembershipListRow = Pick<
   Tables<"organization_memberships">,
-  "id" | "profile_id" | "organization_id" | "role" | "status" | "updated_at"
->;
+  | "id"
+  | "profile_id"
+  | "organization_id"
+  | "role"
+  | "status"
+  | "invited_at"
+  | "approved_at"
+  | "removed_at"
+  | "updated_at"
+> & {
+  profile: MembershipProfileRow | null;
+  organization: MembershipOrganizationRow | null;
+};
 
 type OutputListRow = Pick<
   Tables<"survey_outputs">,
@@ -221,6 +242,38 @@ function getReviewedMappingLabel(client: ClientListRow): string {
   }
 
   return "Needs review";
+}
+
+function formatMembershipReadiness(row: MembershipListRow): string {
+  if (!row.profile) {
+    return "Review required: missing user account.";
+  }
+
+  if (!row.organization) {
+    return "Review required: missing organization.";
+  }
+
+  if (row.status === "active") {
+    return "Active access path.";
+  }
+
+  if (row.status === "pending") {
+    return "Pending approval; no active organization access yet.";
+  }
+
+  if (row.status === "invited") {
+    return "Invited; waiting for acceptance or approval.";
+  }
+
+  if (row.status === "suspended") {
+    return "Suspended; access should remain blocked.";
+  }
+
+  if (row.status === "removed") {
+    return "Removed membership; kept for audit history.";
+  }
+
+  return "Review membership status.";
 }
 
 function StatusBadge({ value }: { value: string | null }) {
@@ -442,7 +495,9 @@ export default async function AdminPage() {
       .limit(8),
     supabase
       .from("organization_memberships")
-      .select("id, profile_id, organization_id, role, status, updated_at")
+      .select(
+        "id, profile_id, organization_id, role, status, invited_at, approved_at, removed_at, updated_at, profile:profiles!organization_memberships_profile_id_fkey(id, email, role, account_role), organization:organizations!organization_memberships_organization_id_fkey(id, name, type_code, status)",
+      )
       .order("updated_at", { ascending: false })
       .limit(8),
     supabase
@@ -771,27 +826,32 @@ export default async function AdminPage() {
 
         <AdminListSection
           title="Organization Memberships"
-          description="Organization-scoped access records"
+          description="Read-only account-to-organization access readiness"
           rows={membershipList}
           emptyLabel="No organization memberships yet. Current access still works through compatible profile organization ownership."
           columns={[
             {
-              header: "Profile",
+              header: "User Account",
               cell: (row) => (
                 <DetailLink href={`/dashboard/admin/memberships/${row.id}`}>
-                  {formatShortId(row.profile_id)}
+                  {row.profile?.email ?? formatShortId(row.profile_id)}
                 </DetailLink>
               ),
             },
             {
               header: "Organization",
-              cell: (row) => formatShortId(row.organization_id),
+              cell: (row) => row.organization?.name ?? formatShortId(row.organization_id),
             },
-            { header: "Role", cell: (row) => <StatusBadge value={row.role} /> },
+            {
+              header: "Org Type",
+              cell: (row) => <StatusBadge value={row.organization?.type_code ?? null} />,
+            },
+            { header: "Membership Role", cell: (row) => <StatusBadge value={row.role} /> },
             {
               header: "Status",
               cell: (row) => <StatusBadge value={row.status} />,
             },
+            { header: "Readiness", cell: (row) => formatMembershipReadiness(row) },
           ]}
         />
 
@@ -827,7 +887,7 @@ export default async function AdminPage() {
         <Card className="rounded-lg lg:col-span-2">
           <CardHeader>
             <CardDescription>Current Gate</CardDescription>
-            <CardTitle>Phase 3E keeps classification read-only</CardTitle>
+            <CardTitle>Phase 3H-A keeps membership management read-only</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>

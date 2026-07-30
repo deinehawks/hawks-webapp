@@ -14,8 +14,9 @@ update path for platform admins. Phase 3G-A adds audit infrastructure for
 `client_people` and `client_organizations`. Phase 3G-B authorizes checked RPCs
 that map a legacy client to an existing canonical person or organization.
 Phase 3G-C authorizes checked RPCs that create minimal canonical people or
-organizations and immediately map them to a legacy client. Future SQL or server
-actions for membership, farm, grant, output, storage, or destructive mutations
+organizations and immediately map them to a legacy client. Phase 3H-A adds
+read-only membership review views only. Future SQL or server actions for
+membership, farm, grant, output, storage, or destructive mutations
 must be created, reviewed, and rehearsed only after the blocking human decisions
 below are approved.
 
@@ -282,7 +283,10 @@ role escalation, farm reassignment, output access, RPC execution, and storage
 downloads. The Phase 3F `clients` classification-field update must produce the existing
 `audit_clients_domain_fields` trigger record. Phase 3G-A mapping table inserts,
 updates, and deletes must produce composite-key audit records. Phase 3G-B and 3G-C RPCs
-must reject non-platform callers and conflicting confirmed mappings. Every future
+must reject non-platform callers and conflicting confirmed mappings. Phase 3H-A
+membership review remains read-only and must not expose invitation, approval,
+removal, promotion, Auth-user creation, service-role, or membership mutation
+paths. Every future
 privileged mutation must produce an expected audit record; audit logging does
 not make an otherwise unauthorized operation acceptable.
 
