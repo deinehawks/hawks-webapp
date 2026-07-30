@@ -19,8 +19,9 @@ import {
   createPersonForClientMapping,
   updateClientClassification,
 } from "@/lib/actions/admin-classification";
+import { updateOrganizationMembershipStatus } from "@/lib/actions/admin-memberships";
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
-import type { Json, Tables } from "@/lib/database.types";
+import type { Database, Json, Tables } from "@/lib/database.types";
 import { createClient } from "@/utils/supabase/server";
 
 type ResourceName =
@@ -47,6 +48,7 @@ type ResourceDetail = {
   organizationOptions?: MappingOrganizationOption[];
   organizationTypeOptions?: MappingOrganizationTypeOption[];
   personOptions?: MappingPersonOption[];
+  membership?: MembershipDetailRow;
 };
 
 type SurveyDetailRow = Tables<"surveys"> & {
@@ -82,6 +84,8 @@ type MembershipOrganizationDetail = Pick<
   Tables<"organizations">,
   "id" | "name" | "type_code" | "status"
 >;
+
+type MembershipStatus = Database["public"]["Enums"]["membership_status"];
 
 type MembershipDetailRow = Tables<"organization_memberships"> & {
   profile: MembershipProfileDetail | null;
@@ -597,8 +601,9 @@ async function getResourceDetail(
 
       return {
         title: data.profile?.email ?? formatShortId(data.profile_id),
-        description: "Read-only organization-scoped access record.",
+        description: "Organization-scoped access record.",
         badge: formatLabel(data.status),
+        membership: data,
         fields: [
           { label: "ID", value: data.id },
           { label: "User Email", value: data.profile?.email },
@@ -734,6 +739,14 @@ function ClientClassificationForm({ client }: { client: ClientDetailRow }) {
     </Card>
   );
 }
+
+const membershipStatusTransitions = {
+  invited: ["pending", "removed"],
+  pending: ["active", "removed"],
+  active: ["suspended", "removed"],
+  suspended: ["active", "removed"],
+  removed: [],
+} as const satisfies Record<MembershipStatus, readonly MembershipStatus[]>;
 
 function ClientMappingForm({
   client,
@@ -1036,6 +1049,98 @@ function ClientMappingForm({
   );
 }
 
+function MembershipStatusForm({
+  membership,
+}: {
+  membership: MembershipDetailRow;
+}) {
+  const nextStatuses = membershipStatusTransitions[membership.status];
+
+  if (membership.role !== "member") {
+    return (
+      <Card className="rounded-lg">
+        <CardHeader>
+          <CardDescription>Phase 3H-C Controlled Membership</CardDescription>
+          <CardTitle>Membership status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Org-admin membership role changes are deferred. This phase only
+            manages ordinary member status.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="rounded-lg">
+      <CardHeader>
+        <CardDescription>Phase 3H-C Controlled Membership</CardDescription>
+        <CardTitle>Update ordinary member status</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {nextStatuses.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Removed memberships are retained for audit history and cannot be
+            reactivated from this phase.
+          </p>
+        ) : (
+          <form
+            action={updateOrganizationMembershipStatus}
+            className="grid gap-4 lg:grid-cols-2"
+          >
+            <input name="membershipId" type="hidden" value={membership.id} />
+
+            <div className="grid gap-2">
+              <label className="text-sm font-medium" htmlFor="nextStatus">
+                Next status
+              </label>
+              <select
+                className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                id="nextStatus"
+                name="nextStatus"
+                required
+              >
+                {nextStatuses.map((status) => (
+                  <option key={status} value={status}>
+                    {formatLabel(status)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid gap-2 lg:col-span-2">
+              <label className="text-sm font-medium" htmlFor="membershipNotes">
+                Status notes
+              </label>
+              <textarea
+                className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                defaultValue={membership.notes ?? ""}
+                id="membershipNotes"
+                maxLength={2000}
+                name="membershipNotes"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex flex-col gap-3 lg:col-span-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="max-w-2xl text-sm text-muted-foreground">
+                This changes only ordinary membership status. It does not create
+                auth users, promote org admins, move users across organizations,
+                or delete records.
+              </p>
+              <Button className="w-fit" type="submit">
+                Update status
+              </Button>
+            </div>
+          </form>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default async function AdminDetailPage({
   params,
 }: {
@@ -1079,9 +1184,9 @@ export default async function AdminDetailPage({
           </div>
           <p className="max-w-3xl text-sm text-muted-foreground">
             {detail.description} Most admin detail data remains read-only.
-            Legacy client classification and canonical client mapping are the
-            only controlled mutations enabled here; membership detail remains
-            read-only in Phase 3H-A.
+            Legacy client classification, canonical client mapping, and
+            ordinary membership status updates are the only controlled
+            mutations enabled here.
           </p>
         </div>
       </div>
@@ -1114,6 +1219,10 @@ export default async function AdminDetailPage({
       </Card>
 
       {detail.client ? <ClientClassificationForm client={detail.client} /> : null}
+
+      {detail.membership ? (
+        <MembershipStatusForm membership={detail.membership} />
+      ) : null}
 
       {detail.client ? (
         <ClientMappingForm

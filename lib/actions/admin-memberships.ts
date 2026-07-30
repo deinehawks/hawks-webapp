@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import type { PostgrestError } from "@supabase/supabase-js";
 
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
-import type { Database, Tables, TablesInsert } from "@/lib/database.types";
+import type {
+  Database,
+  Tables,
+  TablesInsert,
+  TablesUpdate,
+} from "@/lib/database.types";
 import { createClient } from "@/utils/supabase/server";
 
 type MembershipStatus = Database["public"]["Enums"]["membership_status"];
@@ -16,7 +21,22 @@ type MembershipInsertTable = {
   }>;
 };
 
+type MembershipUpdateTable = {
+  update(values: TablesUpdate<"organization_memberships">): {
+    eq(column: "id", value: string): PromiseLike<{
+      error: PostgrestError | null;
+    }>;
+  };
+};
+
 const allowedInitialStatuses = ["pending", "active"] as const satisfies readonly MembershipStatus[];
+const allowedStatusTransitions = {
+  invited: ["pending", "removed"],
+  pending: ["active", "removed"],
+  active: ["suspended", "removed"],
+  suspended: ["active", "removed"],
+  removed: [],
+} as const satisfies Record<MembershipStatus, readonly MembershipStatus[]>;
 
 function readRequiredString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -42,6 +62,14 @@ function parseInitialStatus(value: string): MembershipStatus {
   }
 
   throw new Error("Invalid initial membership status.");
+}
+
+function parseMembershipStatus(value: string): MembershipStatus {
+  if (value in allowedStatusTransitions) {
+    return value as MembershipStatus;
+  }
+
+  throw new Error("Invalid membership status.");
 }
 
 export async function createOrganizationMembership(formData: FormData) {
@@ -139,4 +167,86 @@ export async function createOrganizationMembership(formData: FormData) {
   }
 
   revalidatePath("/dashboard/admin");
+}
+
+export async function updateOrganizationMembershipStatus(formData: FormData) {
+  const { profile } = await getAuthenticatedUserContext();
+
+  if (profile.role !== "platform_admin") {
+    throw new Error("Only platform admins can update membership status.");
+  }
+
+  const membershipId = readRequiredString(formData, "membershipId");
+  const nextStatus = parseMembershipStatus(
+    readRequiredString(formData, "nextStatus"),
+  );
+  const notes = readOptionalNotes(formData, "membershipNotes");
+  const supabase = await createClient();
+
+  const { data: membership, error: membershipError } = (await supabase
+    .from("organization_memberships")
+    .select("id, role, status")
+    .eq("id", membershipId)
+    .maybeSingle()) as {
+    data: Pick<
+      Tables<"organization_memberships">,
+      "id" | "role" | "status"
+    > | null;
+    error: PostgrestError | null;
+  };
+
+  if (membershipError) {
+    throw new Error("Failed to verify organization membership.", {
+      cause: membershipError,
+    });
+  }
+
+  if (!membership) {
+    throw new Error("Organization membership not found.");
+  }
+
+  if (membership.role !== "member") {
+    throw new Error("Org-admin membership role changes are not enabled yet.");
+  }
+
+  const allowedNextStatuses = allowedStatusTransitions[membership.status];
+
+  if (!(allowedNextStatuses as readonly MembershipStatus[]).includes(nextStatus)) {
+    throw new Error("This membership status transition is not allowed.");
+  }
+
+  const now = new Date().toISOString();
+  const updatePayload: TablesUpdate<"organization_memberships"> = {
+    status: nextStatus,
+    updated_at: now,
+  };
+
+  if (notes) {
+    updatePayload.notes = notes;
+  }
+
+  if (nextStatus === "active") {
+    updatePayload.approved_by = profile.id;
+    updatePayload.approved_at = now;
+    updatePayload.removed_at = null;
+  }
+
+  if (nextStatus === "removed") {
+    updatePayload.removed_at = now;
+  }
+
+  const membershipsTable = supabase
+    .from("organization_memberships") as unknown as MembershipUpdateTable;
+  const { error: updateError } = await membershipsTable
+    .update(updatePayload)
+    .eq("id", membershipId);
+
+  if (updateError) {
+    throw new Error("Failed to update organization membership status.", {
+      cause: updateError,
+    });
+  }
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath(`/dashboard/admin/memberships/${membershipId}`);
 }
