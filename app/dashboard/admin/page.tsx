@@ -478,8 +478,8 @@ function CreateMembershipForm({
             <p className="max-w-3xl text-sm text-muted-foreground">
               This creates only an ordinary organization member record for an
               existing user and existing organization. Organization-admin
-              promotion, Auth-user creation, invite email delivery, and removal
-              workflows remain blocked.
+              promotion, Auth-user creation, invite email delivery, and
+              destructive removal workflows remain blocked.
             </p>
             <Button className="w-fit" disabled={disabled} type="submit">
               Create membership
@@ -772,9 +772,10 @@ export default async function AdminPage() {
         </div>
         <p className="max-w-3xl text-sm text-muted-foreground">
           Phase 3H-B enables platform admins to create ordinary member
-          access for existing users and existing organizations. Org-admin
-          promotion, Auth-user creation, invite delivery, asset migration, and
-          destructive actions remain gated.
+          access for existing users and existing organizations. Phase 3H-C
+          adds ordinary membership status management. Org-admin promotion,
+          Auth-user creation, invite delivery, asset migration, and destructive
+          actions remain gated.
         </p>
       </div>
 
@@ -1038,7 +1039,7 @@ export default async function AdminPage() {
         <Card className="rounded-lg lg:col-span-2">
           <CardHeader>
             <CardDescription>Current Gate</CardDescription>
-            <CardTitle>Phase 3H-B enables ordinary member creation</CardTitle>
+            <CardTitle>Phase 3H-C adds ordinary member status control</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
@@ -1046,9 +1047,9 @@ export default async function AdminPage() {
               clients, surveys, maps, detections, tile paths, and point clouds.
             </p>
             <p>
-              The next reviewable step is a controlled mutation workflow for
-              legacy-client classification and canonical mapping, with atomic
-              validation and audit coverage.
+              Current controlled mutations cover legacy-client classification,
+              canonical client mapping, ordinary membership creation, and
+              ordinary membership status updates with audit coverage.
             </p>
           </CardContent>
         </Card>
@@ -1065,7 +1066,7 @@ export default async function AdminPage() {
             </div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="size-4" />
-              <span>No org-admin promotion or removal</span>
+              <span>No org-admin promotion or destructive removal</span>
             </div>
             <div className="flex items-center gap-2">
               <FileBarChart className="size-4" />
