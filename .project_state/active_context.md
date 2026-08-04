@@ -38,4 +38,4 @@ Key constraints:
 
 Next recommended task:
 
-- Review the RPC-backed app-side protected asset auth implementation, then decide whether to commit this app/RPC/test slice before moving to route smoke tests or frontend point-cloud fallback handling.
+- Review and optionally commit the point-cloud fallback slice, then move to local route smoke tests once the external WSL NGINX auth_request wiring is ready.

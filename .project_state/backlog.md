@@ -5,7 +5,7 @@ Last updated: 2026-08-04
 ## P1
 
 - Keep this repo strictly Next.js app-side for protected asset work; NGINX/Compose config belongs to the existing external WSL Docker infrastructure.
-- Review and commit the protected asset app/RPC/test slice, then move to local route smoke tests or frontend point-cloud fallback handling.
+- Review and optionally commit the point-cloud fallback slice, then move to local route smoke tests once external WSL NGINX auth_request wiring is ready.
 - Define organization-scoped MinIO bucket/prefix layout and opaque alias mapping for protected workshop GIS assets and private manifest backups.
 - Write executable rollback runbook for app image, NGINX config, MinIO prefixes, Supabase manifest supersession, and Cloudflare rules.
 - Confirm target environment before any remote Supabase migration apply.
