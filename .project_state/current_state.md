@@ -12,6 +12,10 @@ Manifest schema/RLS/audit migrations are local-only and have been applied succes
 
 Protected asset delivery design is drafted in `docs/protected-asset-delivery-design.md`, with review fixes in `docs/protected-asset-delivery-review-fixes.md`. Direction: NGINX proxy with MinIO internal offloading, NGINX `auth_request` to `/asimov-hawks/internal/asset-auth`, organization-scoped authorization, Cloudflare cache bypass for protected GIS assets, clean `204`/`401` auth endpoint behavior with no redirects, detections retained server-side through Supabase Storage for v1, and direct point-cloud downloads up to 1 GB.
 
+Protected asset implementation planning is approved in `docs/protected-asset-implementation-plan.md`. This repo remains strictly Next.js app-side; NGINX/Compose config belongs to the existing external WSL Docker infrastructure. The app-side sequence is parser/helper, `/internal/asset-auth` route, middleware no-redirect exception, active manifest lookup, organization authorization, alias resolution contract, logging, and tests.
+
 Local infrastructure is running on WSL + Docker with NGINX, object storage, Prometheus, Grafana, Alertmanager, Node Exporter, NGINX exporter, and object storage metrics. The Next.js app is not yet integrated into Docker Compose/NGINX.
 
 Known application validation baseline: `npm run lint` is documented as failing, `npx tsc --noEmit` has existing TypeScript errors, and `npm run build` has reached the Node heap limit. Docker build success must not replace separate validation evidence.
+
+Latest local commit for the manifest/protected-asset planning baseline: `aa9f81d3`.

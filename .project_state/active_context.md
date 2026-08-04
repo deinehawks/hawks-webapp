@@ -14,6 +14,8 @@ Current task sequence:
 6. Review pass corrections. Completed locally.
 7. Local Supabase apply/test pass. Completed and green.
 8. Fix existing domain authorization baseline. Completed.
+9. Commit manifest gate and protected asset planning baseline. Completed as `aa9f81d3`.
+10. Draft protected asset implementation plan. Completed in `docs/protected-asset-implementation-plan.md`.
 
 Local validation results:
 
@@ -36,4 +38,4 @@ Key constraints:
 
 Next recommended task:
 
-- Proceed to protected asset implementation planning: exact NGINX syntax, alias-to-MinIO env config, internal auth endpoint contract, active manifest lookup, logging fields, and rollback runbook.
+- Review `docs/protected-asset-implementation-plan.md`, then implement app-side protected asset auth first: parser/helper, `/internal/asset-auth` route, middleware no-redirect exception, and focused tests.

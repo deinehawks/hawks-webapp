@@ -4,10 +4,10 @@ Last updated: 2026-08-04
 
 ## P1
 
-- Review `docs/protected-asset-delivery-design.md` plus review fixes and close implementation details: exact NGINX syntax, alias-to-MinIO env config, active manifest selection, optional auth cache, and logging fields.
+- Keep this repo strictly Next.js app-side for protected asset work; NGINX/Compose config belongs to the existing external WSL Docker infrastructure.
+- Implement app-side protected asset auth: parser/helper, `/internal/asset-auth` route, middleware no-redirect exception, active 2026 manifest lookup, organization authorization, and MinIO alias resolver.
 - Define organization-scoped MinIO bucket/prefix layout and opaque alias mapping for protected workshop GIS assets and private manifest backups.
 - Write executable rollback runbook for app image, NGINX config, MinIO prefixes, Supabase manifest supersession, and Cloudflare rules.
-- Prepare local protected-asset implementation plan before code/config changes.
 - Confirm target environment before any remote Supabase migration apply.
 
 ## P2
