@@ -367,7 +367,7 @@ select extensions.throws_ok(
 );
 
 set local request.jwt.claims =
-  '{"sub":"20000000-0000-0000-0000-000000000011","role":"authenticated"}';
+  '{"sub":"20000000-0000-0000-0000-000000000012","role":"authenticated"}';
 
 select extensions.throws_ok(
   $sql$insert into public.organization_memberships (

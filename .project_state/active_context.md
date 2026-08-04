@@ -1,0 +1,39 @@
+# Active Context
+
+Last updated: 2026-08-04
+
+Current epic: workshop infrastructure integration and manifest-backed protected asset delivery.
+
+Current task sequence:
+
+1. Refresh active compressed state files. Completed.
+2. Design minimal Supabase manifest schema/RLS/audit contract. Completed.
+3. Close schema design questions. Completed.
+4. Draft Supabase manifest migration/RLS/audit SQL. Completed locally.
+5. Design protected asset delivery implementation. Completed as design.
+6. Review pass corrections. Completed locally.
+7. Local Supabase apply/test pass. Completed and green.
+8. Fix existing domain authorization baseline. Completed.
+
+Local validation results:
+
+- `npx supabase db reset --local`: passed; all migrations applied.
+- `verify_workshop_manifest_gate.sql`: passed via psql in local DB container.
+- `verify_workshop_manifest_review_fixes.sql`: passed via psql in local DB container.
+- `supabase/tests/workshop_manifest_gate.sql`: passed, 12 tests.
+- `supabase/tests/authorization.sql`: passed, 13 tests.
+- `supabase/tests/domain_authorization.sql`: corrected and passed, 34 tests.
+- Full `npx supabase test db --local`: passed, 3 files, 59 tests.
+- `npx supabase db lint --local --level warning`: passed with no schema errors.
+
+Key constraints:
+
+- Do not apply Supabase migrations remotely before target confirmation.
+- Keep real manifest private; do not commit personal data, secrets, private hostnames, raw storage credentials, or full operational details.
+- Preserve current `/asimov-hawks`, `/asimov-hawks/tiles`, and `/asimov-hawks/3d` browser-facing paths in Phase 1.
+- Keep detections server-side through Supabase Storage for v1.
+- NGINX, not Next middleware, is the protected GIS asset boundary.
+
+Next recommended task:
+
+- Proceed to protected asset implementation planning: exact NGINX syntax, alias-to-MinIO env config, internal auth endpoint contract, active manifest lookup, logging fields, and rollback runbook.
