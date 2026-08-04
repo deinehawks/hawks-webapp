@@ -25,7 +25,7 @@ Local validation results:
 - `supabase/tests/workshop_manifest_gate.sql`: passed, 12 tests.
 - `supabase/tests/authorization.sql`: passed, 13 tests.
 - `supabase/tests/domain_authorization.sql`: corrected and passed, 34 tests.
-- Full `npx supabase test db --local`: passed, 3 files, 59 tests.
+- Full `npx supabase test db --local`: passed, 4 files, 66 tests.
 - `npx supabase db lint --local --level warning`: passed with no schema errors.
 
 Key constraints:
@@ -38,4 +38,4 @@ Key constraints:
 
 Next recommended task:
 
-- Review `docs/protected-asset-implementation-plan.md`, then implement app-side protected asset auth first: parser/helper, `/internal/asset-auth` route, middleware no-redirect exception, and focused tests.
+- Review the RPC-backed app-side protected asset auth implementation, then decide whether to commit this app/RPC/test slice before moving to route smoke tests or frontend point-cloud fallback handling.
