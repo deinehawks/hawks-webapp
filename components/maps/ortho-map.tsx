@@ -1,5 +1,6 @@
 "use client";
 
+import { buildTileAssetUrl, getAssetBaseUrl } from "@/lib/assets/asset-urls";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   calculateGlobalCenters,
@@ -616,11 +617,12 @@ const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
         id: survey.id,
         code: String(survey.code).toLowerCase(),
         year: getYear(new Date(survey.flight_date as any)),
-        tileUrl: `/asimov-hawks/tiles/${String(
-          survey.code,
-        ).toLowerCase()}/${getYear(new Date(survey.flight_date as any))}/${
-          survey.id
-        }/ortho/sharp-corners/{z}/{x}/{y}.png`,
+        tileUrl: buildTileAssetUrl({
+          clientCode: String(survey.code),
+          surveyId: String(survey.id),
+          tileFolder: "sharp-corners",
+          year: getYear(new Date(survey.flight_date as any)),
+        }),
       }));
   }, [surveys]);
 
@@ -1257,7 +1259,7 @@ export default function OrthoMap({
                     // Add cache headers for better browser caching
                     if (
                       resourceType === "Tile" &&
-                      url.includes("/asimov-hawks/tiles/")
+                      url.includes(`${getAssetBaseUrl()}/tiles/`)
                     ) {
                       return {
                         url: url,
@@ -1277,11 +1279,12 @@ export default function OrthoMap({
                         id={String(survey.id)}
                         type="raster"
                         tiles={[
-                          `/asimov-hawks/tiles/${String(
-                            survey.code,
-                          ).toLowerCase()}/${getYear(
-                            new Date(survey.flight_date as any),
-                          )}/${survey.id}/ortho/sharp-corners/{z}/{x}/{y}.png`,
+                          buildTileAssetUrl({
+                            clientCode: String(survey.code),
+                            surveyId: String(survey.id),
+                            tileFolder: "sharp-corners",
+                            year: getYear(new Date(survey.flight_date as any)),
+                          }),
                         ]}
                         scheme="tms"
                         tileSize={256}

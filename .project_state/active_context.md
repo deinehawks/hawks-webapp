@@ -1,6 +1,6 @@
 # Active Context
 
-Last updated: 2026-08-04
+Last updated: 2026-08-05
 
 Current epic: workshop infrastructure integration and manifest-backed protected asset delivery.
 
@@ -38,4 +38,4 @@ Key constraints:
 
 Next recommended task:
 
-- Review and optionally commit the point-cloud fallback slice, then move to local route smoke tests once the external WSL NGINX auth_request wiring is ready.
+- Review the external NGINX handoff checklist, local smoke-test runbook, and Phase 2 asset URL helper slice; external WSL NGINX anonymous auth-boundary smoke tests now pass, and legacy 2024 public tiles load through a local/dev-only bypass. Next: commit the asset-helper/docs/milestone slice, then plan MinIO migration for approved workshop assets.

@@ -1,6 +1,6 @@
 # Session Handoff
 
-Last updated: 2026-08-04
+Last updated: 2026-08-05
 
 The existing domain authorization baseline is fixed. The issue was a test actor mismatch: an org-admin denial section was still impersonating the platform-admin user. `supabase/tests/domain_authorization.sql` now impersonates the org-admin for those denial assertions.
 
@@ -13,3 +13,6 @@ Protected asset implementation planning is approved in `docs/protected-asset-imp
 Initial Next.js protected asset auth implementation added locally: `lib/assets/protected-asset-auth.ts`, `lib/assets/minio-aliases.ts`, `app/internal/asset-auth/route.ts`, and middleware no-redirect handling for `/internal/asset-auth`. Validation: `npx tsc --noEmit` still fails on known pre-existing app baseline files, with no new protected-asset file errors. The manifest RLS caveat is addressed locally by `supabase/migrations/20260804004000_protected_asset_authorization_rpc.sql`, which exposes only a narrow authenticated RPC result through `public.authorize_workshop_protected_asset(...)` and keeps manifest table access inside `app_private.lookup_protected_asset_manifest_entry(...)`. Validation after the RPC: local DB reset passed, DB lint passed, full pgTAP suite passed. Added `supabase/tests/protected_asset_authorization.sql`; focused RPC tests pass, and the full suite now passes 4 files / 66 tests. TypeScript still only reports known pre-existing app baseline errors.
 
 Commit `5e0e4dea` records the protected asset app/RPC/test slice. Point-cloud fallback handling has been added locally in `components/threejs/3d-model.tsx`: same-origin `HEAD` preflight checks `Content-Length` before PCD loading, shows `This point cloud exceeds the supported loading limit.` when over 1 GB, and catches loader failures with a small fallback message. `npx tsc --noEmit` still fails only on known pre-existing baseline files.
+
+Commit `284751de` records the point-cloud fallback slice. Added external protected asset handoff docs locally: `docs/protected-asset-nginx-handoff-checklist.md` and `docs/protected-asset-local-smoke-tests.md`. Added Phase 2 asset URL helper in `lib/assets/asset-urls.ts` and replaced protected tile/point-cloud URL builders in map/3D components. `npx tsc --noEmit` still fails only on known pre-existing baseline files.
+Local WSL NGINX milestone on 2026-08-05: `http://localhost:8080/asimov-hawks` reaches the Next dev server; anonymous fake protected tile and point-cloud routes return `401`; a local/dev-only NGINX bypass for `/asimov-hawks/tiles/hawks/2024/` restores existing repo public-tile rendering. Verified sample tile `hawks/2024/SD-001/ortho/sharp-corners/18/222589/136551.png` returns `200 OK`. This confirms the app proxy and anonymous auth boundary work locally, while real protected MinIO migration and manifest alignment remain pending.

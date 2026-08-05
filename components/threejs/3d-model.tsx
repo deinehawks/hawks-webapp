@@ -1,5 +1,6 @@
 "use client";
 
+import { buildPointCloudAssetUrl } from "@/lib/assets/asset-urls";
 import { useSurveyMapStore } from "@/providers/survey-map-store-provider";
 import { Bounds, Center, OrbitControls } from "@react-three/drei";
 import { Canvas, useLoader } from "@react-three/fiber";
@@ -171,9 +172,12 @@ function ProtectedPointCloud({
   survey: SurveyPointCloudModel;
   fileName: "odm.pcd" | "lidar.pcd";
 }) {
-  const url = `/asimov-hawks/3d/${survey.code?.toLowerCase()}/${getSurveyYear(
-    survey,
-  )}/${survey.id}/${fileName}`;
+  const url = buildPointCloudAssetUrl({
+    clientCode: survey.code ?? "",
+    fileName,
+    surveyId: survey.id,
+    year: getSurveyYear(survey),
+  });
 
   return (
     <PointCloudErrorBoundary>
