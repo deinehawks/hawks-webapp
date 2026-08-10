@@ -10,7 +10,6 @@ import { LngLatLike, Map, Marker, Popup, useMap } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Link from "next/link";
 import { useState } from "react";
-import { Button } from "./ui/button";
 
 function MapMarker({ data, longitude, latitude, setPopupInfo }) {
   const { current: map } = useMap();
@@ -76,7 +75,6 @@ function MapPopup({ popupInfo, setPopupInfo }) {
 function MapEvents({ data, setPopupInfo }) {
   const { current: map } = useMap();
 
-  let clickedAreaId = null;
   let hoveredAreaId = null;
 
   const bounds: LngLatLike[][] = data.map((area) => {
@@ -94,7 +92,6 @@ function MapEvents({ data, setPopupInfo }) {
 
   map?.on("click", "area-fills", (e) => {
     if (e.features?.length && e.features.length > 0) {
-      clickedAreaId = e.features?.at(0)?.properties.survey_id;
 
       const clickedAreaData = data
         .filter((datum) => datum.id === e.features?.at(0)?.properties.survey_id)
@@ -231,3 +228,6 @@ export default function MapLibre({ data: surveys }) {
     </Map>
   );
 }
+
+
+

@@ -1,13 +1,6 @@
-// Updated data-tab.tsx
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MapPinned, Cuboid, AlertCircle } from "lucide-react";
@@ -59,7 +52,7 @@ export function OrthoTabContent({ survey }: OrthoTabContentProps) {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Data unavailable</AlertTitle>
             <AlertDescription>
-              This survey doesn't have orthomosaic data available yet.
+              This survey doesn&apos;t have orthomosaic data available yet.
             </AlertDescription>
           </Alert>
         )}
@@ -97,7 +90,6 @@ export function ThreeDTabContent({ survey }: ThreeDTabContentProps) {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Point cloud section */}
         {!survey.code ? (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />

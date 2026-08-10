@@ -16,6 +16,10 @@ Current task sequence:
 8. Add point-cloud manifest coverage. Completed in linked staging: `manifest-2026-08-10` approved/active includes `point_cloud` entry for `pointclouds/dng/2026/AH-026005/point-clouds/odm.pcd`.
 9. Set `PROTECTED_ASSET_STORAGE_POINTCLOUDS_ROOT=pointclouds`, restart Next, and rerun authenticated point-cloud smoke tests. Completed; user confirmed the 3D tab loads the protected ODM point cloud.
 10. Verify fail-closed and malformed-route behavior. Completed; anonymous point-cloud route returns `401`, and `//asimov-hawks/3d/...` is rejected as `malformed_request`.
+11. Commit, push, and merge the verified protected-asset follow-up into `development`. Completed: feature commit `57b6b378`, remote `development` advanced to merge commit `6be83d42`.
+12. Record the workshop smoke baseline. Completed in `docs/validation-baseline-2026-08-10.md`.
+13. Repair the lint config baseline. Completed: `eslint.config.mjs` now uses `prefer-const`, and `npm run lint` reaches real project findings.
+14. Clear the current lint errors and complete a first warning cleanup pass. Completed; `npm run lint` now exits cleanly with warnings only.
 
 Current validation results:
 
@@ -25,7 +29,9 @@ Current validation results:
 - User-confirmed authenticated NGINX login, direct z11/z23 tile URLs, orthomap tile rendering, and 3D tab point-cloud loading work.
 - Anonymous shell checks return `401` for protected z11 tile and point-cloud route.
 - Malformed double-slash protected point-cloud route requests are denied before upstream access.
-- App lint, type-check, and build remain known non-green baseline checks.
+- Workshop smoke baseline is documented for login, orthomap, 3D, and fail-closed flows.
+- `npm run lint` now passes with warnings only.
+- `npx tsc --noEmit` and `npm run build` remain known non-green baseline checks.
 
 Key constraints:
 
@@ -37,4 +43,4 @@ Key constraints:
 
 Next recommended task:
 
-- Commit the local orthomap/point-cloud fixes and refreshed validation notes, then run a short workshop smoke baseline pass covering login, one orthomap flow, and one 3D flow.
+- Decide whether to continue burning down warning-only lint debt or switch to the TypeScript baseline.

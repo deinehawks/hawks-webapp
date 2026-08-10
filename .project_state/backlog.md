@@ -4,21 +4,18 @@ Last updated: 2026-08-10
 
 ## P1
 
-- Commit and share the verified protected-asset follow-up: orthomap tile-folder fix, point-cloud canvas fallback fix, and refreshed validation/state notes.
-- Run a compact workshop smoke baseline covering login, one orthomap flow, one protected point-cloud flow, and fail-closed anonymous checks against active staging manifest `manifest-2026-08-10`.
-- Decide whether to fix the lint config baseline now that `next lint` fails on the `prefer const` plugin issue.
+- Decide whether to continue warning-only lint cleanup or switch to the TypeScript baseline in map, caller, and helper components.
+- Extend protected-asset smoke coverage beyond `AH-026005` to additional representative point clouds and map browser flows.
 - Confirm target environment before any additional remote Supabase migration apply.
 
 ## P2
 
-- Resolve or formally baseline existing TypeScript errors in map/caller/helper components.
 - Investigate `npm run build` heap exhaustion and document the accepted build command or memory setting.
 - Containerize Next.js with standalone output and a `.dockerignore` excluding secrets, GIS assets, local backups, and generated datasets.
-- Extend protected-asset smoke coverage beyond the current pilot survey to additional representative point clouds and map browser flows.
+- Authorized Cloudflare caching design for protected assets beyond v1.
 
 ## P3
 
-- Authorized Cloudflare caching for protected assets beyond v1.
 - Full historical dataset migration.
 - Broad infrastructure automation and Kubernetes.
 - Advanced analytics, DAM, destructive workflows, and large asset reorganization.

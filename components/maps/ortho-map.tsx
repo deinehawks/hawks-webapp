@@ -431,7 +431,7 @@ const MapPopup = React.memo(() => {
             >
               <Link href={`/dashboard/surveys/${info.id}`}>
                 <button className="w-full px-4 py-2.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold shadow-sm">
-                  View Details →
+                  View Details ?
                 </button>
               </Link>
             </motion.div>
@@ -448,11 +448,11 @@ const PlantPopup = React.memo(() => {
   const { plantPopupInfo, setPlantPopupInfo } = useOrthoMapStore(
     (state) => state,
   );
-  const { surveyMode } = useSurveyModeStore(); // ← add
+  const { surveyMode } = useSurveyModeStore(); // ? add
 
   if (!plantPopupInfo) return null;
 
-  const { centerLng, centerLat, label } = plantPopupInfo; // ← destructure label
+  const { centerLng, centerLat, label } = plantPopupInfo; // ? destructure label
   const isHealthy = String(label ?? "").includes("Healthy");
 
   return (
@@ -508,7 +508,7 @@ const PlantPopup = React.memo(() => {
 PlantPopup.displayName = "PlantPopup";
 
 const SourceLoadingStatus = React.memo(
-  ({ idList }: { idList: Array<string | number> }) => {
+  () => {
     const { areAllSourcesLoaded, setAreAllSourcesLoaded } = useOrthoMapStore(
       (state) => state,
     );
@@ -640,7 +640,6 @@ const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
           minzoom={10}
           maxzoom={24}
           // PERFORMANCE: Increase tile cache to reduce reloading
-          maxzoom={24}
         >
           <Layer
             id={String(tile.id)}
@@ -675,7 +674,7 @@ const FeaturesOfInterest = React.memo(
     const { selectedFoi, hoveredPairId, plantPopupInfo } = useOrthoMapStore(
       (state) => state,
     );
-    const { surveyMode } = useSurveyModeStore(); // ← add
+    const { surveyMode } = useSurveyModeStore(); // ? add
 
     const { healthyBananas, unhealthyBananas } = useMemo(() => {
       if (!detectedObjects || !Array.isArray(detectedObjects))
@@ -749,7 +748,7 @@ const FeaturesOfInterest = React.memo(
         "Healthy",
       );
 
-    // ← inventory always uses inventory color
+    // ? inventory always uses inventory color
     const selectedColor =
       surveyMode === "inventory"
         ? MAP_COLORS.inventory.base
@@ -773,7 +772,7 @@ const FeaturesOfInterest = React.memo(
       [allBananasFC],
     );
 
-    // ── INVENTORY MODE ────────────────────────────────────────────────────────
+    // -- INVENTORY MODE --------------------------------------------------------
     if (surveyMode === "inventory") {
       const showInventoryPins = selectedFoi !== "none" && selectedFoi !== "";
       return (
@@ -835,7 +834,7 @@ const FeaturesOfInterest = React.memo(
       );
     }
 
-    // ── ANALYSIS MODE (existing behavior) ─────────────────────────────────────
+    // -- ANALYSIS MODE (existing behavior) -------------------------------------
     return (
       <>
         {selectedPlantBbox && (
@@ -1001,24 +1000,8 @@ export default function OrthoMap({
   surveys: SurveyLike[];
   detectedObjects: ComputerVisionObject[] | null | undefined;
 }) {
-  if (!surveys || !Array.isArray(surveys) || surveys.length === 0) {
-    return (
-      <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
-        <div className="flex flex-1 h-full px-4 lg:px-6">
-          <Card className="flex flex-1 flex-col h-full items-center justify-center">
-            <CardContent className="text-center py-10">
-              <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                No Survey Data Available
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Please add surveys to view the orthomap.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
+  const hasSurveyData = Array.isArray(surveys) && surveys.length > 0;
+  const normalizedSurveys = hasSurveyData ? surveys : [];
 
   const safeDetectedObjects = useMemo(
     () => detectedObjects ?? [],
@@ -1028,7 +1011,7 @@ export default function OrthoMap({
   const [showBoundaries, setShowBoundaries] = useState(false);
   const { selectedFoi, setPopupInfo } = useOrthoMapStore((state) => state);
 
-  const surveyIds = useMemo(() => surveys.map((s) => s.id), [surveys]);
+  const surveyIds = useMemo(() => normalizedSurveys.map((s) => s.id), [normalizedSurveys]);
 
   const { global_x, global_y } = useMemo(
     () =>
@@ -1040,7 +1023,7 @@ export default function OrthoMap({
 
   const bounds = useMemo(() => {
     try {
-      const validSurveys = surveys.filter(
+      const validSurveys = normalizedSurveys.filter(
         (s) =>
           s.boundaries &&
           Array.isArray(s.boundaries) &&
@@ -1071,7 +1054,7 @@ export default function OrthoMap({
   }, [surveys]);
 
   const mapStyle = useMemo<StyleSpecification>(() => {
-    const areaFeatures: Feature<Polygon, GeoJsonProperties>[] = surveys
+    const areaFeatures: Feature<Polygon, GeoJsonProperties>[] = normalizedSurveys
       .filter((survey) => survey.boundaries && Array.isArray(survey.boundaries))
       .map((survey) => {
         const coords = transformCoordinatesToLonLatFormat(
@@ -1205,6 +1188,25 @@ export default function OrthoMap({
     if (!showBoundaries) setPopupInfo(null);
   }, [showBoundaries, setPopupInfo]);
 
+  if (!hasSurveyData) {
+    return (
+      <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
+        <div className="flex flex-1 h-full px-4 lg:px-6">
+          <Card className="flex flex-1 flex-col h-full items-center justify-center">
+            <CardContent className="text-center py-10">
+              <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+                No Survey Data Available
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Please add surveys to view the orthomap.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
       <style>{PIN_ANIMATION_STYLES}</style>
@@ -1272,7 +1274,7 @@ export default function OrthoMap({
                 >
                   <InitializeMapImages />
 
-                  {surveys
+                  {normalizedSurveys
                     .filter((survey) => survey.code && survey.flight_date)
                     .map((survey) => (
                       <Source
@@ -1307,10 +1309,10 @@ export default function OrthoMap({
                       </Source>
                     ))}
 
-                  {surveys.length > 0 && surveys[0].code && (
+                  {normalizedSurveys.length > 0 && surveys[0].code && (
                     <FeaturesOfInterest
                       key={surveyMode}
-                      code={String(surveys[0].code)}
+                      code={String(normalizedSurveys[0].code)}
                       detectedObjects={safeDetectedObjects}
                     />
                   )}
@@ -1318,10 +1320,10 @@ export default function OrthoMap({
                   <BoundaryLayers showBoundaries={showBoundaries} />
 
                   <MapEvents
-                    surveys={surveys}
+                    surveys={normalizedSurveys}
                     showBoundaries={showBoundaries}
                     code={
-                      surveys[0]?.code ? String(surveys[0].code) : undefined
+                      normalizedSurveys[0]?.code ? String(normalizedSurveys[0].code) : undefined
                     }
                     detectedObjects={safeDetectedObjects}
                   />
@@ -1353,3 +1355,7 @@ export default function OrthoMap({
     </div>
   );
 }
+
+
+
+

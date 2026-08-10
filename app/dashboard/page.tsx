@@ -5,18 +5,7 @@ import {
   getAllUserSurveys,
   getObjectDetectionData,
 } from "@/lib/actions/surveys";
-
-import { AppSidebar } from "@/components/app-sidebar";
-import { HeaderBreadcrumb } from "@/components/header-breadcrumb";
-import { Separator } from "@/components/ui/separator";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { getCurrentUserProfile } from "@/lib/actions/profiles";
 import type { Survey } from "@/lib/types";
-
 
 function toSurveyTableRows(surveys: Survey[]): SurveyTableRow[] {
   return surveys.flatMap((survey) => {
@@ -52,8 +41,8 @@ function toSurveyTableRows(surveys: Survey[]): SurveyTableRow[] {
     ];
   });
 }
+
 export default async function Page() {
-  const userProfile = await getCurrentUserProfile();
   const surveys = await getAllUserSurveys();
   const detectedObjects = await getObjectDetectionData();
   const surveyTableRows = toSurveyTableRows(surveys);

@@ -12,7 +12,7 @@ const queryClient = new QueryClient();
 
 export default function SurveyMapCaller(props) {
   useEffect(() => {
-    let protocol = new Protocol();
+    const protocol = new Protocol();
     maplibregl.addProtocol("pmtiles", protocol.tile);
     return () => {
       maplibregl.removeProtocol("pmtiles");

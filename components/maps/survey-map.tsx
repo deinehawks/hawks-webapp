@@ -519,7 +519,6 @@ function FeaturesOfInterest({
   const { surveyMode } = useSurveyModeStore();
 
   const id = survey?.id;
-  if (!id) return null;
 
   // --- Inventory mode: merge everything into one collection ---
   const allBananas = useMemo(
@@ -623,6 +622,8 @@ function FeaturesOfInterest({
     () => calculateOptimalZoomLevels(allBananasFC.features as any),
     [allBananasFC.features],
   );
+
+  if (!id) return null;
 
   const showHealthy = selectedFoi === "healthy" || selectedFoi === "all";
   const showUnhealthy = selectedFoi === "unhealthy" || selectedFoi === "all";
@@ -1106,11 +1107,11 @@ function MapView({
 
   // Show legend ONLY when a crop status is selected (not none/empty)
   const shouldShowLegend =
+    surveyMode === "analysis" &&
     hasOrthoTiles &&
     selectedFoi != null &&
     selectedFoi !== "" &&
     selectedFoi !== "none";
-  surveyMode === "analysis";
 
   const mapStyle = useMemo<StyleSpecification>(
     () => ({
@@ -1455,6 +1456,9 @@ export default function SurveyMap({
   const [activeTab, setActiveTab] = useState("ortho");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const hasSurveyObject = Boolean(survey && typeof survey === "object");
+  const safeSurvey = hasSurveyObject ? survey : {};
+
   const globalCenter: MapCenter = {
     ...(fallbackCenter
       ? { ...DEFAULT_CENTER, ...fallbackCenter }
@@ -1475,7 +1479,13 @@ export default function SurveyMap({
     }
   }, [activeTab, setSelectedFoi]);
 
-  if (!survey || typeof survey !== "object") {
+  const mapCenter = useMapCenter(safeSurvey, globalCenter);
+  const mapBounds = useMapBounds(safeSurvey);
+
+  const { hasValidCoordinates, hasOrthoTiles, shouldShowMap } =
+    useValidationState(safeSurvey);
+
+  if (!hasSurveyObject) {
     return (
       <div className="flex flex-1 flex-col h-full items-center justify-center p-8">
         <Card className="max-w-md">
@@ -1514,12 +1524,6 @@ export default function SurveyMap({
       </div>
     );
   }
-
-  const mapCenter = useMapCenter(survey, globalCenter);
-  const mapBounds = useMapBounds(survey);
-
-  const { hasValidCoordinates, hasOrthoTiles, shouldShowMap } =
-    useValidationState(survey);
 
   const tagsLower = String(survey.tags ?? "").toLowerCase();
 
@@ -1680,3 +1684,4 @@ export default function SurveyMap({
     </div>
   );
 }
+

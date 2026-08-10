@@ -47,10 +47,8 @@ export function NavMain({
   const params = useParams();
   const selectedSurvey = params.surveyId;
   const clientCode = userProfile.client?.code;
+  const sixMonthsAgo = useMemo(() => subMonths(new Date(), 6), []);
 
-  const sixMonthsAgo = subMonths(new Date(), 6);
-
-  // --- Map of survey IDs that are NEW based on created_at
   const surveyNewMap = useMemo(() => {
     const map: Record<string, boolean> = {};
     surveys?.forEach((s) => {
@@ -59,9 +57,8 @@ export function NavMain({
         : false;
     });
     return map;
-  }, [surveys]);
+  }, [surveys, sixMonthsAgo]);
 
-  // --- Map of survey counts per area --- //
   const surveyCounts = useMemo(() => {
     const map: Record<string, { total: number; new: number }> = {};
     if (!surveys) return map;
@@ -82,7 +79,6 @@ export function NavMain({
 
   return (
     <>
-      {/* Orthomap */}
       <SidebarGroup>
         <SidebarGroupLabel>Orthomap</SidebarGroupLabel>
         <SidebarMenu>
@@ -104,7 +100,6 @@ export function NavMain({
         </SidebarMenu>
       </SidebarGroup>
 
-      {/* Survey Data */}
       <SidebarGroup>
         <SidebarGroupLabel>Survey Data</SidebarGroupLabel>
         <SidebarMenu>
@@ -125,8 +120,7 @@ export function NavMain({
                     <span className="font-medium">{item.title}</span>
                     {clientCode && surveyCounts[clientCode] && (
                       <Badge variant="secondary" className="ml-auto flex gap-1">
-                        {" "}
-                        {surveyCounts[clientCode].total}{" "}
+                        {surveyCounts[clientCode].total}
                       </Badge>
                     )}
                     <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
@@ -165,8 +159,6 @@ export function NavMain({
                               className="flex items-center gap-2"
                             >
                               <span>{id}</span>
-
-                              {/* NEW SURVEY BADGE */}
                               {surveyNewMap[id] && (
                                 <Badge variant="secondary" className="ml-auto">
                                   NEW
@@ -185,7 +177,6 @@ export function NavMain({
         </SidebarMenu>
       </SidebarGroup>
 
-      {/* Animations */}
       <style jsx>{`
         @keyframes shimmer {
           0% {

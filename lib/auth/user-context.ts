@@ -25,13 +25,13 @@ export class AuthorizationError extends Error {
 }
 
 function normalizeProfile(profile: ProfileQueryRow): UserProfile {
-  const {
-    access_code: _legacyAccessCode,
-    organization: _legacyOrganization,
-    ...normalized
-  } = profile;
+  const normalized = { ...profile } as Partial<ProfileQueryRow> & {
+    client: Client | null;
+  };
+  delete normalized.access_code;
+  delete normalized.organization;
 
-  return normalized;
+  return normalized as UserProfile;
 }
 
 export const getAuthenticatedUserContext = cache(
