@@ -1,6 +1,6 @@
 # Project Index
 
-Last updated: 2026-08-03
+Last updated: 2026-08-10
 
 Use this file to choose context without loading all docs.
 
@@ -13,13 +13,19 @@ Use this file to choose context without loading all docs.
 - `.project_state/decisions.md`: compressed ADR-style decision summary.
 - `.project_state/architecture_summary.md`: compact architecture overview.
 
-## Planning Docs
+## Planning And Validation Docs
 
 - `docs/admin-dashboard-integration-plan.md`: primary long-form admin, domain, deployment, risk, acceptance, and phase plan. Load targeted sections only.
-- `docs/admin-dashboard-phase-2-discovery.md`: historical read-only discovery of main app, staging metadata, and intern dashboard. Use for provenance, not current status.
+- `docs/protected-asset-implementation-plan.md`: approved app-side protected asset implementation plan.
+- `docs/protected-asset-nginx-handoff-checklist.md`: external NGINX/MinIO/Cloudflare contract and smoke-test checklist.
+- `docs/protected-asset-local-smoke-tests.md`: local protected asset smoke-test runbook.
+- `docs/protected-asset-pilot-validation-log.md`: detailed MinIO/staging pilot chronology and validation notes for `AH-026005`.
+- `docs/protected-asset-rollback-runbook.md`: executable rollback checklist for app, NGINX, MinIO, Supabase manifest, and Cloudflare.
+- `docs/validation-baseline-2026-08-10.md`: latest app validation and smoke-test results.
 - `docs/supabase-migration-runbook.md`: database/domain/storage/contract migration gates, rehearsal, checks, and recovery.
 - `docs/workshop-manifest-template.md`: human-readable sanitized manifest checklist.
 - `docs/workshop-manifest.example.json`: machine-readable sanitized manifest example.
+- `docs/admin-dashboard-phase-2-discovery.md`: historical read-only discovery of main app, staging metadata, and intern dashboard. Use for provenance, not current status.
 - `docs/ASIMOV-HAWKS_Web_App_Deployment_Plan_Final.docx`: owner-supplied source deployment plan. Load only for deployment-plan traceability.
 
 ## Code Locations
@@ -28,6 +34,7 @@ Use this file to choose context without loading all docs.
 - `components/`: UI, map, admin, and visualization components.
 - `lib/actions/`: protected server actions.
 - `lib/auth/user-context.ts`: centralized tenant/user context and access checks.
+- `lib/assets/`: protected asset auth, URL, and storage alias helpers.
 - `utils/supabase/`: Supabase client factories and middleware session handling.
 - `stores/` and `providers/`: map and view state.
 - `supabase/migrations/`: authoritative checked-in schema/policy changes.
