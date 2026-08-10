@@ -40,8 +40,13 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const isInternalAssetAuth =
+    request.nextUrl.pathname === "/internal/asset-auth" ||
+    request.nextUrl.pathname === "/asimov-hawks/internal/asset-auth";
+
   if (
     !user &&
+    !isInternalAssetAuth &&
     !request.nextUrl.pathname.startsWith("/auth") &&
     request.nextUrl.pathname !== "/"
   ) {

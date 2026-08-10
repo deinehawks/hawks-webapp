@@ -1,6 +1,7 @@
 // survey-map.tsx
 "use client";
 
+import { buildTileAssetUrl } from "@/lib/assets/asset-urls";
 import {
   Card,
   CardContent,
@@ -1260,7 +1261,12 @@ function MapView({
               id="ortho"
               type="raster"
               tiles={[
-                `/asimov-hawks/tiles/${codeLower}/${flightYear}/${survey.id}/ortho/${tileFolder}/{z}/{x}/{y}.png`,
+                buildTileAssetUrl({
+                  clientCode: codeLower,
+                  surveyId: survey.id,
+                  tileFolder,
+                  year: flightYear,
+                }),
               ]}
               tileSize={MAP_CONFIG.tileSize}
               scheme="tms"
