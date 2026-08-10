@@ -4,7 +4,7 @@ Last updated: 2026-08-10
 
 ## P1
 
-- Decide whether to continue warning-only lint cleanup or switch to the TypeScript baseline in map, caller, and helper components.
+- Decide whether to continue warning-only lint cleanup or switch to the build heap baseline investigation.
 - Extend protected-asset smoke coverage beyond `AH-026005` to additional representative point clouds and map browser flows.
 - Confirm target environment before any additional remote Supabase migration apply.
 

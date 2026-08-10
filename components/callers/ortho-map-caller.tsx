@@ -1,10 +1,23 @@
 "use client";
 
+import type { ComputerVisionObject } from "@/lib/types";
 import dynamic from "next/dynamic";
 import Lottie from "lottie-react";
 import loadingAnimation from "@/public/loading_blue_dots.json";
 
-export default function OrthoMapCaller(props) {
+type OrthoSurvey = {
+  id: string | number;
+  code?: string | null;
+  flight_date?: string | Date | null;
+};
+
+type OrthoMapCallerProps = {
+  userProfile: unknown;
+  surveys: OrthoSurvey[];
+  detectedObjects: ComputerVisionObject[];
+} & Record<string, unknown>;
+
+export default function OrthoMapCaller(props: OrthoMapCallerProps) {
   const { surveys, detectedObjects } = props;
 
   if (!surveys || !Array.isArray(surveys) || surveys.length === 0) {

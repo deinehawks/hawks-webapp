@@ -22,6 +22,7 @@ Use this file to choose context without loading all docs.
 - `docs/protected-asset-pilot-validation-log.md`: detailed MinIO/staging pilot chronology and validation notes for `AH-026005`.
 - `docs/protected-asset-rollback-runbook.md`: executable rollback checklist for app, NGINX, MinIO, Supabase manifest, and Cloudflare.
 - `docs/validation-baseline-2026-08-10.md`: latest app validation and smoke-test results.
+- `docs/infrastructure-status.md`: source of truth for the dataset-light build context, Docker/NGINX asset split, and exclusion of `public/tiles` and `public/3d` from the runtime image.
 - `docs/supabase-migration-runbook.md`: database/domain/storage/contract migration gates, rehearsal, checks, and recovery.
 - `docs/workshop-manifest-template.md`: human-readable sanitized manifest checklist.
 - `docs/workshop-manifest.example.json`: machine-readable sanitized manifest example.

@@ -4,7 +4,21 @@ import dynamic from "next/dynamic";
 import Lottie from "lottie-react";
 import loadingAnimation from "@/public/loading_blue_dots.json";
 
-export default function DashboardMapCaller(props) {
+type DashboardSurvey = {
+  id: string | number;
+  geojson_boundaries: unknown;
+  boundaries: unknown;
+  min_x: number | null;
+  max_x: number | null;
+  min_y: number | null;
+  max_y: number | null;
+};
+
+type DashboardMapCallerProps = {
+  data: DashboardSurvey[];
+} & Record<string, unknown>;
+
+export default function DashboardMapCaller(props: DashboardMapCallerProps) {
   const { data, ...otherProps } = props;
 
   if (!data || !Array.isArray(data) || data.length === 0) {

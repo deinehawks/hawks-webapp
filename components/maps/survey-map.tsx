@@ -293,8 +293,9 @@ const useMapCenter = (survey: any, fallbackCenter: MapCenter) => {
           survey.geojson_boundaries as any,
         );
         if (extremes) {
-          const centerLng = (extremes.minLng + extremes.maxLng) / 2;
-          const centerLat = (extremes.minLat + extremes.maxLat) / 2;
+          const [minLng, minLat, maxLng, maxLat] = extremes as [number, number, number, number];
+          const centerLng = (minLng + maxLng) / 2;
+          const centerLat = (minLat + maxLat) / 2;
 
           if (isValidCoordinate(centerLng, centerLat)) {
             return { lng: centerLng, lat: centerLat, zoom: 17 };
@@ -322,7 +323,7 @@ const useMapBounds = (survey: any) => {
       const extremes = findExtremeCoordinates(survey.geojson_boundaries as any);
       if (!extremes) return undefined;
 
-      const { minLng, minLat, maxLng, maxLat } = extremes;
+      const [minLng, minLat, maxLng, maxLat] = extremes as [number, number, number, number];
 
       if (
         !isValidCoordinate(minLng, minLat) ||
@@ -905,7 +906,7 @@ function SurveyBoundaries({ survey }: { survey: any }) {
       survey_id: survey.id,
       label: `${survey.code ?? ""}-${survey.area_code ?? ""}`,
     },
-    geometry: { type: "Point", coordinates: centroid },
+    geometry: { type: "Point", coordinates: [...centroid] as [number, number] },
   };
 
   const polygonFC: FeatureCollection<Polygon, GeoJsonProperties> = {
@@ -1040,9 +1041,12 @@ function SurveyBoundaryEvents() {
         );
       }
 
-      hoveredFeatureIdRef.current = e.features[0].id;
+      const featureId = e.features[0]?.id;
+      if (featureId == null) return;
+
+      hoveredFeatureIdRef.current = featureId;
       map.setFeatureState(
-        { source: "survey-boundary", id: hoveredFeatureIdRef.current },
+        { source: "survey-boundary", id: featureId },
         { hover: true },
       );
     },
@@ -1581,7 +1585,7 @@ export default function SurveyMap({
             )}
             {is3D && survey.code && (
               <ThreeDimensionalModelSelector
-                code={String(survey.code)}
+                
                 hasPointCloud={hasPointCloud}
                 hasPhotogrammetryModel={hasPhotogrammetryModel}
                 hasLidarModel={hasLidarModel}

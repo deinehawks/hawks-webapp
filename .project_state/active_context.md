@@ -20,6 +20,7 @@ Current task sequence:
 12. Record the workshop smoke baseline. Completed in `docs/validation-baseline-2026-08-10.md`.
 13. Repair the lint config baseline. Completed: `eslint.config.mjs` now uses `prefer-const`, and `npm run lint` reaches real project findings.
 14. Clear the current lint errors and complete a first warning cleanup pass. Completed; `npm run lint` now exits cleanly with warnings only.
+15. Clear the current TypeScript baseline. Completed; `npx tsc --noEmit` now passes.
 
 Current validation results:
 
@@ -31,7 +32,9 @@ Current validation results:
 - Malformed double-slash protected point-cloud route requests are denied before upstream access.
 - Workshop smoke baseline is documented for login, orthomap, 3D, and fail-closed flows.
 - `npm run lint` now passes with warnings only.
-- `npx tsc --noEmit` and `npm run build` remain known non-green baseline checks.
+- `npx tsc --noEmit` now passes.
+- `npm run build` remains the known non-green baseline check.
+- Build interpretation is constrained: workshop GIS assets belong behind NGINX/MinIO, so a meaningful build baseline should use a dataset-light app context instead of local `public/tiles` and `public/3d`.
 
 Key constraints:
 
@@ -43,4 +46,4 @@ Key constraints:
 
 Next recommended task:
 
-- Decide whether to continue burning down warning-only lint debt or switch to the TypeScript baseline.
+- Decide whether to continue burning down warning-only lint debt or switch to a dataset-light build heap baseline.

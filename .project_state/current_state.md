@@ -18,6 +18,8 @@ Local NGINX app access works after first-compile warmup. User confirmed login at
 
 Workshop smoke baseline is documented in `docs/validation-baseline-2026-08-10.md`: login flow, orthomap flow, protected point-cloud flow, anonymous fail-closed behavior, and malformed double-slash rejection are all recorded for 2026-08-10.
 
-Lint baseline update: `npm run lint` now completes successfully. Error-level lint issues in `components/maps/ortho-map.tsx`, `components/maps/survey-map.tsx`, and `components/survey-page-components/data-tab.tsx` were cleared. Remaining lint output is warning-only and is now concentrated in `no-console`, `@typescript-eslint/no-explicit-any`, and a few hook dependency warnings.
+Validation baseline update: `npm run lint` now completes successfully with warnings only, and `npx tsc --noEmit` now passes after typing cleanup across caller wrappers, survey/ortho map flows, shared helpers, and dashboard map components.
 
-Known validation baseline remains non-green outside DB checks: `npm run lint` passes with warnings; `npx tsc --noEmit` fails on existing application baseline files; `npm run build` reaches the Node heap limit.
+Build-baseline constraint: the workshop target keeps heavy GIS assets behind NGINX + MinIO, not inside the Next.js runtime image. `public/tiles` and `public/3d` should be treated as local operational datasets, so `npm run build` should be evaluated against a dataset-light build context rather than this heavy local checkout.
+
+Known validation baseline remains partially non-green outside DB checks: `npm run lint` passes with warnings, `npx tsc --noEmit` now passes, and `npm run build` still reaches the Node heap limit in the current heavy-asset checkout.

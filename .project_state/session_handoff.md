@@ -10,8 +10,8 @@ User-confirmed smoke status: NGINX app access works after initial Next compile w
 
 Workshop smoke baseline is documented in `docs/validation-baseline-2026-08-10.md`. It records the login flow, orthomap flow, protected point-cloud flow, anonymous fail-closed checks, and malformed double-slash rejection for 2026-08-10.
 
-Lint status update: `eslint.config.mjs` now uses `prefer-const`; the map/data-tab lint errors were cleared; and `npm run lint` now exits successfully with warnings only. The remaining lint debt is mostly `no-console`, `@typescript-eslint/no-explicit-any`, and a few hook dependency warnings.
+Validation status update: `eslint.config.mjs` now uses `prefer-const`; the map/data-tab lint errors were cleared; `npm run lint` now exits successfully with warnings only; and `npx tsc --noEmit` now passes after typing cleanup across caller wrappers, dashboard/survey/ortho map components, and shared helpers.
 
 Git status note: feature commit `57b6b378` is pushed to `origin/feature/workshop-manifest-gate`, and `origin/development` includes the merge at `6be83d42`.
 
-Next task: choose between continuing warning-only lint cleanup or switching to the TypeScript baseline.
+Next task: choose between continuing warning-only lint cleanup or switching to the build heap baseline and `npm run build` investigation.

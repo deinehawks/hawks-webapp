@@ -499,7 +499,12 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
 
   // ADD: Calculate bounds safely
   const bounds = hasValidBoundaries
-    ? findExtremeCoordinates(survey.geojson_boundaries)
+    ? findExtremeCoordinates(
+        (survey.geojson_boundaries as unknown as string[][]).map((pair) => [
+          parseFloat(pair[0]),
+          parseFloat(pair[1]),
+        ]),
+      )
     : null;
 
   // ADD: Calculate center coordinates safely
@@ -528,7 +533,7 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
                 initialViewState={{
                   longitude: centerLng,
                   latitude: centerLat,
-                  bounds: bounds,
+                  bounds: bounds ?? undefined,
                   fitBoundsOptions: { padding: 25 },
                 }}
                 mapStyle={{

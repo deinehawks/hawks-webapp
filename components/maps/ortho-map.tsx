@@ -1338,7 +1338,7 @@ export default function OrthoMap({
                         exit={{ opacity: 0, y: 10 }}
                         transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
                       >
-                        <MapLegend selectedFoi={selectedFoi} />
+                        <MapLegend />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -1347,7 +1347,7 @@ export default function OrthoMap({
             </CardContent>
 
             <CardFooter>
-              <SourceLoadingStatus idList={surveyIds} />
+              <SourceLoadingStatus />
             </CardFooter>
           </Card>
         </div>
