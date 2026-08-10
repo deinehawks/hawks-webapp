@@ -6,9 +6,7 @@ Status: detailed operational note for the 2026-08-05 protected tile pilot. Keep 
 
 ## Summary
 
-The first protected tile pilot for `AH-026005` selected a route-compatible v1 layout and moved the verified DNG round-corners tile subset into the real MinIO `tiles` bucket. Staging manifest supersession produced active approved `manifest-2026-08-07`, which points to bucket alias `tiles` and object path `dng/2026/AH-026005/ortho/round-corners`.
-
-Authenticated browser/NGINX smoke testing is still pending after restarting Next dev with `PROTECTED_ASSET_STORAGE_TILES_ROOT=tiles`.
+The protected asset pilot for `AH-026005` now has working authenticated 2D tile and 3D point-cloud delivery through local NGINX using active approved staging manifest `manifest-2026-08-10`. The active manifest points to MinIO bucket alias `tiles` for the DNG round-corners tile subset and MinIO bucket alias `pointclouds` for the ODM PCD at `dng/2026/AH-026005/point-clouds/odm.pcd`.
 
 ## Staging Database State
 
@@ -47,7 +45,8 @@ Real bucket correction:
 - The copied subset was mirrored from temporary `hawks-pilot` into real MinIO bucket `tiles`.
 - Approved manifests are immutable, so correction used the supersession workflow.
 - `manifest-2026-08-05` and `manifest-2026-08-06` are superseded.
-- Active approved manifest is now `manifest-2026-08-07` with `destination_storage_alias=tiles` and metadata `object_path=dng/2026/AH-026005/ortho/round-corners`.
+- `manifest-2026-08-07` became the first real-bucket active manifest.
+- `manifest-2026-08-10` is now the active approved manifest and supersedes `manifest-2026-08-07` after point-cloud coverage was added.
 
 ## MinIO Tile Migration
 
@@ -78,20 +77,22 @@ Passing checks:
 - Anonymous protected point-cloud requests through NGINX return `401`.
 - DB-side RPC simulation as platform admin returns the pilot manifest entry.
 - DB-side RPC simulation as a real DNG profile returns the pilot manifest entry after client authorization correction.
+- Authenticated direct z11 and z23 tile requests through NGINX succeed.
+- Browser orthomap renders available `AH-026005` tiles through NGINX using the active manifest and real `tiles` bucket.
+- Survey 3D tab loads the protected ODM point cloud through NGINX after setting `PROTECTED_ASSET_STORAGE_POINTCLOUDS_ROOT=pointclouds` and restarting Next.
 
-Pending checks:
-
-- Restart Next dev with `PROTECTED_ASSET_STORAGE_TILES_ROOT=tiles`.
-- Authenticated direct tile request through NGINX should return `200` for z11 and z23 sample URLs.
-- Browser map should render available `AH-026005` tiles through NGINX using the active manifest and real `tiles` bucket.
-
-Sample URLs:
+Relevant URLs:
 
 - `/asimov-hawks/tiles/dng/2026/AH-026005/ortho/round-corners/11/1739/1067.png`
 - `/asimov-hawks/tiles/dng/2026/AH-026005/ortho/round-corners/23/7125550/4370844.png`
+- `/asimov-hawks/3d/dng/2026/AH-026005/odm.pcd`
 
 ## Troubleshooting Notes
 
 A prior NGINX `500` was caused by `X-Asset-Upstream-URI` missing a leading slash, which produced an invalid upstream such as `minio:9000hawks-pilot/...`. The local fix in `lib/assets/minio-aliases.ts` returns a leading-slash path. After changing the env alias or this helper, restart Next dev before retesting.
 
-If authenticated requests still return `401`, verify cookies are forwarded, `X-Original-URI` matches the `/asimov-hawks/...` asset route, and `manifest-2026-08-07` is active. If authenticated requests return `404` or `502`, inspect NGINX dynamic upstream mapping from `X-Asset-Upstream-URI` to MinIO and verify the `tiles` bucket object prefix exists.
+The webapp initially failed to render pilot tiles because the orthomap requested `/ortho/sharp-corners/...` while the active protected manifest covered `/ortho/round-corners/...`. Local fix in `components/maps/ortho-map.tsx` now uses `survey.ortho?.tile_folder ?? "round-corners"` in the orthomap raster URL builders.
+
+The 3D tab also hit a React Three Fiber fallback bug: DOM `<div>` fallback content was rendered inside `<Canvas>`. Local fix in `components/threejs/3d-model.tsx` adds a Drei `<Html>` canvas fallback for checking, oversized, and failed point-cloud states.
+
+Malformed direct URLs are denied before upstream access. Requesting `//asimov-hawks/3d/dng/2026/AH-026005/odm.pcd` returns `401` with `protected_asset_denied` reason `malformed_request` because the double leading slash breaks the protected route contract.

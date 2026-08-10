@@ -4,8 +4,8 @@ Last updated: 2026-08-10
 
 ## P1
 
-- Diagnose local Next dev route timeouts that block `/asimov-hawks`, `/internal/asset-auth`, and protected tile smoke tests.
-- Rerun authenticated NGINX/browser smoke tests against active staging manifest `manifest-2026-08-07` and real MinIO `tiles` bucket sample URLs for `AH-026005`.
+- Commit and share the verified protected-asset follow-up: orthomap tile-folder fix, point-cloud canvas fallback fix, and refreshed validation/state notes.
+- Run a compact workshop smoke baseline covering login, one orthomap flow, one protected point-cloud flow, and fail-closed anonymous checks against active staging manifest `manifest-2026-08-10`.
 - Decide whether to fix the lint config baseline now that `next lint` fails on the `prefer const` plugin issue.
 - Confirm target environment before any additional remote Supabase migration apply.
 
@@ -14,7 +14,7 @@ Last updated: 2026-08-10
 - Resolve or formally baseline existing TypeScript errors in map/caller/helper components.
 - Investigate `npm run build` heap exhaustion and document the accepted build command or memory setting.
 - Containerize Next.js with standalone output and a `.dockerignore` excluding secrets, GIS assets, local backups, and generated datasets.
-- Extend protected-asset smoke coverage from sample tiles to representative point clouds and map browser flows.
+- Extend protected-asset smoke coverage beyond the current pilot survey to additional representative point clouds and map browser flows.
 
 ## P3
 

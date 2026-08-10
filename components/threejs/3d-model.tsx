@@ -2,7 +2,7 @@
 
 import { buildPointCloudAssetUrl } from "@/lib/assets/asset-urls";
 import { useSurveyMapStore } from "@/providers/survey-map-store-provider";
-import { Bounds, Center, OrbitControls } from "@react-three/drei";
+import { Bounds, Center, Html, OrbitControls } from "@react-three/drei";
 import { Canvas, useLoader } from "@react-three/fiber";
 import { getYear } from "date-fns";
 import { Component, ReactNode, useEffect, useMemo, useState } from "react";
@@ -51,6 +51,16 @@ function PointCloudFallback({ message }: { message: string }) {
   );
 }
 
+function PointCloudCanvasFallback({ message }: { message: string }) {
+  return (
+    <Html center>
+      <div className="w-64 rounded-md border bg-background/95 px-4 py-3 text-center text-sm text-muted-foreground shadow-sm">
+        {message}
+      </div>
+    </Html>
+  );
+}
+
 class PointCloudErrorBoundary extends Component<
   { children: ReactNode },
   { hasError: boolean }
@@ -67,7 +77,7 @@ class PointCloudErrorBoundary extends Component<
 
   render() {
     if (this.state.hasError) {
-      return <PointCloudFallback message="This point cloud cannot be loaded right now." />;
+      return <PointCloudCanvasFallback message="This point cloud cannot be loaded right now." />;
     }
 
     return this.props.children;
@@ -151,15 +161,15 @@ function PointCloudPreflight({
   }, [url]);
 
   if (state.status === "checking") {
-    return <PointCloudFallback message="Checking point cloud size..." />;
+    return <PointCloudCanvasFallback message="Checking point cloud size..." />;
   }
 
   if (state.status === "oversized") {
-    return <PointCloudFallback message={POINT_CLOUD_LIMIT_MESSAGE} />;
+    return <PointCloudCanvasFallback message={POINT_CLOUD_LIMIT_MESSAGE} />;
   }
 
   if (state.status === "failed") {
-    return <PointCloudFallback message="This point cloud cannot be loaded right now." />;
+    return <PointCloudCanvasFallback message="This point cloud cannot be loaded right now." />;
   }
 
   return <>{children}</>;

@@ -77,6 +77,7 @@ type SurveyLike = {
   id: string | number;
   code?: string | null;
   flight_date?: string | Date | null;
+  ortho?: { tile_folder?: string | null } | null;
   boundaries?: unknown[];
   min_y?: number;
   max_y?: number;
@@ -620,7 +621,7 @@ const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
         tileUrl: buildTileAssetUrl({
           clientCode: String(survey.code),
           surveyId: String(survey.id),
-          tileFolder: "sharp-corners",
+          tileFolder: survey.ortho?.tile_folder ?? "round-corners",
           year: getYear(new Date(survey.flight_date as any)),
         }),
       }));
@@ -1282,7 +1283,8 @@ export default function OrthoMap({
                           buildTileAssetUrl({
                             clientCode: String(survey.code),
                             surveyId: String(survey.id),
-                            tileFolder: "sharp-corners",
+                            tileFolder:
+                              survey.ortho?.tile_folder ?? "round-corners",
                             year: getYear(new Date(survey.flight_date as any)),
                           }),
                         ]}

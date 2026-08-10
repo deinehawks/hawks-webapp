@@ -12,10 +12,12 @@ Manifest schema/RLS/audit migrations have been applied locally and to linked sta
 
 Protected asset delivery is an NGINX + MinIO design with app-side auth at `/asimov-hawks/internal/asset-auth`. Recent committed slices: `5e0e4dea` app auth/RPC/tests, `284751de` point-cloud fallback, and `e30d8d96` asset URL helper plus NGINX handoff and smoke-test docs.
 
-Active protected tile pilot: staging manifest `manifest-2026-08-07` is approved for `AH-026005` DNG round-corners tiles in MinIO bucket alias `tiles` at `dng/2026/AH-026005/ortho/round-corners`. Verified copied subset is `42,547` objects / `2.8GiB`; details are in `docs/protected-asset-pilot-validation-log.md`.
+Active protected asset pilot: staging manifest `manifest-2026-08-10` is approved/active for `AH-026005`. It includes the DNG round-corners `tile_group` in MinIO bucket alias `tiles` and the ODM `point_cloud` in bucket alias `pointclouds` at `dng/2026/AH-026005/point-clouds/odm.pcd`. `manifest-2026-08-07` is superseded/inactive.
 
-Rollback planning now lives in `docs/protected-asset-rollback-runbook.md`. Current validation snapshot lives in `docs/validation-baseline-2026-08-10.md`.
+Local NGINX app access works after first-compile warmup. User confirmed login at `/asimov-hawks/auth/login`, authenticated direct z11/z23 pilot tile URLs, orthomap tile rendering through `http://localhost:8080`, and the survey 3D tab loading the protected ODM point cloud through NGINX.
 
-Current blocker: Next dev starts with `PROTECTED_ASSET_STORAGE_TILES_ROOT=tiles` and reports ready, but local `/asimov-hawks`, NGINX `/asimov-hawks`, protected tile routes, and direct `/internal/asset-auth` probes timed out while the app was compiling/serving. Authenticated protected tile smoke tests remain pending.
+Current local fixes ready to commit: `components/maps/ortho-map.tsx` uses `survey.ortho?.tile_folder ?? "round-corners"` instead of hardcoded `sharp-corners`, matching the active pilot manifest. `components/threejs/3d-model.tsx` uses Drei `<Html>` for point-cloud canvas fallback messages instead of rendering a raw DOM `<div>` inside `<Canvas>`.
 
-Known validation baseline remains non-green outside DB checks: `npm run lint` fails on the documented `prefer const` plugin config issue; `npx tsc --noEmit` fails on existing application baseline files and does not list protected-asset helper files; `npm run build` reaches the Node heap limit.
+Protected asset route behavior now matches the current pilot expectations: anonymous shell checks return `401` for protected tile and point-cloud routes, while malformed double-slash requests such as `//asimov-hawks/3d/...` are rejected with `protected_asset_denied reason='malformed_request'`.
+
+Known validation baseline remains non-green outside DB checks: `npm run lint` fails on the documented `prefer const` plugin config issue; `npx tsc --noEmit` fails on existing application baseline files; `npm run build` reaches the Node heap limit.
