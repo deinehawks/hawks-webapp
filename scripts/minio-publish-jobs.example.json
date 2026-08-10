@@ -1,0 +1,28 @@
+{
+  "defaults": {
+    "uploadConcurrency": 3
+  },
+  "jobs": [
+    {
+      "id": "barbco2026-ah-0260001",
+      "clientCode": "barbco2026",
+      "year": 2026,
+      "surveyId": "AH-0260001",
+      "batching": {
+        "maxGroupsPerBatch": 25,
+        "maxFilesPerBatch": 6500,
+        "maxBytesPerBatch": 175000000
+      },
+      "tiles": [
+        {
+          "tileFolder": "round-corners",
+          "destinationAlias": "tiles"
+        }
+      ],
+      "pointCloud": {
+        "file": "odm.pcd",
+        "destinationAlias": "pointclouds"
+      }
+    }
+  ]
+}

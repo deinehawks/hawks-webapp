@@ -21,6 +21,9 @@ Current task sequence:
 13. Repair the lint config baseline. Completed: `eslint.config.mjs` now uses `prefer-const`, and `npm run lint` reaches real project findings.
 14. Clear the current lint errors and complete a first warning cleanup pass. Completed; `npm run lint` now exits cleanly with warnings only.
 15. Clear the current TypeScript baseline. Completed; `npx tsc --noEmit` now passes.
+16. Define controlled MinIO migration-wave plan. Completed in `docs/workshop-asset-migration-wave-plan.md`.
+17. Prepare the first concrete Wave 1 asset set. Completed in `docs/workshop-wave1-staging-prep-2026-08-10.md`.
+18. Build config-driven protected asset publisher automation. Completed locally in `scripts/publish-protected-assets.js` with example config `scripts/minio-publish-jobs.example.json`.
 
 Current validation results:
 
@@ -35,6 +38,10 @@ Current validation results:
 - `npx tsc --noEmit` now passes.
 - `npm run build` remains the known non-green baseline check.
 - Build interpretation is constrained: workshop GIS assets belong behind NGINX/MinIO, so a meaningful build baseline should use a dataset-light app context instead of local `public/tiles` and `public/3d`.
+- Controlled MinIO migration expansion is planned as small workshop-candidate waves, not full-history migration.
+- Local execution prep confirms `AH-026005` still has an uncopied `round-corners/24` tile prefix, and `barbco2026/AH-0260001` is the selected first non-DNG Wave 1 candidate with a local ODM point cloud present.
+- Manual `AH-026005` zoom-24 upload crashed MinIO when attempted as one large paste; staged batch upload succeeded for Batch 1.
+- The new publisher dry-run for `barbco2026/AH-0260001` succeeded, planned `48` tile batches for `round-corners`, and planned the ODM point-cloud upload to `pointclouds/barbco2026/2026/AH-0260001/point-clouds/odm.pcd`.
 
 Key constraints:
 
@@ -46,4 +53,4 @@ Key constraints:
 
 Next recommended task:
 
-- Decide whether to continue burning down warning-only lint debt or switch to a dataset-light build heap baseline.
+- Continue the staged `AH-026005` zoom-24 batch uploads, then provide live MinIO credentials to exercise `scripts/publish-protected-assets.js --apply` for `barbco2026/AH-0260001` and use its report/state output to drive manifest supersession and smoke tests.

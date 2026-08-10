@@ -12,6 +12,28 @@ Workshop smoke baseline is documented in `docs/validation-baseline-2026-08-10.md
 
 Validation status update: `eslint.config.mjs` now uses `prefer-const`; the map/data-tab lint errors were cleared; `npm run lint` now exits successfully with warnings only; and `npx tsc --noEmit` now passes after typing cleanup across caller wrappers, dashboard/survey/ortho map components, and shared helpers.
 
+MinIO migration-wave planning is documented in `docs/workshop-asset-migration-wave-plan.md`. Exact Wave 1 execution prep is documented in `docs/workshop-wave1-staging-prep-2026-08-10.md`.
+
+Current Wave 1 selection and gaps:
+
+- `AH-026005` still has a remaining local `round-corners/24` tile prefix that should be copied into the `tiles` bucket before treating the control sample as complete.
+- Manual upload of the full `AH-026005` zoom-24 scope crashed MinIO; staged batch upload succeeded for Batch 1 using `scripts/stage-ah-026005-z24-batch.ps1`.
+- `barbco2026/AH-0260001` is the selected first non-DNG workshop candidate.
+- Local inventory for `AH-0260001` confirms `round-corners` and `sharp-corners` tile folders, zoom levels `11` through `24`, and an `odm.pcd` point cloud at `58,328,382` bytes.
+- App-side tile requests use `survey.ortho?.tile_folder ?? "round-corners"`, so `round-corners` is the minimum safe tile-group mirror unless staging data explicitly points to `sharp-corners`.
+
+Protected asset publisher automation now exists:
+
+- `scripts/publish-protected-assets.js`
+- `scripts/minio-publish-jobs.example.json`
+- npm scripts: `npm run publish-protected-assets` and `npm run publish-protected-assets:apply`
+- report output: `.tmp/minio-publish-reports/`
+- resumable state output: `.tmp/minio-publish-state/`
+
+Dry-run planning for `barbco2026/AH-0260001` succeeded. It planned `48` tile batches for `round-corners` and one point-cloud upload to `pointclouds/barbco2026/2026/AH-0260001/point-clouds/odm.pcd`.
+
+Live apply has not been exercised yet because this repo-local environment does not currently expose MinIO connection credentials. The uploader expects private env vars such as `MINIO_S3_ENDPOINT`, `MINIO_ACCESS_KEY`, and `MINIO_SECRET_KEY`, while still reusing the existing alias roots like `PROTECTED_ASSET_STORAGE_TILES_ROOT` and `PROTECTED_ASSET_STORAGE_POINTCLOUDS_ROOT`.
+
 Git status note: feature commit `57b6b378` is pushed to `origin/feature/workshop-manifest-gate`, and `origin/development` includes the merge at `6be83d42`.
 
-Next task: choose between continuing warning-only lint cleanup or switching to the build heap baseline and `npm run build` investigation.
+Next task: continue the staged `AH-026005` zoom-24 uploads, then run the new publisher in apply mode for `barbco2026/AH-0260001` once live MinIO credentials are available, then supersede the staging manifest and run authenticated plus anonymous NGINX smoke tests.

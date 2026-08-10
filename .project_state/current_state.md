@@ -20,6 +20,8 @@ Workshop smoke baseline is documented in `docs/validation-baseline-2026-08-10.md
 
 Validation baseline update: `npm run lint` now completes successfully with warnings only, and `npx tsc --noEmit` now passes after typing cleanup across caller wrappers, survey/ortho map flows, shared helpers, and dashboard map components.
 
+Protected asset publisher automation now exists locally in `scripts/publish-protected-assets.js` with example config `scripts/minio-publish-jobs.example.json`. Dry-run planning for `barbco2026/AH-0260001` succeeded and wrote a report under `.tmp/minio-publish-reports/`.
+
 Build-baseline constraint: the workshop target keeps heavy GIS assets behind NGINX + MinIO, not inside the Next.js runtime image. `public/tiles` and `public/3d` should be treated as local operational datasets, so `npm run build` should be evaluated against a dataset-light build context rather than this heavy local checkout.
 
 Known validation baseline remains partially non-green outside DB checks: `npm run lint` passes with warnings, `npx tsc --noEmit` now passes, and `npm run build` still reaches the Node heap limit in the current heavy-asset checkout.

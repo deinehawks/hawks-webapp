@@ -57,9 +57,10 @@ export function resolveProtectedAssetStorageTarget({
   const storageRoot = resolveStorageRoot(storageAlias);
   const prefix = resolvePrefix(destinationPrefixAlias);
   const cleanedObjectPath = cleanPathSegment(objectPath);
-  const upstreamUri = ["", storageRoot, prefix, cleanedObjectPath]
+  const upstreamPath = [storageRoot, prefix, cleanedObjectPath]
     .filter(Boolean)
     .join("/");
+  const upstreamUri = `/${upstreamPath}`;
 
   if (upstreamUri.includes("..")) {
     throw new Error("Invalid protected asset upstream path.");
