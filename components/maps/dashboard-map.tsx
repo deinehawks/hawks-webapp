@@ -3,13 +3,14 @@
 import { Separator } from "@/components/ui/separator";
 import { calculateGlobalCenters, findExtremeCoordinates } from "@/lib/helpers";
 import { LngLatLike, Map, Popup, useMap } from "@vis.gl/react-maplibre";
+import type { Feature, GeoJsonProperties, Point, Polygon } from "geojson";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Calculate polygon centroid
-function calculateCentroid(coordinates) {
+function calculateCentroid(coordinates: number[][][]) {
   let sumX = 0;
   let sumY = 0;
   const points = coordinates[0]; // First ring of polygon
@@ -22,7 +23,7 @@ function calculateCentroid(coordinates) {
   return [sumX / points.length, sumY / points.length];
 }
 
-function MapPopup({ popupInfo, setPopupInfo }) {
+function MapPopup({ popupInfo, setPopupInfo }: { popupInfo: any; setPopupInfo: (value: any) => void }) {
   return (
     <AnimatePresence mode="wait">
       {popupInfo && (
@@ -161,22 +162,22 @@ function MapPopup({ popupInfo, setPopupInfo }) {
   );
 }
 
-function MapEvents({ data, setPopupInfo }) {
+function MapEvents({ data, setPopupInfo }: { data: any[]; setPopupInfo: (value: any) => void }) {
   const { current: map } = useMap();
-  const hoveredAreaIdRef = useRef(null);
+  const hoveredAreaIdRef = useRef<string | number | null>(null);
 
   const handleMapClick = useCallback(
-    (e) => {
+    (e: any) => {
       if (!data || !e.features?.length) return;
 
       const clickedAreaData = data.find(
-        (datum) => datum.id === e.features[0]?.properties.survey_id,
+        (datum: any) => datum.id === e.features[0]?.properties.survey_id,
       );
 
       if (clickedAreaData) {
         // Calculate the centroid of the clicked polygon
         const coordinates = [
-          clickedAreaData.geojson_boundaries.map((pair) => [
+          clickedAreaData.geojson_boundaries.map((pair: string[]) => [
             parseFloat(pair[0]),
             parseFloat(pair[1]),
           ]),
@@ -203,7 +204,7 @@ function MapEvents({ data, setPopupInfo }) {
   );
 
   const handleMouseMove = useCallback(
-    (e) => {
+    (e: any) => {
       if (!map || !e.features?.length) return;
 
       map.getCanvas().style.cursor = "pointer";
@@ -214,9 +215,12 @@ function MapEvents({ data, setPopupInfo }) {
           { hover: false },
         );
       }
-      hoveredAreaIdRef.current = e.features[0].id;
+      const featureId = e.features[0]?.id;
+      if (featureId == null) return;
+
+      hoveredAreaIdRef.current = featureId;
       map.setFeatureState(
-        { source: "areas", id: hoveredAreaIdRef.current },
+        { source: "areas", id: featureId },
         { hover: true },
       );
     },
@@ -252,7 +256,7 @@ function MapEvents({ data, setPopupInfo }) {
   useEffect(() => {
     if (!map || !data.length) return;
 
-    const bounds: LngLatLike[][] = data.map((area) =>
+    const bounds: LngLatLike[][] = data.map((area: any) =>
       area.geojson_boundaries.map((pair: string[]) => [
         parseFloat(pair[0]),
         parseFloat(pair[1]),
@@ -260,6 +264,7 @@ function MapEvents({ data, setPopupInfo }) {
     );
 
     const extremePoints = findExtremeCoordinates(bounds);
+    if (!extremePoints) return;
 
     map.fitBounds(extremePoints, {
       padding: { top: 50, bottom: 50, left: 50, right: 50 },
@@ -270,8 +275,8 @@ function MapEvents({ data, setPopupInfo }) {
   return null;
 }
 
-export default function MapLibre({ data: surveys }) {
-  const [popupInfo, setPopupInfo] = useState(null);
+export default function MapLibre({ data: surveys }: { data: any[] }) {
+  const [popupInfo, setPopupInfo] = useState<any>(null);
 
   const { global_x, global_y } = calculateGlobalCenters(surveys);
 
@@ -282,9 +287,9 @@ export default function MapLibre({ data: surveys }) {
   };
 
   // Create polygon features
-  const polygonFeatures = surveys.map((survey) => {
+  const polygonFeatures: Feature<Polygon, GeoJsonProperties>[] = surveys.map((survey: any) => {
     const coordinates = [
-      survey.geojson_boundaries.map((pair) => [
+      survey.geojson_boundaries.map((pair: string[]) => [
         parseFloat(pair[0]),
         parseFloat(pair[1]),
       ]),
@@ -302,9 +307,9 @@ export default function MapLibre({ data: surveys }) {
   });
 
   // Create separate point features for labels at polygon centroids
-  const labelFeatures = surveys.map((survey) => {
+  const labelFeatures: Feature<Point, GeoJsonProperties>[] = surveys.map((survey: any) => {
     const coordinates = [
-      survey.geojson_boundaries.map((pair) => [
+      survey.geojson_boundaries.map((pair: string[]) => [
         parseFloat(pair[0]),
         parseFloat(pair[1]),
       ]),
@@ -319,7 +324,7 @@ export default function MapLibre({ data: surveys }) {
       },
       geometry: {
         type: "Point",
-        coordinates: centroid,
+        coordinates: [...centroid] as [number, number],
       },
     };
   });
@@ -467,7 +472,6 @@ export default function MapLibre({ data: surveys }) {
           },
         ],
       }}
-      attributionControl={true}
     >
       <MapEvents data={surveys} setPopupInfo={setPopupInfo} />
       {popupInfo && (

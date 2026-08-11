@@ -1,13 +1,6 @@
-// Updated data-tab.tsx
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MapPinned, Cuboid, AlertCircle } from "lucide-react";
@@ -15,12 +8,18 @@ import { Separator } from "@/components/ui/separator";
 import { ThreeDimensionalModelCard } from "@/components/3d-model-card";
 import { ortho } from "@/data/orthomosaic";
 
+interface SurveyDataTabSurvey {
+  code?: string | null;
+  ortho?: unknown;
+  point_cloud?: unknown;
+}
+
 interface OrthoTabContentProps {
-  survey: any;
+  survey: SurveyDataTabSurvey;
 }
 
 export function OrthoTabContent({ survey }: OrthoTabContentProps) {
-  const hasOrthoData = (survey as any).ortho != null;
+  const hasOrthoData = survey.ortho != null;
 
   return (
     <Card className="h-full border-0 shadow-none">
@@ -59,7 +58,7 @@ export function OrthoTabContent({ survey }: OrthoTabContentProps) {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Data unavailable</AlertTitle>
             <AlertDescription>
-              This survey doesn't have orthomosaic data available yet.
+              This survey doesn&apos;t have orthomosaic data available yet.
             </AlertDescription>
           </Alert>
         )}
@@ -69,7 +68,7 @@ export function OrthoTabContent({ survey }: OrthoTabContentProps) {
 }
 
 interface ThreeDTabContentProps {
-  survey: any;
+  survey: SurveyDataTabSurvey;
 }
 
 export function ThreeDTabContent({ survey }: ThreeDTabContentProps) {
@@ -97,7 +96,6 @@ export function ThreeDTabContent({ survey }: ThreeDTabContentProps) {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Point cloud section */}
         {!survey.code ? (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -119,7 +117,7 @@ export function ThreeDTabContent({ survey }: ThreeDTabContentProps) {
           <div className="space-y-4">
             <div>
               <div className="relative min-h-75 rounded-lg bg-card/50 p-4">
-                <ThreeDimensionalModelCard pcd={survey.point_cloud as any} />
+                <ThreeDimensionalModelCard />
               </div>
             </div>
           </div>

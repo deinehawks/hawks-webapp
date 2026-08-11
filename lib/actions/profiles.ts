@@ -52,11 +52,11 @@ export async function getUserProfile(id: string) {
     const typedProfile = profile as unknown as Tables<"profiles"> & {
       client: Client | null;
     };
-    const {
-      access_code: _legacyAccessCode,
-      organization: _legacyOrganization,
-      ...normalized
-    } = typedProfile;
+    const normalized = { ...typedProfile } as Partial<typeof typedProfile> & {
+      client: Client | null;
+    };
+    delete normalized.access_code;
+    delete normalized.organization;
 
     return normalized as UserProfile;
   } catch (error) {

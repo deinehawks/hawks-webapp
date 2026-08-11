@@ -13,13 +13,11 @@ import {
 import { Label } from "@/components/ui/label";
 
 export function ThreeDimensionalModelSelector({
-  code,
   hasPointCloud,
   hasPhotogrammetryModel,
   hasLidarModel,
   disabled = false,
 }: {
-  code: string;
   hasPointCloud: boolean;
   hasPhotogrammetryModel: boolean;
   hasLidarModel: boolean;
@@ -27,17 +25,15 @@ export function ThreeDimensionalModelSelector({
 }) {
   const { selected3dModel, setSelected3dModel } = useSurveyMapStore((s) => s);
 
-  // Enable selector if point cloud exists
   const isDisabled = disabled || !hasPointCloud;
 
-  // Auto-pick a sensible default when data becomes available
   useEffect(() => {
     if (isDisabled) return;
     if (selected3dModel) return;
 
     if (hasLidarModel) setSelected3dModel("pcd-lidar");
     else if (hasPhotogrammetryModel) setSelected3dModel("pcd-odm");
-    else setSelected3dModel("pcd"); // fallback when type is unknown
+    else setSelected3dModel("pcd");
   }, [
     isDisabled,
     selected3dModel,
@@ -81,7 +77,6 @@ export function ThreeDimensionalModelSelector({
               </SelectItem>
             )}
 
-            {/* Fallback if we can't detect which kind */}
             {!hasLidarModel && !hasPhotogrammetryModel && (
               <SelectItem value="pcd">Point Cloud</SelectItem>
             )}
@@ -94,7 +89,7 @@ export function ThreeDimensionalModelSelector({
 
 export function ThreeDimensionalAxesHelperSwitch() {
   const { show3dAxesHelper, setShow3dAxesHelper } = useSurveyMapStore(
-    (state) => state
+    (state) => state,
   );
 
   return (

@@ -45,21 +45,17 @@ function isTransientNetworkError(error: unknown) {
 }
 
 function normalizeSurvey(row: SurveyQueryRow): Survey {
-  const {
-    access_code: _legacyAccessCode,
-    code: _legacyCode,
-    organization_code: _legacyOrganizationCode,
-    ortho: _legacyOrtho,
-    point_cloud: _legacyPointCloud,
-    orthos,
-    point_clouds,
-    client,
-    ...survey
-  } = row;
+  const { orthos, point_clouds, client, ...survey } = row;
 
   if (!client) {
     throw new Error(`Survey ${row.id} is missing its client relationship.`);
   }
+
+  delete (survey as Partial<SurveyQueryRow>).access_code;
+  delete (survey as Partial<SurveyQueryRow>).code;
+  delete (survey as Partial<SurveyQueryRow>).organization_code;
+  delete (survey as Partial<SurveyQueryRow>).ortho;
+  delete (survey as Partial<SurveyQueryRow>).point_cloud;
 
   return {
     ...survey,
@@ -230,3 +226,5 @@ export async function getObjectDetectionData(
     return [];
   }
 }
+
+

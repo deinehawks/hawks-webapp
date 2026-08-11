@@ -8,7 +8,6 @@ import {
   UserRoundCheckIcon,
   UserRoundCogIcon,
   UserRoundPenIcon,
-  type LucideIcon,
 } from "lucide-react";
 
 import {

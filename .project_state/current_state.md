@@ -1,6 +1,6 @@
 # Current State
 
-Last updated: 2026-08-10
+Last updated: 2026-08-11
 
 Current branch observed by Codex: `feature/workshop-manifest-gate`.
 
@@ -10,14 +10,20 @@ Phase 3I-A workshop manifest decisions are closed for v1. Real populated manifes
 
 Manifest schema/RLS/audit migrations have been applied locally and to linked staging Supabase project `llealjcaqvltrtdwwzrh` after target confirmation. Local structural verification and pgTAP tests pass; full local DB suite passes 4 files / 66 tests. Remote migration list shows migrations through `20260804004000` applied, and remote schema lint reports no errors.
 
-Protected asset delivery is an NGINX + MinIO design with app-side auth at `/asimov-hawks/internal/asset-auth`. Recent committed slices: `5e0e4dea` app auth/RPC/tests, `284751de` point-cloud fallback, and `e30d8d96` asset URL helper plus NGINX handoff and smoke-test docs.
+Protected asset delivery is an NGINX + MinIO design with app-side auth at `/asimov-hawks/internal/asset-auth`. Recent committed slices: `5e0e4dea` app auth/RPC/tests, `284751de` point-cloud fallback, `e30d8d96` asset URL helper plus NGINX handoff and smoke-test docs, `d3daf0cd` refreshed protected-asset docs/state, `57b6b378` protected-asset pilot smoke follow-up, and `e291f0ac` publisher workflow improvements.
 
-Active protected asset pilot: staging manifest `manifest-2026-08-10` is approved/active for `AH-026005`. It includes the DNG round-corners `tile_group` in MinIO bucket alias `tiles` and the ODM `point_cloud` in bucket alias `pointclouds` at `dng/2026/AH-026005/point-clouds/odm.pcd`. `manifest-2026-08-07` is superseded/inactive.
+Active protected asset pilot: staging manifest `manifest-2026-08-11` is approved/active. It includes `AH-026005` DNG protected tiles/point cloud and `barbco2026` protected survey assets. `manifest-2026-08-10` is superseded/inactive. User confirmed `AH-026005`, including zoom `24`, and the current Barbco protected datasets display tiles and 3D assets correctly.
 
 Local NGINX app access works after first-compile warmup. User confirmed login at `/asimov-hawks/auth/login`, authenticated direct z11/z23 pilot tile URLs, orthomap tile rendering through `http://localhost:8080`, and the survey 3D tab loading the protected ODM point cloud through NGINX.
 
-Current local fixes ready to commit: `components/maps/ortho-map.tsx` uses `survey.ortho?.tile_folder ?? "round-corners"` instead of hardcoded `sharp-corners`, matching the active pilot manifest. `components/threejs/3d-model.tsx` uses Drei `<Html>` for point-cloud canvas fallback messages instead of rendering a raw DOM `<div>` inside `<Canvas>`.
+Workshop smoke baseline is documented in `docs/validation-baseline-2026-08-10.md`: login flow, orthomap flow, protected point-cloud flow, anonymous fail-closed behavior, and malformed double-slash rejection are all recorded for 2026-08-10.
 
-Protected asset route behavior now matches the current pilot expectations: anonymous shell checks return `401` for protected tile and point-cloud routes, while malformed double-slash requests such as `//asimov-hawks/3d/...` are rejected with `protected_asset_denied reason='malformed_request'`.
+Validation baseline update: `npm run lint` now completes successfully with warnings only, and `npx tsc --noEmit` now passes after typing cleanup across caller wrappers, survey/ortho map flows, shared helpers, and dashboard map components.
 
-Known validation baseline remains non-green outside DB checks: `npm run lint` fails on the documented `prefer const` plugin config issue; `npx tsc --noEmit` fails on existing application baseline files; `npm run build` reaches the Node heap limit.
+Protected asset publisher automation exists locally in `scripts/publish-protected-assets.js` with example config `scripts/minio-publish-jobs.example.json`. Reports include manifest entry drafts, SQL-editor insert SQL, live upload progress, and `orthos.tile_folder` audit/update SQL so the app metadata matches protected tile manifest routes.
+
+Manifest lessons from `barbco2026` smoke tests: tile `nginx_route_pattern` values must use `{z}/{x}/{y}.png`, direct MinIO prefixes/object keys belong in `metadata.object_path` with `destination_prefix_alias = null`, and `public.orthos.tile_folder` must match the approved tile route folder. Browser-side guessing between `round-corners` and `sharp-corners` is not allowed for protected assets. See `docs/workshop-asset-migration-wave-plan.md` and `docs/workshop-wave1-staging-prep-2026-08-10.md`.
+
+Build-baseline constraint: the workshop target keeps heavy GIS assets behind NGINX + MinIO, not inside the Next.js runtime image. `public/tiles` and `public/3d` should be treated as local operational datasets, so `npm run build` should be evaluated against a dataset-light build context rather than this heavy local checkout.
+
+Known validation baseline remains partially non-green outside DB checks: `npm run lint` passes with warnings, `npx tsc --noEmit` now passes, and `npm run build` still reaches the Node heap limit in the current heavy-asset checkout. User previously validated a dataset-light build on a laptop, so the next project focus is app/Supabase admin-panel workflow clarity rather than local heavy-asset build investigation.

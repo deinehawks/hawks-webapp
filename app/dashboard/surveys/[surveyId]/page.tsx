@@ -5,12 +5,16 @@ import {
 } from "@/lib/actions/surveys";
 import { SurveyMapStoreProvider } from "@/providers/survey-map-store-provider";
 
-export default async function Page(props: { params: { surveyId: string } }) {
-  const { surveyId } = await props.params;
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ surveyId: string }>;
+}) {
+  const { surveyId } = await params;
   const survey = await getUserSurvey(surveyId);
   const detectedObjects = await getObjectDetectionData(
     surveyId,
-    survey.client_id ?? undefined,
+    survey?.client_id ?? undefined,
   );
 
   if (!survey) {

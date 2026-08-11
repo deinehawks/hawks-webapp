@@ -1,0 +1,39 @@
+{
+  "defaults": {
+    "uploadConcurrency": 3,
+    "manifest": {
+      "protectionLevel": "organization"
+    }
+  },
+  "jobs": [
+    {
+      "id": "hawks-sd-001",
+      "clientCode": "hawks",
+      "year": 2024,
+      "surveyId": "SD-001",
+      "manifest": {
+        "organizationId": "6b4b4faf-fd77-46bb-95d9-b51a946292be",
+        "clientId": "1ad26054-2266-4593-98fc-562ceeb20817"
+      },
+      "batching": {
+        "maxGroupsPerBatch": 25,
+        "maxFilesPerBatch": 6500,
+        "maxBytesPerBatch": 175000000
+      },
+      "tiles": [
+        {
+          "tileFolder": "sharp-corners",
+          "destinationAlias": "tiles",
+          "displayLabel": "AH-0260002 orthomap sharp-corners",
+          "sourceAlias": "local-public-tiles"
+        }
+      ],
+      "pointCloud": {
+        "file": "odm.pcd",
+        "destinationAlias": "pointclouds",
+        "displayLabel": "AH-0260002 ODM point cloud",
+        "sourceAlias": "local-public-3d"
+      }
+    }
+  ]
+}

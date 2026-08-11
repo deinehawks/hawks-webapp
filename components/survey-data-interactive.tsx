@@ -9,8 +9,23 @@ import {
 import { getEarliestandLatestDates } from "@/lib/helpers";
 import { format } from "date-fns";
 
-export default function SurveyDataInteractive({ data }) {
-  // Early return if no data
+type SurveySummary = {
+  id: string | number;
+  code?: string | null;
+  flight_date?: string | null;
+  geojson_boundaries: unknown;
+  boundaries: unknown;
+  min_x: number | null;
+  max_x: number | null;
+  min_y: number | null;
+  max_y: number | null;
+};
+
+export default function SurveyDataInteractive({
+  data,
+}: {
+  data: SurveySummary[];
+}) {
   if (!data || data.length === 0) {
     return (
       <Card className="@container/card h-full flex flex-col">
@@ -36,12 +51,11 @@ export default function SurveyDataInteractive({ data }) {
       <CardHeader>
         <CardTitle>Surveyed Areas</CardTitle>
         <CardDescription>
-          {/* Handle null dates */}
           {earliest && latest
-            ? `${surveyCode} | ${format(
-                new Date(earliest),
-                "dd MMM yyyy"
-              )} - ${format(new Date(latest), "dd MMM yyyy")}`
+            ? `${surveyCode} | ${format(new Date(earliest), "dd MMM yyyy")} - ${format(
+                new Date(latest),
+                "dd MMM yyyy",
+              )}`
             : surveyCode}
         </CardDescription>
       </CardHeader>
