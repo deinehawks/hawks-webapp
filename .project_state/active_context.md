@@ -1,6 +1,6 @@
 # Active Context
 
-Last updated: 2026-08-10
+Last updated: 2026-08-11
 
 Current epic: workshop infrastructure integration and manifest-backed protected asset delivery.
 
@@ -24,12 +24,13 @@ Current task sequence:
 16. Define controlled MinIO migration-wave plan. Completed in `docs/workshop-asset-migration-wave-plan.md`.
 17. Prepare the first concrete Wave 1 asset set. Completed in `docs/workshop-wave1-staging-prep-2026-08-10.md`.
 18. Build config-driven protected asset publisher automation. Completed locally in `scripts/publish-protected-assets.js` with example config `scripts/minio-publish-jobs.example.json`.
+19. Publish and smoke `barbco2026/AH-0260001`. Completed: user confirmed protected tiles and 3D point cloud render through NGINX after manifest pattern/object-path fixes.
 
 Current validation results:
 
 - Local Supabase reset/lint/pgTAP previously passed after protected asset RPC: 4 files, 66 tests.
 - Linked staging migrations through `20260804004000` are applied; linked schema lint reports no errors.
-- `manifest-2026-08-10` is approved/active; `manifest-2026-08-07` is superseded/inactive.
+- `manifest-2026-08-11` is approved/active; `manifest-2026-08-10` is superseded/inactive.
 - User-confirmed authenticated NGINX login, direct z11/z23 tile URLs, orthomap tile rendering, and 3D tab point-cloud loading work.
 - Anonymous shell checks return `401` for protected z11 tile and point-cloud route.
 - Malformed double-slash protected point-cloud route requests are denied before upstream access.
@@ -41,7 +42,7 @@ Current validation results:
 - Controlled MinIO migration expansion is planned as small workshop-candidate waves, not full-history migration.
 - Local execution prep confirms `AH-026005` still has an uncopied `round-corners/24` tile prefix, and `barbco2026/AH-0260001` is the selected first non-DNG Wave 1 candidate with a local ODM point cloud present.
 - Manual `AH-026005` zoom-24 upload crashed MinIO when attempted as one large paste; staged batch upload succeeded for Batch 1.
-- The new publisher dry-run for `barbco2026/AH-0260001` succeeded, planned `48` tile batches for `round-corners`, and planned the ODM point-cloud upload to `pointclouds/barbco2026/2026/AH-0260001/point-clouds/odm.pcd`.
+- `barbco2026/AH-0260001` protected tiles and ODM point cloud now render through NGINX. The manifest fix was to replace `*` tile route patterns with `{z}/{x}/{y}.png`, set `destination_prefix_alias = null`, and put the MinIO prefix/object key in `metadata.object_path`.
 
 Key constraints:
 
@@ -53,4 +54,4 @@ Key constraints:
 
 Next recommended task:
 
-- Continue the staged `AH-026005` zoom-24 batch uploads, then provide live MinIO credentials to exercise `scripts/publish-protected-assets.js --apply` for `barbco2026/AH-0260001` and use its report/state output to drive manifest supersession and smoke tests.
+- Document and commit the `AH-0260001` manifest-shape lesson, then use that corrected shape for the next migration candidate.

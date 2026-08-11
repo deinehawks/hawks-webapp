@@ -1,10 +1,10 @@
 # Session Handoff
 
-Last updated: 2026-08-10
+Last updated: 2026-08-11
 
 Protected asset app-side implementation is in place on `feature/workshop-manifest-gate`. Recent committed slices are `5e0e4dea` for app auth/RPC/tests, `284751de` for point-cloud fallback, `e30d8d96` for asset URL helper plus NGINX handoff and smoke-test docs, `d3daf0cd` for refreshed protected-asset docs/state, and `57b6b378` for the protected-asset pilot smoke follow-up.
 
-Current active staging manifest is `manifest-2026-08-10`. It supersedes `manifest-2026-08-07`, which is now superseded/inactive. Active entries include the existing `AH-026005` DNG round-corners `tile_group` in bucket alias `tiles` and a new ODM `point_cloud` entry in bucket alias `pointclouds` at `dng/2026/AH-026005/point-clouds/odm.pcd`.
+Current active staging manifest is `manifest-2026-08-11`. It supersedes `manifest-2026-08-10`, which is now superseded/inactive. Active entries include `AH-026005` protected DNG tiles/point cloud and `barbco2026/AH-0260001` protected `round-corners` tiles plus ODM point cloud.
 
 User-confirmed smoke status: NGINX app access works after initial Next compile warmup. Login at `http://localhost:8080/asimov-hawks/auth/login` works, authenticated direct z11/z23 protected tile URLs worked, the orthomap renders tiles after the local tile-folder fix, and the survey 3D tab loads the protected ODM point cloud.
 
@@ -30,10 +30,8 @@ Protected asset publisher automation now exists:
 - report output: `.tmp/minio-publish-reports/`
 - resumable state output: `.tmp/minio-publish-state/`
 
-Dry-run planning for `barbco2026/AH-0260001` succeeded. It planned `48` tile batches for `round-corners` and one point-cloud upload to `pointclouds/barbco2026/2026/AH-0260001/point-clouds/odm.pcd`.
-
-Live apply has not been exercised yet because this repo-local environment does not currently expose MinIO connection credentials. The uploader expects private env vars such as `MINIO_S3_ENDPOINT`, `MINIO_ACCESS_KEY`, and `MINIO_SECRET_KEY`, while still reusing the existing alias roots like `PROTECTED_ASSET_STORAGE_TILES_ROOT` and `PROTECTED_ASSET_STORAGE_POINTCLOUDS_ROOT`.
+`barbco2026/AH-0260001` was uploaded to MinIO and user-confirmed through the app on 2026-08-11. The tile manifest initially failed with `manifest_entry_not_found` because `nginx_route_pattern` used `*`; the fix was `{z}/{x}/{y}.png`. The 200-auth-but-blank phase was caused by full MinIO paths in `destination_prefix_alias`; the fix was `destination_prefix_alias = null` plus `metadata.object_path = reference_key` for both tile and point-cloud entries.
 
 Git status note: feature commit `57b6b378` is pushed to `origin/feature/workshop-manifest-gate`, and `origin/development` includes the merge at `6be83d42`.
 
-Next task: continue the staged `AH-026005` zoom-24 uploads, then run the new publisher in apply mode for `barbco2026/AH-0260001` once live MinIO credentials are available, then supersede the staging manifest and run authenticated plus anonymous NGINX smoke tests.
+Next task: commit the documentation/state refresh, then use the corrected manifest-entry shape for the next approved migration candidate.

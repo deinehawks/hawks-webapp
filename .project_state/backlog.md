@@ -1,12 +1,12 @@
 # Backlog
 
-Last updated: 2026-08-10
+Last updated: 2026-08-11
 
 ## P1
 
 - Finish the `AH-026005` control sample by completing and verifying the remaining staged `round-corners/24` MinIO tile batches.
-- Use `scripts/publish-protected-assets.js` with live MinIO credentials to publish `barbco2026/AH-0260001` tiles and ODM point cloud.
-- Extend protected-asset smoke coverage beyond `AH-026005` to `barbco2026/AH-0260001` point-cloud and map browser flows.
+- Apply the corrected manifest-entry shape to the next workshop migration candidate before smoke testing.
+- Extend protected-asset smoke coverage beyond `AH-026005` and `barbco2026/AH-0260001` to the next approved client/survey.
 - Confirm target environment before any additional remote Supabase migration apply.
 
 ## P2

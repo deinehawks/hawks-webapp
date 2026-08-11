@@ -1,6 +1,6 @@
 # Workshop Asset Migration Wave Plan
 
-Last updated: 2026-08-10
+Last updated: 2026-08-11
 
 Status: planning runbook for expanding the proven MinIO protected-asset pilot beyond `AH-026005`. Do not treat this as approval to migrate production or full-history assets. Execution prep for the current Wave 1 candidate set is recorded in `docs/workshop-wave1-staging-prep-2026-08-10.md`.
 
@@ -12,7 +12,7 @@ The September 7-18 asset-migration window remains the latest acceptable window, 
 
 ## Current Proven Baseline
 
-- Active staging manifest: `manifest-2026-08-10`.
+- Active staging manifest: `manifest-2026-08-11`.
 - Proven tile bucket alias: `tiles`.
 - Proven point-cloud bucket alias: `pointclouds`.
 - Proven tile path shape: `<client-code>/2026/<survey-id>/ortho/<tile-folder>/<z>/<x>/<y>.png`.
@@ -38,6 +38,20 @@ Do not include:
 - detections in NGINX/MinIO for v1;
 - Cloudflare caching changes.
 
+## Manifest Entry Shape Rules
+
+Use this proven shape for direct MinIO-backed protected assets:
+
+- `nginx_route_pattern` is the browser-facing route, not the MinIO object path.
+- Tile route patterns must use explicit placeholders such as `{z}/{x}/{y}.png`; do not use `*` because the authorization RPC does not expand it.
+- Point-cloud route patterns should match the exact browser URL, for example `/asimov-hawks/3d/<client-code>/2026/<survey-id>/odm.pcd`.
+- `destination_storage_alias` selects the bucket alias, such as `tiles` or `pointclouds`.
+- Leave `destination_prefix_alias` null unless it names a deliberately configured alias in `lib/assets/minio-aliases.ts`.
+- Put the actual MinIO prefix or object key in `metadata.object_path`.
+- For tile groups, `metadata.object_path` is the tile prefix without `{z}/{x}/{y}.png`.
+- For point clouds, `metadata.object_path` is the full object key including the filename.
+
+This rule came from the 2026-08-11 `barbco2026/AH-0260001` smoke fix. The initial manifest used `*` in the tile route and placed full paths in `destination_prefix_alias`; authorization and upstream delivery worked only after switching to placeholder route patterns and `metadata.object_path`.
 ## Required Per-Asset Record
 
 For each selected tile group or point cloud, record outside Git if values are sensitive:

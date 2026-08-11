@@ -1,8 +1,8 @@
 # Workshop Wave 1 Staging Prep
 
-Last updated: 2026-08-10
+Last updated: 2026-08-11
 
-Status: execution prep for finishing the `AH-026005` control sample and staging `barbco2026/AH-0260001` as the first non-DNG workshop candidate.
+Status: execution prep and validation notes for finishing the `AH-026005` control sample and staging `barbco2026/AH-0260001` as the first non-DNG workshop candidate.
 
 ## Selected Scope
 
@@ -66,15 +66,30 @@ Conditional copy:
 
 ## Manifest Prep Notes
 
-Current active staging manifest remains `manifest-2026-08-10`.
+Current active staging manifest is `manifest-2026-08-11`.
 
-The next staging manifest should supersede `manifest-2026-08-10` and preserve the already-working `AH-026005` tile-group and point-cloud entries while expanding coverage to:
+`manifest-2026-08-11` superseded `manifest-2026-08-10` and preserved the already-working `AH-026005` tile-group and point-cloud entries while expanding coverage to:
 
 - the completed `AH-026005` round-corners tile prefix including zoom `24`;
 - one `barbco2026/AH-0260001` tile-group entry;
 - one `barbco2026/AH-0260001` point-cloud entry.
 
-Because approved manifests are immutable, do not edit rows under `manifest-2026-08-10` directly. Create a new manifest version, insert the full desired active entry set, approve it, then mark `manifest-2026-08-10` superseded through the approved supersession flow.
+The first `AH-0260001` smoke attempt found two manifest-shape mistakes:
+
+- `nginx_route_pattern` used `*`, but the auth RPC only expands `{z}`, `{x}`, `{y}`, and `{file}` placeholders.
+- `destination_prefix_alias` held the full object prefix/path, which made upstream MinIO paths resolve incorrectly. For direct per-entry prefixes, leave `destination_prefix_alias` null and set `metadata.object_path` to the actual MinIO object prefix/path.
+
+The corrected and user-validated `AH-0260001` shape is:
+
+- tile route pattern: `/asimov-hawks/tiles/barbco2026/2026/AH-0260001/ortho/round-corners/{z}/{x}/{y}.png`
+- tile object path: `barbco2026/2026/AH-0260001/ortho/round-corners`
+- point-cloud route pattern: `/asimov-hawks/3d/barbco2026/2026/AH-0260001/odm.pcd`
+- point-cloud object path: `barbco2026/2026/AH-0260001/point-clouds/odm.pcd`
+- `destination_storage_alias`: `tiles` for tiles and `pointclouds` for point clouds
+- `destination_prefix_alias`: null for both rows
+- `metadata.object_path`: same as the object path above
+
+User validation on 2026-08-11 confirmed `AH-0260001` orthomap tiles and the 3D point cloud render through NGINX after those DB-side fixes.
 
 ## SQL Shape To Prepare In Staging
 
@@ -137,8 +152,8 @@ values
     'AH-026005 orthomap round-corners',
     'local-public-tiles',
     'tiles',
-    'dng/2026/AH-026005/ortho/round-corners',
-    '/asimov-hawks/tiles/dng/2026/AH-026005/ortho/round-corners/*',
+    null,
+    '/asimov-hawks/tiles/dng/2026/AH-026005/ortho/round-corners/{z}/{x}/{y}.png',
     'organization',
     jsonb_build_object(
       'local_zoom_levels', jsonb_build_array(11,12,13,14,15,16,17,18,19,20,21,22,23,24),
@@ -148,7 +163,8 @@ values
     jsonb_build_object(
       'client_code', 'dng',
       'survey_id', 'AH-026005',
-      'tile_folder', 'round-corners'
+      'tile_folder', 'round-corners',
+      'object_path', 'dng/2026/AH-026005/ortho/round-corners'
     ),
     'Copy forward the AH-026005 tile-group entry and verify MinIO now includes zoom 24.'
   ),
@@ -162,7 +178,7 @@ values
     'AH-026005 ODM point cloud',
     'local-public-3d',
     'pointclouds',
-    'dng/2026/AH-026005/point-clouds/odm.pcd',
+    null,
     '/asimov-hawks/3d/dng/2026/AH-026005/odm.pcd',
     'organization',
     jsonb_build_object(
@@ -171,7 +187,8 @@ values
     jsonb_build_object(
       'client_code', 'dng',
       'survey_id', 'AH-026005',
-      'file_name', 'odm.pcd'
+      'file_name', 'odm.pcd',
+      'object_path', 'dng/2026/AH-026005/point-clouds/odm.pcd'
     ),
     'Copy forward the already-working AH-026005 point-cloud entry.'
   ),
@@ -185,8 +202,8 @@ values
     'AH-0260001 orthomap round-corners',
     'local-public-tiles',
     'tiles',
-    'barbco2026/2026/AH-0260001/ortho/round-corners',
-    '/asimov-hawks/tiles/barbco2026/2026/AH-0260001/ortho/round-corners/*',
+    null,
+    '/asimov-hawks/tiles/barbco2026/2026/AH-0260001/ortho/round-corners/{z}/{x}/{y}.png',
     'organization',
     jsonb_build_object(
       'local_zoom_levels', jsonb_build_array(11,12,13,14,15,16,17,18,19,20,21,22,23,24),
@@ -196,7 +213,8 @@ values
     jsonb_build_object(
       'client_code', 'barbco2026',
       'survey_id', 'AH-0260001',
-      'tile_folder', 'round-corners'
+      'tile_folder', 'round-corners',
+      'object_path', 'barbco2026/2026/AH-0260001/ortho/round-corners'
     ),
     'Use this tile-group entry if staging survey tile_folder is round-corners or null.'
   ),
@@ -210,7 +228,7 @@ values
     'AH-0260001 ODM point cloud',
     'local-public-3d',
     'pointclouds',
-    'barbco2026/2026/AH-0260001/point-clouds/odm.pcd',
+    null,
     '/asimov-hawks/3d/barbco2026/2026/AH-0260001/odm.pcd',
     'organization',
     jsonb_build_object(
@@ -219,13 +237,14 @@ values
     jsonb_build_object(
       'client_code', 'barbco2026',
       'survey_id', 'AH-0260001',
-      'file_name', 'odm.pcd'
+      'file_name', 'odm.pcd',
+      'object_path', 'barbco2026/2026/AH-0260001/point-clouds/odm.pcd'
     ),
     'First barbco2026 point-cloud entry for Wave 1 smoke testing.'
   );
 ```
 
-If the staging survey record for `AH-0260001` uses `sharp-corners`, replace the `tile_group` reference key, prefix alias, URL pattern, and metadata tile folder accordingly, or add a second tile-group entry only if the approved manifest truly needs both paths.
+If the staging survey record for `AH-0260001` uses `sharp-corners`, replace the `tile_group` reference key, `metadata.object_path`, URL pattern, and metadata tile folder accordingly, or add a second tile-group entry only if the approved manifest truly needs both paths.
 
 ## Smoke-Test Targets After Copy
 
