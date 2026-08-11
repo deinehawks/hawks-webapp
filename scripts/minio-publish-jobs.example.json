@@ -1,6 +1,9 @@
 {
   "defaults": {
-    "uploadConcurrency": 3
+    "uploadConcurrency": 3,
+    "manifest": {
+      "protectionLevel": "organization"
+    }
   },
   "jobs": [
     {
@@ -8,6 +11,10 @@
       "clientCode": "barbco2026",
       "year": 2026,
       "surveyId": "AH-0260001",
+      "manifest": {
+        "organizationId": "6b4b4faf-fd77-46bb-95d9-b51a946292be",
+        "clientId": "1ad26054-2266-4593-98fc-562ceeb20817"
+      },
       "batching": {
         "maxGroupsPerBatch": 25,
         "maxFilesPerBatch": 6500,
@@ -16,12 +23,16 @@
       "tiles": [
         {
           "tileFolder": "round-corners",
-          "destinationAlias": "tiles"
+          "destinationAlias": "tiles",
+          "displayLabel": "AH-0260001 orthomap round-corners",
+          "sourceAlias": "local-public-tiles"
         }
       ],
       "pointCloud": {
         "file": "odm.pcd",
-        "destinationAlias": "pointclouds"
+        "destinationAlias": "pointclouds",
+        "displayLabel": "AH-0260001 ODM point cloud",
+        "sourceAlias": "local-public-3d"
       }
     }
   ]

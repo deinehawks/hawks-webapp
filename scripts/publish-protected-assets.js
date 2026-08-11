@@ -314,6 +314,74 @@ function getManifestDefaults(config, job) {
   };
 }
 
+function escapeSqlString(value) {
+  return String(value).replace(/'/g, "''");
+}
+
+function formatSqlValue(value) {
+  if (value === null || value === undefined) return "null";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "object") {
+    return `'${escapeSqlString(JSON.stringify(value))}'::jsonb`;
+  }
+
+  return `'${escapeSqlString(value)}'`;
+}
+
+function buildManifestInsertSql({
+  manifestIdPlaceholder,
+  manifestEntryDrafts,
+}) {
+  const manifestIdValue = manifestIdPlaceholder ?? ":new_manifest_id";
+  const columns = [
+    "manifest_id",
+    "entry_type",
+    "organization_id",
+    "client_id",
+    "survey_id",
+    "reference_key",
+    "display_label",
+    "source_alias",
+    "destination_storage_alias",
+    "destination_prefix_alias",
+    "nginx_route_pattern",
+    "protection_level",
+    "metadata",
+    "notes",
+  ];
+
+  const valuesSql = manifestEntryDrafts
+    .map((entry) =>
+      [
+        manifestIdValue,
+        formatSqlValue(entry.entry_type),
+        formatSqlValue(entry.organization_id),
+        formatSqlValue(entry.client_id),
+        formatSqlValue(entry.survey_id),
+        formatSqlValue(entry.reference_key),
+        formatSqlValue(entry.display_label),
+        formatSqlValue(entry.source_alias),
+        formatSqlValue(entry.destination_storage_alias),
+        formatSqlValue(entry.destination_prefix_alias),
+        formatSqlValue(entry.nginx_route_pattern),
+        formatSqlValue(entry.protection_level),
+        formatSqlValue(entry.metadata),
+        formatSqlValue(entry.notes),
+      ].join(", "),
+    )
+    .map((row) => `  (${row})`)
+    .join(",\n");
+
+  return [
+    "insert into public.workshop_manifest_entries (",
+    `  ${columns.join(",\n  ")}`,
+    ")",
+    "values",
+    valuesSql + ";",
+  ].join("\n");
+}
+
 function buildTileManifestEntryDraft({ job, task, manifestDefaults }) {
   const objectPath = task.destinationObjectRoot;
 
@@ -885,6 +953,11 @@ async function main() {
         });
       }
     }
+
+    jobReport.manifestInsertSql = buildManifestInsertSql({
+      manifestIdPlaceholder: manifestDefaults.manifestIdPlaceholder,
+      manifestEntryDrafts: jobReport.manifestEntryDrafts,
+    });
 
     report.jobs.push(jobReport);
   }
