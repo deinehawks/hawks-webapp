@@ -50,8 +50,10 @@ Use this proven shape for direct MinIO-backed protected assets:
 - Put the actual MinIO prefix or object key in `metadata.object_path`.
 - For tile groups, `metadata.object_path` is the tile prefix without `{z}/{x}/{y}.png`.
 - For point clouds, `metadata.object_path` is the full object key including the filename.
+- For tile groups, the active `public.orthos.tile_folder` value must match the route folder in the approved manifest entry. The app should request the manifest-authorized folder, not guess between `round-corners` and `sharp-corners` at runtime.
 
-This rule came from the 2026-08-11 `barbco2026/AH-0260001` smoke fix. The initial manifest used `*` in the tile route and placed full paths in `destination_prefix_alias`; authorization and upstream delivery worked only after switching to placeholder route patterns and `metadata.object_path`.
+This rule came from the 2026-08-11 `barbco2026/AH-0260001` and `AH-0260002`/`AH-0260003` smoke fixes. The initial manifest used `*` in the tile route and placed full paths in `destination_prefix_alias`; authorization and upstream delivery worked only after switching to placeholder route patterns and `metadata.object_path`. Later testing showed browser-side tile-folder guessing can request paths outside the manifest allow-list, so migrations must align `orthos.tile_folder`, `metadata.tile_folder`, `metadata.object_path`, and `nginx_route_pattern` before approval.
+
 ## Required Per-Asset Record
 
 For each selected tile group or point cloud, record outside Git if values are sensitive:
@@ -74,12 +76,13 @@ Checksums remain optional for this workshop unless the project lead requires the
 2. Inventory the local source prefix without recursively walking unrelated client folders.
 3. Copy to MinIO using the established aliases: tile groups to `tiles/<client-code>/2026/<survey-id>/ortho/<tile-folder>` and point clouds to `pointclouds/<client-code>/2026/<survey-id>/point-clouds/<file>`.
 4. Verify object count, total bytes, expected zoom folders, and representative sample objects.
-5. Create a superseding staging manifest with entries for the new `tile_group` and `point_cloud` assets.
-6. Mark the prior approved manifest superseded only through the approved supersession workflow.
-7. Restart Next if protected-asset alias env values changed.
-8. Run DB-side authorization simulations for platform admin and intended organization users.
-9. Run NGINX smoke tests for anonymous `401`, authenticated `200`, denied cross-org `401`, and browser map/3D loading.
-10. Record results in a normal docs validation log and keep `.project_state` compact.
+5. Before manifest approval, run the publisher report SQL to verify or update the current `public.orthos.tile_folder` row so the browser route matches the protected tile-group entry.
+6. Create a superseding staging manifest with entries for the new `tile_group` and `point_cloud` assets.
+7. Mark the prior approved manifest superseded only through the approved supersession workflow.
+8. Restart Next if protected-asset alias env values changed.
+9. Run DB-side authorization simulations for platform admin and intended organization users.
+10. Run NGINX smoke tests for anonymous `401`, authenticated `200`, denied cross-org `401`, and browser map/3D loading.
+11. Record results in a normal docs validation log and keep `.project_state` compact.
 
 ## Acceptance Criteria
 

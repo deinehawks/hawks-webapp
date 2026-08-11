@@ -31,9 +31,10 @@ Protected asset publisher automation now exists:
 - resumable state output: `.tmp/minio-publish-state/`
 - manifest-safe entry drafts in each job report, using `{z}/{x}/{y}.png`, `destination_prefix_alias: null`, and `metadata.object_path`
 - SQL-ready `insert into public.workshop_manifest_entries` preview in each job report, using `:new_manifest_id` by default or a configured manifest placeholder
+- tile-folder alignment output in each tile job report: `tileFolderExpectations`, `orthoTileFolderAuditSql`, and combined `sqlEditorReviewSql`
 
 `barbco2026/AH-0260001` was uploaded to MinIO and user-confirmed through the app on 2026-08-11. The tile manifest initially failed with `manifest_entry_not_found` because `nginx_route_pattern` used `*`; the fix was `{z}/{x}/{y}.png`. The 200-auth-but-blank phase was caused by full MinIO paths in `destination_prefix_alias`; the fix was `destination_prefix_alias = null` plus `metadata.object_path = reference_key` for both tile and point-cloud entries.
 
 Git status note: feature commit `57b6b378` is pushed to `origin/feature/workshop-manifest-gate`, and `origin/development` includes the merge at `6be83d42`.
 
-Next task: commit the documentation/state refresh, then use the corrected manifest-entry shape for the next approved migration candidate.
+Next task: run the generated `orthoTileFolderAuditSql`/`sqlEditorReviewSql` for the active `barbco2026` migration candidates, smoke `AH-0260001`/`AH-0260002`/`AH-0260003`, then commit the publisher/docs/state refresh.

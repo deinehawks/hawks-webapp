@@ -45,4 +45,4 @@ Use this index after the compressed `.project_state` files when a task needs dee
 - `app/asimov-hawks/internal/asset-auth/route.ts`: protected asset auth endpoint for NGINX `auth_request`.
 - `scripts/stage-ah-026005-z24-batch.ps1`: manual-staging helper for safe `AH-026005` zoom-24 tile batches.
 - `scripts/publish-protected-assets.js`: config-driven protected asset publisher with `.tmp` report/state output.
-- `scripts/minio-publish-jobs.example.json`: example publisher config for `barbco2026/AH-0260001`.
+- `scripts/minio-publish-jobs.example.json`: example publisher config for current `barbco2026` migration jobs and manifest/tile-folder report output.

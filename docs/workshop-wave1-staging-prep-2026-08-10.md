@@ -40,7 +40,10 @@ That means:
 
 - `round-corners` is the minimum safe tile-group mirror for `AH-0260001`;
 - `sharp-corners` is only required if the staging survey record for `AH-0260001` explicitly uses that folder;
-- the staging survey row should be checked before the manifest is approved so the MinIO copy matches the browser path the app will request.
+- the staging survey row should be checked before the manifest is approved so the MinIO copy matches the browser path the app will request;
+- do not rely on client-side fallback between `round-corners` and `sharp-corners` for protected assets, because NGINX auth correctly rejects folders outside the active manifest allow-list.
+
+The publisher report now emits `tileFolderExpectations`, `orthoTileFolderAuditSql`, and `sqlEditorReviewSql`. Run the audit/update SQL before approving a superseding manifest so `public.orthos.tile_folder`, `metadata.tile_folder`, `metadata.object_path`, and `nginx_route_pattern` all name the same tile folder.
 
 ## Recommended Copy Targets
 

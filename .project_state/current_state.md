@@ -20,9 +20,9 @@ Workshop smoke baseline is documented in `docs/validation-baseline-2026-08-10.md
 
 Validation baseline update: `npm run lint` now completes successfully with warnings only, and `npx tsc --noEmit` now passes after typing cleanup across caller wrappers, survey/ortho map flows, shared helpers, and dashboard map components.
 
-Protected asset publisher automation now exists locally in `scripts/publish-protected-assets.js` with example config `scripts/minio-publish-jobs.example.json`. Dry-run planning for `barbco2026/AH-0260001` succeeded and wrote a report under `.tmp/minio-publish-reports/`.
+Protected asset publisher automation exists locally in `scripts/publish-protected-assets.js` with example config `scripts/minio-publish-jobs.example.json`. Reports include manifest entry drafts, SQL-editor insert SQL, live upload progress, and `orthos.tile_folder` audit/update SQL so the app metadata matches protected tile manifest routes.
 
-Manifest lesson from `AH-0260001`: tile `nginx_route_pattern` values must use `{z}/{x}/{y}.png` rather than `*`, and direct MinIO prefixes/object keys belong in `metadata.object_path` with `destination_prefix_alias = null` unless a real code alias exists. See `docs/workshop-asset-migration-wave-plan.md` and `docs/workshop-wave1-staging-prep-2026-08-10.md`.
+Manifest lessons from `barbco2026` smoke tests: tile `nginx_route_pattern` values must use `{z}/{x}/{y}.png`, direct MinIO prefixes/object keys belong in `metadata.object_path` with `destination_prefix_alias = null`, and `public.orthos.tile_folder` must match the approved tile route folder. Browser-side guessing between `round-corners` and `sharp-corners` is not allowed for protected assets. See `docs/workshop-asset-migration-wave-plan.md` and `docs/workshop-wave1-staging-prep-2026-08-10.md`.
 
 Build-baseline constraint: the workshop target keeps heavy GIS assets behind NGINX + MinIO, not inside the Next.js runtime image. `public/tiles` and `public/3d` should be treated as local operational datasets, so `npm run build` should be evaluated against a dataset-light build context rather than this heavy local checkout.
 

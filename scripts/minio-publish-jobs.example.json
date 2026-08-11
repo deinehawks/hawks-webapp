@@ -7,10 +7,10 @@
   },
   "jobs": [
     {
-      "id": "barbco2026-ah-0260001",
-      "clientCode": "barbco2026",
-      "year": 2026,
-      "surveyId": "AH-0260001",
+      "id": "hawks-sd-001",
+      "clientCode": "hawks",
+      "year": 2024,
+      "surveyId": "SD-001",
       "manifest": {
         "organizationId": "6b4b4faf-fd77-46bb-95d9-b51a946292be",
         "clientId": "1ad26054-2266-4593-98fc-562ceeb20817"
@@ -22,16 +22,16 @@
       },
       "tiles": [
         {
-          "tileFolder": "round-corners",
+          "tileFolder": "sharp-corners",
           "destinationAlias": "tiles",
-          "displayLabel": "AH-0260001 orthomap round-corners",
+          "displayLabel": "AH-0260002 orthomap sharp-corners",
           "sourceAlias": "local-public-tiles"
         }
       ],
       "pointCloud": {
         "file": "odm.pcd",
         "destinationAlias": "pointclouds",
-        "displayLabel": "AH-0260001 ODM point cloud",
+        "displayLabel": "AH-0260002 ODM point cloud",
         "sourceAlias": "local-public-3d"
       }
     }

@@ -5,7 +5,7 @@ Last updated: 2026-08-11
 ## P1
 
 - Finish the `AH-026005` control sample by completing and verifying the remaining staged `round-corners/24` MinIO tile batches.
-- Apply the corrected manifest-entry shape to the next workshop migration candidate before smoke testing.
+- Apply the corrected manifest-entry shape and generated `orthos.tile_folder` audit/update SQL to each workshop migration candidate before smoke testing.
 - Extend protected-asset smoke coverage beyond `AH-026005` and `barbco2026/AH-0260001` to the next approved client/survey.
 - Confirm target environment before any additional remote Supabase migration apply.
 
