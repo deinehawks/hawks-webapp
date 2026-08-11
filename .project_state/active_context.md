@@ -26,6 +26,8 @@ Current task sequence:
 18. Build config-driven protected asset publisher automation. Completed locally in `scripts/publish-protected-assets.js` with example config `scripts/minio-publish-jobs.example.json`.
 19. Publish and smoke `barbco2026/AH-0260001`. Completed: user confirmed protected tiles and 3D point cloud render through NGINX after manifest pattern/object-path fixes.
 20. Update protected asset publisher for manifest/ortho tile-folder alignment. Completed locally: dry-run reports now include `tileFolderExpectations`, `orthoTileFolderAuditSql`, and combined `sqlEditorReviewSql`.
+21. Complete `AH-026005` DNG control sample, including zoom `24`. Completed: user confirmed the final DNG upload succeeded.
+22. Smoke current Barbco protected datasets. Completed: user confirmed Barbco datasets display their protected tiles and 3D assets correctly after manifest/tile-folder alignment fixes.
 
 Current validation results:
 
@@ -41,8 +43,8 @@ Current validation results:
 - `npm run build` remains the known non-green baseline check.
 - Build interpretation is constrained: workshop GIS assets belong behind NGINX/MinIO, so a meaningful build baseline should use a dataset-light app context instead of local `public/tiles` and `public/3d`.
 - Controlled MinIO migration expansion is planned as small workshop-candidate waves, not full-history migration.
-- Local execution prep confirms `AH-026005` still has an uncopied `round-corners/24` tile prefix, and `barbco2026/AH-0260001` is the selected first non-DNG Wave 1 candidate with a local ODM point cloud present.
-- Manual `AH-026005` zoom-24 upload crashed MinIO when attempted as one large paste; staged batch upload succeeded for Batch 1.
+- `AH-026005` DNG protected asset migration is complete, including the formerly remaining `round-corners/24` tile prefix.
+- Manual `AH-026005` zoom-24 upload crashed MinIO when attempted as one large paste; staged/batched upload completed successfully.
 - `barbco2026/AH-0260001` protected tiles and ODM point cloud now render through NGINX. The manifest fix was to replace `*` tile route patterns with `{z}/{x}/{y}.png`, set `destination_prefix_alias = null`, and put the MinIO prefix/object key in `metadata.object_path`.
 - `AH-0260002` rendered after its manifest used `sharp-corners`; `AH-0260001`/`AH-0260003` showed why client-side folder guessing is unsafe under protected auth. Migration reports must align `orthos.tile_folder` with the approved tile route before smoke testing.
 
@@ -56,4 +58,4 @@ Key constraints:
 
 Next recommended task:
 
-- Document and commit the `AH-0260001` manifest-shape lesson, then use that corrected shape for the next migration candidate.
+- Push and merge the state/publisher refresh, then review the app/Supabase admin-panel workflow and define the minimum workshop-ready admin behaviors.

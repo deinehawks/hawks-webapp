@@ -10,9 +10,9 @@ Phase 3I-A workshop manifest decisions are closed for v1. Real populated manifes
 
 Manifest schema/RLS/audit migrations have been applied locally and to linked staging Supabase project `llealjcaqvltrtdwwzrh` after target confirmation. Local structural verification and pgTAP tests pass; full local DB suite passes 4 files / 66 tests. Remote migration list shows migrations through `20260804004000` applied, and remote schema lint reports no errors.
 
-Protected asset delivery is an NGINX + MinIO design with app-side auth at `/asimov-hawks/internal/asset-auth`. Recent committed slices: `5e0e4dea` app auth/RPC/tests, `284751de` point-cloud fallback, `e30d8d96` asset URL helper plus NGINX handoff and smoke-test docs, `d3daf0cd` refreshed protected-asset docs/state, and `57b6b378` protected-asset pilot smoke follow-up.
+Protected asset delivery is an NGINX + MinIO design with app-side auth at `/asimov-hawks/internal/asset-auth`. Recent committed slices: `5e0e4dea` app auth/RPC/tests, `284751de` point-cloud fallback, `e30d8d96` asset URL helper plus NGINX handoff and smoke-test docs, `d3daf0cd` refreshed protected-asset docs/state, `57b6b378` protected-asset pilot smoke follow-up, and `e291f0ac` publisher workflow improvements.
 
-Active protected asset pilot: staging manifest `manifest-2026-08-11` is approved/active. It includes `AH-026005` DNG protected tiles/point cloud and `barbco2026/AH-0260001` protected `round-corners` tiles plus ODM point cloud. `manifest-2026-08-10` is superseded/inactive.
+Active protected asset pilot: staging manifest `manifest-2026-08-11` is approved/active. It includes `AH-026005` DNG protected tiles/point cloud and `barbco2026` protected survey assets. `manifest-2026-08-10` is superseded/inactive. User confirmed `AH-026005`, including zoom `24`, and the current Barbco protected datasets display tiles and 3D assets correctly.
 
 Local NGINX app access works after first-compile warmup. User confirmed login at `/asimov-hawks/auth/login`, authenticated direct z11/z23 pilot tile URLs, orthomap tile rendering through `http://localhost:8080`, and the survey 3D tab loading the protected ODM point cloud through NGINX.
 
@@ -26,4 +26,4 @@ Manifest lessons from `barbco2026` smoke tests: tile `nginx_route_pattern` value
 
 Build-baseline constraint: the workshop target keeps heavy GIS assets behind NGINX + MinIO, not inside the Next.js runtime image. `public/tiles` and `public/3d` should be treated as local operational datasets, so `npm run build` should be evaluated against a dataset-light build context rather than this heavy local checkout.
 
-Known validation baseline remains partially non-green outside DB checks: `npm run lint` passes with warnings, `npx tsc --noEmit` now passes, and `npm run build` still reaches the Node heap limit in the current heavy-asset checkout.
+Known validation baseline remains partially non-green outside DB checks: `npm run lint` passes with warnings, `npx tsc --noEmit` now passes, and `npm run build` still reaches the Node heap limit in the current heavy-asset checkout. User previously validated a dataset-light build on a laptop, so the next project focus is app/Supabase admin-panel workflow clarity rather than local heavy-asset build investigation.
