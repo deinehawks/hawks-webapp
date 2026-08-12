@@ -43,8 +43,7 @@ values
    'authenticated', 'domain-escalation@example.test', '', now(), now(), now());
 
 update public.profiles
-set role = 'platform_admin',
-    account_role = 'platform_admin'
+set role = 'platform_admin'
 where id = '20000000-0000-0000-0000-000000000011';
 
 insert into public.organizations (id, type_code, code, name)
@@ -88,11 +87,11 @@ values
   ('40000000-0000-0000-0000-000000000012',
    '20000000-0000-0000-0000-000000000013',
    '30000000-0000-0000-0000-000000000011',
-   'member', 'active'),
+   'viewer', 'active'),
   ('40000000-0000-0000-0000-000000000013',
    '20000000-0000-0000-0000-000000000014',
    '30000000-0000-0000-0000-000000000012',
-   'member', 'active');
+   'viewer', 'active');
 
 update public.organization_memberships
 set approved_by = '20000000-0000-0000-0000-000000000011',
@@ -244,11 +243,11 @@ select extensions.is(
 
 select extensions.throws_ok(
   $$update public.profiles
-    set account_role = 'platform_admin'
+    set role = 'platform_admin'
     where id = '20000000-0000-0000-0000-000000000013'$$,
   'P0001',
   null,
-  'normal account cannot promote its global account role'
+  'normal account cannot promote its platform role'
 );
 
 set local request.jwt.claims =
@@ -337,10 +336,10 @@ select extensions.lives_ok(
     values (
       '20000000-0000-0000-0000-000000000016',
       '30000000-0000-0000-0000-000000000011',
-      'member',
+      'editor',
       'pending'
     )$$,
-  'organization admin can add an ordinary member in their organization'
+  'organization admin can add a viewer membership in their organization'
 );
 
 select extensions.throws_ok(
@@ -519,7 +518,7 @@ select extensions.throws_ok(
     values (
       '20000000-0000-0000-0000-000000000013',
       '30000000-0000-0000-0000-000000000012',
-      'member',
+      'viewer',
       'active'
     )$$,
   '23505',

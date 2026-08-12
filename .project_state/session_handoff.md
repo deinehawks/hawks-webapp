@@ -1,39 +1,40 @@
 # Session Handoff
 
-Last updated: 2026-08-11
+Last updated: 2026-08-12
 
-Protected asset app-side implementation is in place on `feature/workshop-manifest-gate`. Recent committed slices are `5e0e4dea` for app auth/RPC/tests, `284751de` for point-cloud fallback, `e30d8d96` for asset URL helper plus NGINX handoff and smoke-test docs, `d3daf0cd` for refreshed protected-asset docs/state, `57b6b378` for the protected-asset pilot smoke follow-up, and `e291f0ac` for protected asset publisher workflow improvements.
+Protected asset app-side implementation is in place on `feature/workshop-manifest-gate`. Current active staging manifest is `manifest-2026-08-11`. User-confirmed smoke status: NGINX app access works, login works, authenticated protected tiles work, orthomap renders protected tiles, and the survey 3D tab loads the protected ODM point cloud.
 
-Current active staging manifest is `manifest-2026-08-11`. It supersedes `manifest-2026-08-10`, which is now superseded/inactive. Active entries include `AH-026005` protected DNG tiles/point cloud and current `barbco2026` protected survey assets.
+Admin MVP status is user-smoke-confirmed. Platform admins can access `/dashboard/admin`; non-platform users are redirected; overview counts/workflow sections and recent audit rows load; client classification and client canonical mapping work; ordinary membership creation rejects users with existing live memberships; membership detail pages show allowed status transitions only.
 
-User-confirmed smoke status: NGINX app access works after initial Next compile warmup. Login at `http://localhost:8080/asimov-hawks/auth/login` works, authenticated direct z11/z23 protected tile URLs worked, the orthomap renders tiles after the local tile-folder fix, and the survey 3D tab loads the protected ODM point cloud.
+Role/permission source of truth is approved and documented in `docs/role-permission-model-and-migration-plan.md`. Target: `profiles.role = platform_admin | user`, `organization_memberships.role = org_admin | editor | viewer`, explicit farm/survey grants for resource exceptions, and no profile-owned organization access state.
 
-Workshop smoke baseline is documented in `docs/validation-baseline-2026-08-10.md`. It records the login flow, orthomap flow, protected point-cloud flow, anonymous fail-closed checks, and malformed double-slash rejection for 2026-08-10.
+Role-model cleanup slices implemented locally and applied to staging:
 
-Validation status update: `eslint.config.mjs` now uses `prefer-const`; the map/data-tab lint errors were cleared; `npm run lint` now exits successfully with warnings only; and `npx tsc --noEmit` now passes after typing cleanup across caller wrappers, dashboard/survey/ortho map components, and shared helpers.
+- `20260812000000_remove_account_role_platform_helper_dependency.sql`
+- `20260812001000_expand_membership_roles_and_backfill.sql`
+- `20260812001500_apply_membership_role_defaults_and_backfill.sql`
+- `20260812002000_normalize_profile_roles_and_cutover_membership_auth.sql`
+- `20260812002500_apply_user_role_normalization_and_membership_auth_cutover.sql`
+- `20260812003000_remove_legacy_profile_organization_fallback.sql`
+- `20260812004000_drop_account_role.sql`
+- `20260812005000_drop_profiles_organization_id.sql`
+- `20260812005500_enforce_profile_account_role_scope.sql`
 
-MinIO migration-wave planning is documented in `docs/workshop-asset-migration-wave-plan.md`. Exact Wave 1 execution prep is documented in `docs/workshop-wave1-staging-prep-2026-08-10.md`.
+Important rollout notes:
+- the first staging apply on 2026-08-12 failed safely at `20260812001500` because the migration used `min(uuid)`; the unapplied migration was patched to use `(array_agg(mapping.organization_id order by mapping.organization_id))[1]`, local reset passed, and the retry completed
+- `npx supabase migration list` shows staging aligned through `20260812005500`
+- staging `profiles.role` rows are clean: 2 `platform_admin`, 21 `user`; the extra enum labels are historical labels, now blocked by `profiles_role_account_scope_check`
+- full enum-label removal should be a later enum rebuild migration, not mixed into the individual access workflow
 
-Current Wave 1 status:
+Newest local slice:
+- `docs/role-permission-model-and-migration-plan.md` now documents individual farmers as `people` / `client_people` plus explicit survey grants, not fabricated one-person organizations
+- `docs/admin-mvp-operator-guide.md` now documents the narrow survey-grant workflow
+- `lib/actions/admin-survey-grants.ts` adds a platform-admin-only server action to create active survey grants for existing non-platform profiles and existing surveys
+- `app/dashboard/admin/page.tsx` renders a Create survey access grant form and a read-only Survey Access Grants list
 
-- `AH-026005` DNG control sample is complete, including the formerly remaining `round-corners/24` tile prefix.
-- Manual upload of the full `AH-026005` zoom-24 scope crashed MinIO when attempted as one paste; the staged/batched upload path completed successfully.
-- Current Barbco protected datasets display tiles and 3D assets correctly after manifest route, object-path, and `orthos.tile_folder` fixes.
-- App-side tile requests use `survey.ortho?.tile_folder ?? "round-corners"`, so `round-corners` is the minimum safe tile-group mirror unless staging data explicitly points to `sharp-corners`.
+Validation:
+- local `npm run supabase:reset` passes through `20260812005500`
+- local `npx tsc --noEmit --incremental false` passes
+- local `npm run lint` still fails only on the pre-existing `components/maplibre.tsx` `@ts-nocheck` ban, with unrelated warnings
 
-Protected asset publisher automation now exists:
-
-- `scripts/publish-protected-assets.js`
-- `scripts/minio-publish-jobs.example.json`
-- npm scripts: `npm run publish-protected-assets` and `npm run publish-protected-assets:apply`
-- report output: `.tmp/minio-publish-reports/`
-- resumable state output: `.tmp/minio-publish-state/`
-- manifest-safe entry drafts in each job report, using `{z}/{x}/{y}.png`, `destination_prefix_alias: null`, and `metadata.object_path`
-- SQL-ready `insert into public.workshop_manifest_entries` preview in each job report, using `:new_manifest_id` by default or a configured manifest placeholder
-- tile-folder alignment output in each tile job report: `tileFolderExpectations`, `orthoTileFolderAuditSql`, and combined `sqlEditorReviewSql`
-
-`barbco2026/AH-0260001` was uploaded to MinIO and user-confirmed through the app on 2026-08-11. The tile manifest initially failed with `manifest_entry_not_found` because `nginx_route_pattern` used `*`; the fix was `{z}/{x}/{y}.png`. The 200-auth-but-blank phase was caused by full MinIO paths in `destination_prefix_alias`; the fix was `destination_prefix_alias = null` plus `metadata.object_path = reference_key` for both tile and point-cloud entries.
-
-Git status note: feature commit `57b6b378` is pushed to `origin/feature/workshop-manifest-gate`, and `origin/development` includes the merge at `6be83d42`. Local feature commit `e291f0ac` should be pushed and merged after this state refresh commit.
-
-Next task after sync: review the app/Supabase admin-panel workflow, identify finished versus partial admin behavior, and define the minimum workshop-ready admin scope.
+Next task: smoke the new survey-grant admin UI after app deployment/local run, then grant `dagaang.viz.hawks@gmail.com` the intended survey access after confirming the correct individual legacy client/person mapping.

@@ -81,24 +81,14 @@ function isDetectionObject(value: unknown): value is ComputerVisionObject {
 }
 
 export async function getUserSurvey(id: string): Promise<Survey> {
-  const { profile } = await getAuthenticatedUserContext();
+  await getAuthenticatedUserContext();
   const supabase = await createClient();
 
-  let query = supabase
+  const { data, error } = await supabase
     .from("surveys")
     .select(SURVEY_SELECT)
-    .eq("id", id);
-
-  if (profile.role !== "platform_admin") {
-    if (!profile.organization_id) {
-      throw new AuthorizationError(
-        "Your profile is pending organization assignment.",
-      );
-    }
-    query = query.eq("client_id", profile.organization_id);
-  }
-
-  const { data, error } = await query.maybeSingle();
+    .eq("id", id)
+    .maybeSingle();
 
   if (error) {
     if (isTransientNetworkError(error)) {
@@ -113,29 +103,27 @@ export async function getUserSurvey(id: string): Promise<Survey> {
     throw new Error("Survey not found or access denied.");
   }
 
-  const survey = normalizeSurvey(data as SurveyQueryRow);
-
-  if (
-    profile.role !== "platform_admin" &&
-    survey.client_id !== profile.organization_id
-  ) {
-    throw new AuthorizationError("Access denied to this survey data.");
-  }
-
-  return survey;
+  return normalizeSurvey(data as SurveyQueryRow);
 }
 
 export async function getAllUserSurveys(
   requestedClientId?: string,
 ): Promise<Survey[]> {
-  const { profile } = await getAuthenticatedUserContext();
-  const targetClientId = requestedClientId ?? profile.organization_id;
+  let client: Client;
 
-  if (!targetClientId) {
-    return [];
+  try {
+    client = await requireAccessibleClientById(requestedClientId);
+  } catch (error) {
+    if (
+      error instanceof AuthorizationError &&
+      !requestedClientId &&
+      error.message === "Your profile is pending organization assignment."
+    ) {
+      return [];
+    }
+    throw error;
   }
 
-  const client = await requireAccessibleClientById(targetClientId);
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("surveys")
@@ -178,12 +166,21 @@ export async function getObjectDetectionData(
   surveyId?: string,
   requestedClientId?: string,
 ): Promise<ComputerVisionObject[]> {
-  const { profile } = await getAuthenticatedUserContext();
-  if (!requestedClientId && !profile.organization_id) {
-    return [];
+  let client: Client;
+
+  try {
+    client = await requireAccessibleClientById(requestedClientId);
+  } catch (error) {
+    if (
+      error instanceof AuthorizationError &&
+      !requestedClientId &&
+      error.message === "Your profile is pending organization assignment."
+    ) {
+      return [];
+    }
+    throw error;
   }
 
-  const client = await requireAccessibleClientById(requestedClientId);
   const supabase = await createClient();
   const bucket = supabase.storage.from("detected-objects");
   const uuidPath = `${client.id}/detections.json`;
@@ -226,5 +223,3 @@ export async function getObjectDetectionData(
     return [];
   }
 }
-
-

@@ -13,11 +13,14 @@ on storage.objects for select to authenticated
 using (
   bucket_id = 'detected-objects'
   and (
-    app_private.is_platform_admin()
-    or (storage.foldername(name))[1]
-      = app_private.current_organization_id()::text
+    app_private.domain_is_platform_admin()
+    or (
+      (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      and app_private.domain_has_client_access(
+        ((storage.foldername(name))[1])::uuid
+      )
+    )
   )
 );
 
 revoke insert, update, delete on storage.objects from authenticated;
-

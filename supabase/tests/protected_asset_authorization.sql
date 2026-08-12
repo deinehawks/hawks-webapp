@@ -47,24 +47,21 @@ insert into public.organization_memberships (
 )
 values
   ('20000000-0000-0000-0000-000000000202',
-   '40000000-0000-0000-0000-000000000201', 'member', 'active', now()),
+   '40000000-0000-0000-0000-000000000201', 'viewer', 'active', now()),
   ('20000000-0000-0000-0000-000000000203',
-   '40000000-0000-0000-0000-000000000202', 'member', 'active', now());
+   '40000000-0000-0000-0000-000000000202', 'viewer', 'active', now());
 
 update public.profiles
-set role = 'platform_admin',
-    account_role = 'platform_admin'
+set role = 'platform_admin'
 where id = '20000000-0000-0000-0000-000000000201';
 
 update public.profiles
-set role = 'viewer',
-    account_role = 'individual',
+set role = 'user',
     organization_id = '30000000-0000-0000-0000-000000000201'
 where id = '20000000-0000-0000-0000-000000000202';
 
 update public.profiles
-set role = 'viewer',
-    account_role = 'individual',
+set role = 'user',
     organization_id = '30000000-0000-0000-0000-000000000202'
 where id = '20000000-0000-0000-0000-000000000203';
 

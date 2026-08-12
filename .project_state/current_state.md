@@ -1,29 +1,35 @@
 # Current State
 
-Last updated: 2026-08-11
+Last updated: 2026-08-12
 
 Current branch observed by Codex: `feature/workshop-manifest-gate`.
 
-The compressed-state workflow is active through `AGENTS.override.md` and `.project_state/`. Use these files first, then retrieve targeted docs from `.project_state/project_index.md`.
+Compressed startup workflow is active through `AGENTS.override.md` and `.project_state/`.
 
-Phase 3I-A workshop manifest decisions are closed for v1. Real populated manifests stay outside Git in private Supabase tables, use short keys such as `manifest-2026-09-15`, allow `platform_admin` edits only before approval, make approved versions immutable, and back up approved exports to private MinIO.
+Workshop protected-asset baseline remains in place: authenticated NGINX delivery works for the approved staging manifest, the app uses protected tile/point-cloud routes successfully, and the workshop asset publisher/report flow is implemented locally.
 
-Manifest schema/RLS/audit migrations have been applied locally and to linked staging Supabase project `llealjcaqvltrtdwwzrh` after target confirmation. Local structural verification and pgTAP tests pass; full local DB suite passes 4 files / 66 tests. Remote migration list shows migrations through `20260804004000` applied, and remote schema lint reports no errors.
+Admin MVP is user-smoke-confirmed. Platform-admin access, non-platform redirect, client classification/mapping workflows, allowed membership transitions, and the read-only Recent Admin Activity list are working. The admin surface remains intentionally mostly read-only.
 
-Protected asset delivery is an NGINX + MinIO design with app-side auth at `/asimov-hawks/internal/asset-auth`. Recent committed slices: `5e0e4dea` app auth/RPC/tests, `284751de` point-cloud fallback, `e30d8d96` asset URL helper plus NGINX handoff and smoke-test docs, `d3daf0cd` refreshed protected-asset docs/state, `57b6b378` protected-asset pilot smoke follow-up, and `e291f0ac` publisher workflow improvements.
+Approved role/permission target model is documented in `docs/role-permission-model-and-migration-plan.md`:
+- `profiles.role` is the account-level role source (`platform_admin | user` target)
+- `organization_memberships.role` is the organization-level role source (`org_admin | editor | viewer` target)
+- explicit survey/farm grants remain resource exceptions
+- individual farmers are modeled through `people` / `client_people` plus explicit survey grants, not fabricated one-person organizations
 
-Active protected asset pilot: staging manifest `manifest-2026-08-11` is approved/active. It includes `AH-026005` DNG protected tiles/point cloud and `barbco2026` protected survey assets. `manifest-2026-08-10` is superseded/inactive. User confirmed `AH-026005`, including zoom `24`, and the current Barbco protected datasets display tiles and 3D assets correctly.
+Role-model implementation status:
+- `20260812000000_remove_account_role_platform_helper_dependency.sql` removed live platform-admin helper dependence on `profiles.account_role`
+- `20260812001000` through `20260812002500` expanded membership roles, backfilled memberships from confirmed legacy mappings, normalized non-platform `profiles.role` values to `user`, regenerated local DB types, and shifted app/RLS authorization toward memberships and grants
+- `20260812003000_remove_legacy_profile_organization_fallback.sql` removed the live SQL/RLS fallback to `profiles.organization_id`
+- `20260812004000_drop_account_role.sql` drops `profiles.account_role`, its index, and the now-unused enum/function dependency
+- `20260812005000_drop_profiles_organization_id.sql` drops `profiles.organization_id`, its FK/index, and remaining compatibility trigger checks; `app_private.current_organization_id()` remains as a compatibility stub returning `null`
+- `20260812005500_enforce_profile_account_role_scope.sql` adds a validated check constraint so `profiles.role` can only store `platform_admin` or `user`
+- PostgreSQL enum labels still include historical `org_admin`/`editor`/`viewer`; actual rows are constrained and clean, while full enum rebuild is deferred as a separate cleanup slice
+- admin overview now includes a platform-admin-only survey access grant workflow for individual users and a read-only Survey Access Grants list
 
-Local NGINX app access works after first-compile warmup. User confirmed login at `/asimov-hawks/auth/login`, authenticated direct z11/z23 pilot tile URLs, orthomap tile rendering through `http://localhost:8080`, and the survey 3D tab loading the protected ODM point cloud through NGINX.
-
-Workshop smoke baseline is documented in `docs/validation-baseline-2026-08-10.md`: login flow, orthomap flow, protected point-cloud flow, anonymous fail-closed behavior, and malformed double-slash rejection are all recorded for 2026-08-10.
-
-Validation baseline update: `npm run lint` now completes successfully with warnings only, and `npx tsc --noEmit` now passes after typing cleanup across caller wrappers, survey/ortho map flows, shared helpers, and dashboard map components.
-
-Protected asset publisher automation exists locally in `scripts/publish-protected-assets.js` with example config `scripts/minio-publish-jobs.example.json`. Reports include manifest entry drafts, SQL-editor insert SQL, live upload progress, and `orthos.tile_folder` audit/update SQL so the app metadata matches protected tile manifest routes.
-
-Manifest lessons from `barbco2026` smoke tests: tile `nginx_route_pattern` values must use `{z}/{x}/{y}.png`, direct MinIO prefixes/object keys belong in `metadata.object_path` with `destination_prefix_alias = null`, and `public.orthos.tile_folder` must match the approved tile route folder. Browser-side guessing between `round-corners` and `sharp-corners` is not allowed for protected assets. See `docs/workshop-asset-migration-wave-plan.md` and `docs/workshop-wave1-staging-prep-2026-08-10.md`.
-
-Build-baseline constraint: the workshop target keeps heavy GIS assets behind NGINX + MinIO, not inside the Next.js runtime image. `public/tiles` and `public/3d` should be treated as local operational datasets, so `npm run build` should be evaluated against a dataset-light build context rather than this heavy local checkout.
-
-Known validation baseline remains partially non-green outside DB checks: `npm run lint` passes with warnings, `npx tsc --noEmit` now passes, and `npm run build` still reaches the Node heap limit in the current heavy-asset checkout. User previously validated a dataset-light build on a laptop, so the next project focus is app/Supabase admin-panel workflow clarity rather than local heavy-asset build investigation.
+Validation baseline:
+- local `npm run supabase:reset` passes through `20260812005500`
+- local `npx tsc --noEmit --incremental false` passes after the individual survey-grant workflow
+- local `npm run lint` still fails only on the pre-existing `components/maplibre.tsx` `@ts-nocheck` ban, with unrelated warnings remaining
+- staging Supabase has all migrations through `20260812005500`
+- staging `profiles.role` rows are normalized: 2 `platform_admin`, 21 `user`, and no `org_admin`/`editor`/`viewer` profile rows
+- `dagaang.viz.hawks@gmail.com` is `profiles.role = user` with 0 total memberships and 0 active memberships, so access should be granted through explicit survey grants after the appropriate individual client/person mapping is confirmed

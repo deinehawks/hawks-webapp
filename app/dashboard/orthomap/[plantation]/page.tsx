@@ -8,7 +8,7 @@ import {
 import { AuthorizationError } from "@/lib/auth/user-context";
 import { OrthoMapStoreProvider } from "@/providers/ortho-map-store-provider";
 
-export default async function Page(props: { params: { plantation: string } }) {
+export default async function Page(props: { params: Promise<{ plantation: string }> }) {
   const { plantation } = await props.params;
 
   let client;

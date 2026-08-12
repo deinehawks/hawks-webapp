@@ -35,6 +35,9 @@ below are approved.
   as organization, individual, or unclassified without changing the row.
 - Approved single-organization membership, multi-farm survey, explicit farm and
   survey grant, and platform-only organization-admin promotion rules.
+- Approved role-source-of-truth model from
+  `docs/role-permission-model-and-migration-plan.md` before account-role
+  cleanup or membership role expansion.
 - Separate approval for Auth provisioning, output/report lifecycle, audit
   retention, invitation delivery, and protected asset delivery before those
   capabilities are implemented.
@@ -51,8 +54,10 @@ Before drafting domain SQL, confirm and record:
    records remain `unclassified`.
 2. `profiles` remains the application-account table. Existing rows may be
    organization-level accounts; future people may have no login.
-3. Global account role (`platform_admin` or `individual`) is separate from
-   organization membership role (`org_admin` or `member`).
+3. Account-level role belongs in `profiles.role` only, with target values
+   `platform_admin` and `user`; organization-level role belongs in
+   `organization_memberships.role`, with target values `org_admin`, `editor`, and
+   `viewer`.
 4. Normal accounts have at most one live organization membership in v1.
 5. Farms/plantation areas are separate from people and organizations, and their
    owner/operator/contact metadata does not grant access.
@@ -66,6 +71,23 @@ Before drafting domain SQL, confirm and record:
 Do not apply `supabase/deferred/contract_uuid_tenant_keys.sql` or
 `supabase/deferred/secure_detected_objects_storage.sql` while any blocking
 domain or authorization decision remains unresolved.
+
+## Role cleanup pre-contract gate
+
+Follow `docs/role-permission-model-and-migration-plan.md` before any contract
+cleanup. The required path is: remove active app/RLS/test dependence on
+`profiles.account_role`; drop that column/enum/helpers only after no active code,
+SQL, tests, verification, or generated types reference it; expand
+`organization_memberships.role` to `org_admin`, `editor`, and `viewer`; backfill
+memberships from `profiles.organization_id` only through approved canonical
+organization mappings; normalize non-platform `profiles.role` values to `user`;
+then cut authorization to memberships and explicit grants with a temporary legacy
+fallback.
+
+`profiles.organization_id` must not be dropped during this cleanup. It remains
+the legacy compatibility tenant pointer until membership/grant authorization,
+protected asset access, route behavior, and direct RLS tests all pass without
+fallback.
 
 ## Delivery gates
 
@@ -190,8 +212,9 @@ non-destructive and do not rename or remove existing columns in the first releas
   canonical organizations rather than being forced onto mixed clients.
 - Optional profile-to-person links; organization-level profiles may remain
   unlinked.
-- Separate global account role and profile-based organization membership with
-  one live organization per normal account.
+- profiles.role as the account-level source of truth and profile-based
+  organization membership roles with one live organization per normal account in
+  v1.
 - Separate organization/person and farm/person/organization domain metadata
   that grants no access automatically.
 - `survey_farms` for many-to-many survey coverage and `survey_organizations`
@@ -338,8 +361,9 @@ After the observation window:
 
 1. Confirm every legacy client is classified or intentionally retained as
    `unclassified`, and no farmer/contact has been forced into `clients`.
-2. Confirm pending profiles are intentionally individual, have at most one live
-   organization membership, or are explicitly promoted platform administrators.
+2. Confirm pending profiles are intentionally unassigned user accounts, have at
+   most one live organization membership, or are explicitly promoted platform
+   administrators.
 3. Confirm required farms have reviewed metadata, required surveys have complete
    `survey_farms` mappings, and every output/report resolves to a survey.
 4. Confirm legacy routes, UUID/code lookups, maps, tiles, point clouds,
@@ -354,7 +378,7 @@ After the observation window:
 8. Delete legacy storage objects only through a separately reviewed operation.
 
 The contract must not require every non-platform profile to have an
-`organization_id`, because an `individual` account may be unassigned. It must
+`organization_id`, because a `user` account may be unassigned. It must
 enforce at most one live organization membership for normal accounts and must
 not make `surveys.client_id` the sole permanent relationship when surveys span
 multiple farms.
@@ -363,8 +387,11 @@ multiple farms.
 
 - Keep `clients.code` for `/dashboard/orthomap/[plantation]`, labels, local tile
   directories, and point-cloud asset paths.
-- Keep `profiles.organization_id`, `profiles.role`, `surveys.client_id`, and
-  legacy code columns until compatible reads and RLS pass the observation gate.
+- Keep `profiles.organization_id`, `surveys.client_id`, legacy code columns, and
+  current role compatibility until compatible reads and RLS pass the observation
+  gate. `profiles.role` is the long-term account-level source of truth, but
+  non-platform values must not be normalized to `user` until the role migration
+  gate passes.
 - Add canonical people/organization mappings, memberships, `survey_farms`, and
   explicit grants alongside legacy relationships; unresolved clients continue
   through the current tenant path.

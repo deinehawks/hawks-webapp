@@ -23,9 +23,7 @@ export type PointCloud = Tables<"point_clouds">;
 export type UserProfile = Omit<
   Tables<"profiles">,
   "access_code" | "organization"
-> & {
-  client: Client | null;
-};
+>;
 
 export type Survey = Omit<
   Tables<"surveys">,

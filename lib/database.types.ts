@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -7,11 +7,6 @@
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   public: {
     Tables: {
       admin_audit_log: {
@@ -809,7 +804,6 @@ export type Database = {
       profiles: {
         Row: {
           access_code: string | null
-          account_role: Database["public"]["Enums"]["account_role"]
           alt_email: string | null
           barangay: string | null
           city: string | null
@@ -823,7 +817,6 @@ export type Database = {
           middle_name: string | null
           mobile: string | null
           organization: string | null
-          organization_id: string | null
           person_id: string | null
           preferences: Json
           province: string | null
@@ -838,7 +831,6 @@ export type Database = {
         }
         Insert: {
           access_code?: string | null
-          account_role?: Database["public"]["Enums"]["account_role"]
           alt_email?: string | null
           barangay?: string | null
           city?: string | null
@@ -852,7 +844,6 @@ export type Database = {
           middle_name?: string | null
           mobile?: string | null
           organization?: string | null
-          organization_id?: string | null
           person_id?: string | null
           preferences?: Json
           province?: string | null
@@ -867,7 +858,6 @@ export type Database = {
         }
         Update: {
           access_code?: string | null
-          account_role?: Database["public"]["Enums"]["account_role"]
           alt_email?: string | null
           barangay?: string | null
           city?: string | null
@@ -881,7 +871,6 @@ export type Database = {
           middle_name?: string | null
           mobile?: string | null
           organization?: string | null
-          organization_id?: string | null
           person_id?: string | null
           preferences?: Json
           province?: string | null
@@ -901,13 +890,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["code"]
-          },
-          {
-            foreignKeyName: "profiles_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "profiles_person_id_fkey"
@@ -1275,17 +1257,302 @@ export type Database = {
           },
         ]
       }
+      workshop_manifest_entries: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          destination_prefix_alias: string | null
+          destination_storage_alias: string | null
+          display_label: string | null
+          entry_type: string
+          farm_id: string | null
+          id: string
+          manifest_id: string
+          metadata: Json
+          nginx_route_pattern: string | null
+          notes: string | null
+          organization_id: string | null
+          output_id: string | null
+          profile_id: string | null
+          protection_level: string
+          reference_key: string
+          source_alias: string | null
+          survey_id: string | null
+          updated_at: string
+          verification: Json
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_prefix_alias?: string | null
+          destination_storage_alias?: string | null
+          display_label?: string | null
+          entry_type: string
+          farm_id?: string | null
+          id?: string
+          manifest_id: string
+          metadata?: Json
+          nginx_route_pattern?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          output_id?: string | null
+          profile_id?: string | null
+          protection_level?: string
+          reference_key: string
+          source_alias?: string | null
+          survey_id?: string | null
+          updated_at?: string
+          verification?: Json
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_prefix_alias?: string | null
+          destination_storage_alias?: string | null
+          display_label?: string | null
+          entry_type?: string
+          farm_id?: string | null
+          id?: string
+          manifest_id?: string
+          metadata?: Json
+          nginx_route_pattern?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          output_id?: string | null
+          profile_id?: string | null
+          protection_level?: string
+          reference_key?: string
+          source_alias?: string | null
+          survey_id?: string | null
+          updated_at?: string
+          verification?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workshop_manifest_entries_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_manifest_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_manifest_entries_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_manifest_entries_manifest_id_fkey"
+            columns: ["manifest_id"]
+            isOneToOne: false
+            referencedRelation: "workshop_manifests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_manifest_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_manifest_entries_output_id_fkey"
+            columns: ["output_id"]
+            isOneToOne: false
+            referencedRelation: "survey_outputs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_manifest_entries_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_manifest_entries_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workshop_manifests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          backup_exported_at: string | null
+          backup_object_alias: string | null
+          backup_storage_alias: string | null
+          created_at: string
+          created_by: string | null
+          dataset_year: number
+          description: string | null
+          id: string
+          is_active: boolean
+          manifest_key: string
+          metadata: Json
+          notes: string | null
+          status: string
+          superseded_by_manifest_id: string | null
+          supersedes_manifest_id: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          backup_exported_at?: string | null
+          backup_object_alias?: string | null
+          backup_storage_alias?: string | null
+          created_at?: string
+          created_by?: string | null
+          dataset_year?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          manifest_key: string
+          metadata?: Json
+          notes?: string | null
+          status?: string
+          superseded_by_manifest_id?: string | null
+          supersedes_manifest_id?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          backup_exported_at?: string | null
+          backup_object_alias?: string | null
+          backup_storage_alias?: string | null
+          created_at?: string
+          created_by?: string | null
+          dataset_year?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          manifest_key?: string
+          metadata?: Json
+          notes?: string | null
+          status?: string
+          superseded_by_manifest_id?: string | null
+          supersedes_manifest_id?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workshop_manifests_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_manifests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_manifests_superseded_by_manifest_id_fkey"
+            columns: ["superseded_by_manifest_id"]
+            isOneToOne: false
+            referencedRelation: "workshop_manifests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_manifests_supersedes_manifest_id_fkey"
+            columns: ["supersedes_manifest_id"]
+            isOneToOne: false
+            referencedRelation: "workshop_manifests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_confirm_client_organization_mapping: {
+        Args: {
+          mapping_notes?: string
+          target_client_id: string
+          target_organization_id: string
+        }
+        Returns: undefined
+      }
+      admin_confirm_client_person_mapping: {
+        Args: {
+          mapping_notes?: string
+          target_client_id: string
+          target_person_id: string
+        }
+        Returns: undefined
+      }
+      admin_create_organization_for_client_mapping: {
+        Args: {
+          mapping_notes?: string
+          organization_code?: string
+          organization_name: string
+          organization_notes?: string
+          organization_type_code: string
+          target_client_id: string
+        }
+        Returns: string
+      }
+      admin_create_person_for_client_mapping: {
+        Args: {
+          mapping_notes?: string
+          person_display_name: string
+          person_first_name?: string
+          person_last_name?: string
+          person_mobile?: string
+          person_notes?: string
+          target_client_id: string
+        }
+        Returns: string
+      }
+      authorize_workshop_protected_asset: {
+        Args: {
+          requested_dataset_year: number
+          requested_entry_type: string
+          requested_original_uri: string
+          requested_survey_id: string
+        }
+        Returns: {
+          client_id: string
+          destination_prefix_alias: string
+          destination_storage_alias: string
+          entry_id: string
+          entry_type: string
+          manifest_id: string
+          metadata: Json
+          organization_id: string
+          protection_level: string
+          reference_key: string
+          survey_id: string
+        }[]
+      }
     }
     Enums: {
       access_grant_status: "active" | "revoked" | "expired"
-      account_role: "platform_admin" | "individual"
-      app_role: "platform_admin" | "org_admin" | "editor" | "viewer"
+      app_role: "platform_admin" | "org_admin" | "editor" | "viewer" | "user"
       client_classification_kind:
         | "unclassified"
         | "organization"
@@ -1301,7 +1568,7 @@ export type Database = {
         | "participant"
         | "legacy_client"
         | "other"
-      membership_role: "org_admin" | "member"
+      membership_role: "org_admin" | "member" | "viewer" | "editor"
       membership_status:
         | "invited"
         | "pending"
@@ -1439,8 +1706,7 @@ export const Constants = {
   public: {
     Enums: {
       access_grant_status: ["active", "revoked", "expired"],
-      account_role: ["platform_admin", "individual"],
-      app_role: ["platform_admin", "org_admin", "editor", "viewer"],
+      app_role: ["platform_admin", "org_admin", "editor", "viewer", "user"],
       client_classification_kind: [
         "unclassified",
         "organization",
@@ -1458,7 +1724,7 @@ export const Constants = {
         "legacy_client",
         "other",
       ],
-      membership_role: ["org_admin", "member"],
+      membership_role: ["org_admin", "member", "viewer", "editor"],
       membership_status: [
         "invited",
         "pending",

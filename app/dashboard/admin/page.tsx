@@ -5,7 +5,7 @@ import {
   Building2,
   CheckCircle2,
   ClipboardList,
-  Database,
+  Database as DatabaseIcon,
   FileBarChart,
   Landmark,
   Map,
@@ -24,8 +24,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createOrganizationMembership } from "@/lib/actions/admin-memberships";
+import { createSurveyAccessGrant } from "@/lib/actions/admin-survey-grants";
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
-import type { Tables } from "@/lib/database.types";
+import type { Database as AppDatabase, Json, Tables } from "@/lib/database.types";
 import { createClient } from "@/utils/supabase/server";
 
 type AdminCount = {
@@ -62,7 +63,7 @@ type ClientListRow = Pick<
 
 type ProfileListRow = Pick<
   Tables<"profiles">,
-  "id" | "email" | "role" | "account_role" | "organization_id" | "created_at"
+  "id" | "email" | "role" | "created_at"
 >;
 
 type SurveyListRow = Pick<
@@ -95,7 +96,7 @@ type FarmListRow = Pick<
 
 type MembershipProfileRow = Pick<
   Tables<"profiles">,
-  "id" | "email" | "role" | "account_role"
+  "id" | "email" | "role"
 >;
 
 type MembershipOrganizationRow = Pick<
@@ -103,10 +104,20 @@ type MembershipOrganizationRow = Pick<
   "id" | "name" | "type_code" | "status"
 >;
 
+type MembershipRoleValue = AppDatabase["public"]["Enums"]["membership_role"] | "viewer" | "editor";
+
 type MembershipProfileOption = MembershipProfileRow;
 type MembershipOrganizationOption = MembershipOrganizationRow;
+type SurveyGrantProfileOption = MembershipProfileRow;
 
-type MembershipListRow = Pick<
+type SurveyGrantSurveyOption = Pick<
+  Tables<"surveys">,
+  "id" | "location" | "flight_date" | "client_id"
+> & {
+  client: Pick<Tables<"clients">, "code" | "name"> | null;
+};
+
+type MembershipListRow = Omit<Pick<
   Tables<"organization_memberships">,
   | "id"
   | "profile_id"
@@ -117,7 +128,8 @@ type MembershipListRow = Pick<
   | "approved_at"
   | "removed_at"
   | "updated_at"
-> & {
+>, "role"> & {
+  role: MembershipRoleValue;
   profile: MembershipProfileRow | null;
   organization: MembershipOrganizationRow | null;
 };
@@ -126,6 +138,34 @@ type OutputListRow = Pick<
   Tables<"survey_outputs">,
   "id" | "title" | "output_type" | "survey_id" | "status" | "is_current"
 >;
+
+
+type SurveyAccessGrantListRow = Pick<
+  Tables<"survey_access_grants">,
+  | "id"
+  | "profile_id"
+  | "survey_id"
+  | "status"
+  | "reason"
+  | "created_at"
+  | "expires_at"
+> & {
+  profile: Pick<Tables<"profiles">, "email"> | null;
+  survey: SurveyGrantSurveyOption | null;
+};
+type AdminAuditListRow = Pick<
+  Tables<"admin_audit_log">,
+  | "id"
+  | "occurred_at"
+  | "actor_profile_id"
+  | "action"
+  | "table_name"
+  | "record_pk"
+  | "old_data"
+  | "new_data"
+> & {
+  actor: Pick<Tables<"profiles">, "email"> | null;
+};
 
 type ListColumn<T> = {
   header: string;
@@ -170,6 +210,20 @@ function formatShortId(value: string | null): string {
   return value ? value.slice(0, 8) : "Not set";
 }
 
+function formatDateTime(value: string | null): string {
+  if (!value) {
+    return "Not set";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 function formatLabel(value: string | null): string {
   if (!value) {
     return "Not set";
@@ -179,6 +233,84 @@ function formatLabel(value: string | null): string {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function isJsonRecord(value: Json | undefined): value is Record<string, Json | undefined> {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value)
+  );
+}
+
+function formatJsonPreview(value: Json | undefined): string {
+  if (value == null) {
+    return "Not set";
+  }
+
+  if (typeof value === "string") {
+    return value.length > 16 ? formatShortId(value) : value;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `${value.length} items`;
+  }
+
+  const keys = Object.keys(value);
+  return keys.length === 0 ? "Empty object" : `${keys.length} fields`;
+}
+
+function formatRecordIdentity(value: Json): string {
+  if (!isJsonRecord(value)) {
+    return formatJsonPreview(value);
+  }
+
+  const entries = Object.entries(value);
+
+  if (entries.length === 0) {
+    return "Not set";
+  }
+
+  return entries
+    .slice(0, 3)
+    .map(([key, entryValue]) => `${formatLabel(key)}: ${formatJsonPreview(entryValue)}`)
+    .join(", ");
+}
+
+function formatAuditChange(row: AdminAuditListRow): string {
+  const action = row.action.toUpperCase();
+
+  if (action === "INSERT") {
+    return "Created record";
+  }
+
+  if (action === "DELETE") {
+    return "Removed record";
+  }
+
+  const oldData = row.old_data ?? undefined;
+  const newData = row.new_data ?? undefined;
+
+  if (!isJsonRecord(oldData) || !isJsonRecord(newData)) {
+    return "Recorded change";
+  }
+
+  const changedKeys = Object.keys(newData).filter(
+    (key) => JSON.stringify(oldData[key]) !== JSON.stringify(newData[key]),
+  );
+
+  if (changedKeys.length === 0) {
+    return "Recorded update";
+  }
+
+  const labels = changedKeys.slice(0, 4).map((key) => formatLabel(key));
+  const suffix = changedKeys.length > labels.length ? ` +${changedKeys.length - labels.length} more` : "";
+
+  return `Updated ${labels.join(", ")}${suffix}`;
 }
 
 function formatPersonName(person: PeopleListRow): string {
@@ -395,8 +527,8 @@ function CreateMembershipForm({
   return (
     <Card className="rounded-lg">
       <CardHeader>
-        <CardDescription>Phase 3H-B Controlled Membership</CardDescription>
-        <CardTitle>Create ordinary member access</CardTitle>
+        <CardDescription>Access Management</CardDescription>
+        <CardTitle>Create non-admin organization access</CardTitle>
       </CardHeader>
       <CardContent>
         <form action={createOrganizationMembership} className="grid gap-4 lg:grid-cols-2">
@@ -416,7 +548,7 @@ function CreateMembershipForm({
               </option>
               {profileOptions.map((option) => (
                 <option key={option.id} value={option.id}>
-                  {option.email ?? formatShortId(option.id)} ({formatLabel(option.account_role)})
+                  {option.email ?? formatShortId(option.id)} ({formatLabel(option.role)})
                 </option>
               ))}
             </select>
@@ -441,6 +573,23 @@ function CreateMembershipForm({
                   {option.name} ({formatLabel(option.type_code)})
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="role">
+              Membership role
+            </label>
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              defaultValue="viewer"
+              disabled={disabled}
+              id="role"
+              name="role"
+              required
+            >
+              <option value="viewer">Viewer</option>
+              <option value="editor">Editor</option>
             </select>
           </div>
 
@@ -476,8 +625,7 @@ function CreateMembershipForm({
 
           <div className="flex flex-col gap-3 lg:col-span-2 lg:flex-row lg:items-center lg:justify-between">
             <p className="max-w-3xl text-sm text-muted-foreground">
-              This creates only an ordinary organization member record for an
-              existing user and existing organization. Organization-admin
+              This creates only a viewer or editor organization membership for an existing user and existing organization. Organization-admin
               promotion, Auth-user creation, invite email delivery, and
               destructive removal workflows remain blocked.
             </p>
@@ -491,6 +639,101 @@ function CreateMembershipForm({
   );
 }
 
+function formatSurveyOption(survey: SurveyGrantSurveyOption): string {
+  const clientLabel = survey.client?.code ?? formatShortId(survey.client_id);
+  const surveyLabel = survey.location ?? formatShortId(survey.id);
+  const dateLabel = survey.flight_date ? ` - ${formatDate(survey.flight_date)}` : "";
+
+  return `${clientLabel} - ${surveyLabel}${dateLabel}`;
+}
+
+function CreateSurveyGrantForm({
+  profileOptions,
+  surveyOptions,
+}: {
+  profileOptions: SurveyGrantProfileOption[];
+  surveyOptions: SurveyGrantSurveyOption[];
+}) {
+  const disabled = profileOptions.length === 0 || surveyOptions.length === 0;
+
+  return (
+    <Card className="rounded-lg">
+      <CardHeader>
+        <CardDescription>Individual Access</CardDescription>
+        <CardTitle>Create survey access grant</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form action={createSurveyAccessGrant} className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="surveyGrantProfileId">
+              Existing user account
+            </label>
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              disabled={disabled}
+              id="surveyGrantProfileId"
+              name="profileId"
+              required
+            >
+              <option value="">
+                {profileOptions.length === 0 ? "No eligible users" : "Select user"}
+              </option>
+              {profileOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.email ?? formatShortId(option.id)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid gap-2">
+            <label className="text-sm font-medium" htmlFor="surveyGrantSurveyId">
+              Existing survey
+            </label>
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              disabled={disabled}
+              id="surveyGrantSurveyId"
+              name="surveyId"
+              required
+            >
+              <option value="">
+                {surveyOptions.length === 0 ? "No surveys" : "Select survey"}
+              </option>
+              {surveyOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {formatSurveyOption(option)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid gap-2 lg:col-span-2">
+            <label className="text-sm font-medium" htmlFor="surveyGrantReason">
+              Grant reason
+            </label>
+            <textarea
+              className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              id="surveyGrantReason"
+              maxLength={2000}
+              name="surveyGrantReason"
+              rows={3}
+            />
+          </div>
+
+          <div className="flex flex-col gap-3 lg:col-span-2 lg:flex-row lg:items-center lg:justify-between">
+            <p className="max-w-3xl text-sm text-muted-foreground">
+              This creates a survey-only exception for an existing user. It does not create organization membership, farm access, account-role changes, or broad client access.
+            </p>
+            <Button className="w-fit" disabled={disabled} type="submit">
+              Create survey grant
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
 function ReadinessCard({ metric }: { metric: ReadinessMetric }) {
   const isWarning = metric.variant === "warning";
   const iconClassName = isWarning
@@ -547,9 +790,12 @@ export default async function AdminPage() {
     farmRows,
     membershipRows,
     outputRows,
+    auditRows,
     membershipProfileOptionsResponse,
     membershipOrganizationOptionsResponse,
     liveMembershipProfileIdsResponse,
+    surveyGrantSurveyOptionsResponse,
+    surveyGrantRows,
   ] = await Promise.all([
     getTableCount("clients"),
     getTableCount("profiles"),
@@ -582,7 +828,7 @@ export default async function AdminPage() {
       .limit(8),
     supabase
       .from("profiles")
-      .select("id, email, role, account_role, organization_id, created_at")
+      .select("id, email, role, created_at")
       .order("created_at", { ascending: false })
       .limit(8),
     supabase
@@ -612,7 +858,7 @@ export default async function AdminPage() {
     supabase
       .from("organization_memberships")
       .select(
-        "id, profile_id, organization_id, role, status, invited_at, approved_at, removed_at, updated_at, profile:profiles!organization_memberships_profile_id_fkey(id, email, role, account_role), organization:organizations!organization_memberships_organization_id_fkey(id, name, type_code, status)",
+        "id, profile_id, organization_id, role, status, invited_at, approved_at, removed_at, updated_at, profile:profiles!organization_memberships_profile_id_fkey(id, email, role), organization:organizations!organization_memberships_organization_id_fkey(id, name, type_code, status)",
       )
       .order("updated_at", { ascending: false })
       .limit(8),
@@ -622,10 +868,16 @@ export default async function AdminPage() {
       .order("updated_at", { ascending: false })
       .limit(8),
     supabase
+      .from("admin_audit_log")
+      .select(
+        "id, occurred_at, actor_profile_id, action, table_name, record_pk, old_data, new_data, actor:profiles!admin_audit_log_actor_profile_id_fkey(email)",
+      )
+      .order("occurred_at", { ascending: false })
+      .limit(8),
+    supabase
       .from("profiles")
-      .select("id, email, role, account_role")
+      .select("id, email, role")
       .neq("role", "platform_admin")
-      .neq("account_role", "platform_admin")
       .order("email", { ascending: true, nullsFirst: false })
       .limit(100),
     supabase
@@ -639,6 +891,17 @@ export default async function AdminPage() {
       .select("profile_id")
       .in("status", ["invited", "pending", "active", "suspended"])
       .limit(1000),
+    supabase
+      .from("surveys")
+      .select("id, location, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name)")
+      .order("flight_date", { ascending: false, nullsFirst: false })
+      .order("location", { ascending: true, nullsFirst: false })
+      .limit(200),
+    supabase
+      .from("survey_access_grants")
+      .select("id, profile_id, survey_id, status, reason, created_at, expires_at, profile:profiles!survey_access_grants_profile_id_fkey(email), survey:surveys!survey_access_grants_survey_id_fkey(id, location, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name))")
+      .order("created_at", { ascending: false })
+      .limit(8),
   ]);
 
   const listResponses = [
@@ -650,6 +913,7 @@ export default async function AdminPage() {
     ["farms", farmRows],
     ["memberships", membershipRows],
     ["outputs", outputRows],
+    ["recent admin activity", auditRows],
     ["unclassified client count", unclassifiedClients],
     ["reviewed client count", reviewedClients],
     ["confirmed person mappings count", confirmedPersonMappings],
@@ -657,6 +921,8 @@ export default async function AdminPage() {
     ["membership profile options", membershipProfileOptionsResponse],
     ["membership organization options", membershipOrganizationOptionsResponse],
     ["live membership profile ids", liveMembershipProfileIdsResponse],
+    ["survey grant survey options", surveyGrantSurveyOptionsResponse],
+    ["survey grant rows", surveyGrantRows],
   ] as const;
 
   for (const [label, response] of listResponses) {
@@ -675,7 +941,7 @@ export default async function AdminPage() {
     {
       label: "User Accounts",
       value: profiles,
-      description: "Authenticated profiles and access state.",
+      description: "Authenticated profiles and account-level role state.",
       icon: Users,
     },
     {
@@ -687,7 +953,7 @@ export default async function AdminPage() {
     {
       label: "Organizations",
       value: organizations,
-      description: "Canonical organization records added in Phase 3A.",
+      description: "Canonical organization records for reviewed client mapping.",
       icon: Landmark,
     },
     {
@@ -724,13 +990,17 @@ export default async function AdminPage() {
   const farmList = (farmRows.data ?? []) as FarmListRow[];
   const membershipList = (membershipRows.data ?? []) as MembershipListRow[];
   const outputList = (outputRows.data ?? []) as OutputListRow[];
+  const auditList = (auditRows.data ?? []) as AdminAuditListRow[];
+  const surveyGrantList = (surveyGrantRows.data ?? []) as SurveyAccessGrantListRow[];
+  const surveyGrantSurveyOptions = (surveyGrantSurveyOptionsResponse.data ?? []) as SurveyGrantSurveyOption[];
   const liveMembershipProfileIds = new Set(
     ((liveMembershipProfileIdsResponse.data ?? []) as Pick<
       Tables<"organization_memberships">,
       "profile_id"
     >[]).map((row) => row.profile_id),
   );
-  const membershipProfileOptions = ((membershipProfileOptionsResponse.data ?? []) as MembershipProfileOption[])
+  const surveyGrantProfileOptions = (membershipProfileOptionsResponse.data ?? []) as SurveyGrantProfileOption[];
+  const membershipProfileOptions = (surveyGrantProfileOptions as MembershipProfileOption[])
     .filter((option) => !liveMembershipProfileIds.has(option.id));
   const membershipOrganizationOptions = (membershipOrganizationOptionsResponse.data ?? []) as MembershipOrganizationOption[];
   const readinessMetrics: ReadinessMetric[] = [
@@ -771,11 +1041,9 @@ export default async function AdminPage() {
           <Badge variant="secondary">Controlled membership</Badge>
         </div>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Phase 3H-B enables platform admins to create ordinary member
-          access for existing users and existing organizations. Phase 3H-C
-          adds ordinary membership status management. Org-admin promotion,
-          Auth-user creation, invite delivery, asset migration, and destructive
-          actions remain gated.
+          Platform admins can review workshop readiness, connect reviewed
+          legacy clients to canonical records, create viewer or editor access for existing users and organizations, and update non-admin membership status. Org-admin promotion, Auth-user creation, invite delivery,
+          asset migration, and destructive actions remain gated.
         </p>
       </div>
 
@@ -814,6 +1082,35 @@ export default async function AdminPage() {
           organizationOptions={membershipOrganizationOptions}
         />
 
+        <CreateSurveyGrantForm
+          profileOptions={surveyGrantProfileOptions}
+          surveyOptions={surveyGrantSurveyOptions}
+        />
+
+        <AdminListSection
+          title="Recent Admin Activity"
+          description="Read-only audit trail for controlled admin changes"
+          rows={auditList}
+          emptyLabel="No recent admin activity is visible."
+          columns={[
+            { header: "Time", cell: (row) => formatDateTime(row.occurred_at) },
+            {
+              header: "Actor",
+              cell: (row) => row.actor?.email ?? formatShortId(row.actor_profile_id),
+            },
+            {
+              header: "Action",
+              cell: (row) => <StatusBadge value={row.action} />,
+            },
+            { header: "Table", cell: (row) => formatLabel(row.table_name) },
+            {
+              header: "Record",
+              cell: (row) => formatRecordIdentity(row.record_pk),
+            },
+            { header: "Change", cell: (row) => formatAuditChange(row) },
+          ]}
+        />
+
         <AdminListSection
           title="Legacy Clients"
           description="Historical mixed tenant records with reviewed canonical mapping status"
@@ -843,7 +1140,7 @@ export default async function AdminPage() {
 
         <AdminListSection
           title="User Accounts"
-          description="Authenticated profiles and current access state"
+          description="Authenticated profiles and account-level role state"
           rows={profileList}
           emptyLabel="No profile records are visible."
           columns={[
@@ -855,18 +1152,11 @@ export default async function AdminPage() {
                 </DetailLink>
               ),
             },
-            {
-              header: "Legacy Role",
+                        {
+              header: "Current Role",
               cell: (row) => <StatusBadge value={row.role} />,
             },
-            {
-              header: "Account Role",
-              cell: (row) => <StatusBadge value={row.account_role} />,
-            },
-            {
-              header: "Organization",
-              cell: (row) => formatShortId(row.organization_id),
-            },
+            { header: "Created", cell: (row) => formatDate(row.created_at) },
           ]}
         />
 
@@ -976,11 +1266,35 @@ export default async function AdminPage() {
           ]}
         />
 
+
+        <AdminListSection
+          title="Survey Access Grants"
+          description="Read-only survey-specific exceptions for individual users"
+          rows={surveyGrantList}
+          emptyLabel="No survey access grants yet."
+          columns={[
+            {
+              header: "User Account",
+              cell: (row) => row.profile?.email ?? formatShortId(row.profile_id),
+            },
+            {
+              header: "Survey",
+              cell: (row) => row.survey ? formatSurveyOption(row.survey) : formatShortId(row.survey_id),
+            },
+            {
+              header: "Status",
+              cell: (row) => <StatusBadge value={row.status} />,
+            },
+            { header: "Created", cell: (row) => formatDate(row.created_at) },
+            { header: "Expires", cell: (row) => formatDate(row.expires_at) },
+            { header: "Reason", cell: (row) => row.reason ?? "Not set" },
+          ]}
+        />
         <AdminListSection
           title="Organization Memberships"
           description="Read-only account-to-organization access readiness"
           rows={membershipList}
-          emptyLabel="No organization memberships yet. Current access still works through compatible profile organization ownership."
+          emptyLabel="No organization memberships yet."
           columns={[
             {
               header: "User Account",
@@ -1038,8 +1352,8 @@ export default async function AdminPage() {
       <section className="grid gap-4 lg:grid-cols-3">
         <Card className="rounded-lg lg:col-span-2">
           <CardHeader>
-            <CardDescription>Current Gate</CardDescription>
-            <CardTitle>Phase 3H-C adds ordinary member status control</CardTitle>
+            <CardDescription>Workshop Safety Boundary</CardDescription>
+            <CardTitle>Non-admin organization access is the only access workflow enabled</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
@@ -1048,8 +1362,7 @@ export default async function AdminPage() {
             </p>
             <p>
               Current controlled mutations cover legacy-client classification,
-              canonical client mapping, ordinary membership creation, and
-              ordinary membership status updates with audit coverage.
+              canonical client mapping, viewer or editor membership creation, and non-admin membership status updates with audit coverage.
             </p>
           </CardContent>
         </Card>
@@ -1061,7 +1374,7 @@ export default async function AdminPage() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
-              <Database className="size-4" />
+              <DatabaseIcon className="size-4" />
               <span>No contract cleanup</span>
             </div>
             <div className="flex items-center gap-2">

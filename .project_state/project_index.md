@@ -1,12 +1,13 @@
 # Project Index
 
-Last updated: 2026-08-10
+Last updated: 2026-08-12
 
 Use this index after the compressed `.project_state` files when a task needs deeper context. Retrieve only the sections that matter to the current task.
 
 ## Core Delivery And Roadmap
 
 - `docs/admin-dashboard-integration-plan.md`: master phased plan, workshop scope, architecture, and delivery timeline.
+- `docs/admin-mvp-operator-guide.md`: concise operator guide for the current mostly-read-only Admin MVP and enabled platform-admin workflows.
 - `docs/infrastructure-status.md`: current infra posture, staging/prod notes, and unresolved deployment gaps.
 
 ## Workshop Manifest And Protected Assets

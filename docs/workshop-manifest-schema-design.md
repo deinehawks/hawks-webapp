@@ -359,7 +359,7 @@ RLS and triggers provide the actual access control.
 Recommended server actions should:
 
 - require authenticated user context;
-- require `profile.role = 'platform_admin'` or `account_role = 'platform_admin'`;
+- require `profile.role = 'platform_admin'`;
 - resolve `visualization.hawks@gmail.com` to a profile ID before approval;
 - reject personal data fields not needed for the manifest;
 - reject individual tile-file entries;

@@ -77,7 +77,7 @@ type MappingPersonOption = Pick<
 
 type MembershipProfileDetail = Pick<
   Tables<"profiles">,
-  "id" | "email" | "role" | "account_role" | "person_id" | "organization_id"
+  "id" | "email" | "role" | "person_id"
 >;
 
 type MembershipOrganizationDetail = Pick<
@@ -86,8 +86,10 @@ type MembershipOrganizationDetail = Pick<
 >;
 
 type MembershipStatus = Database["public"]["Enums"]["membership_status"];
+type MembershipRoleValue = Database["public"]["Enums"]["membership_role"] | "viewer" | "editor";
 
-type MembershipDetailRow = Tables<"organization_memberships"> & {
+type MembershipDetailRow = Omit<Tables<"organization_memberships">, "role"> & {
+  role: MembershipRoleValue;
   profile: MembershipProfileDetail | null;
   organization: MembershipOrganizationDetail | null;
 };
@@ -426,10 +428,8 @@ async function getResourceDetail(
         fields: [
           { label: "ID", value: data.id },
           { label: "Email", value: data.email },
-          { label: "Legacy Role", value: formatLabel(data.role) },
-          { label: "Account Role", value: formatLabel(data.account_role) },
-          { label: "Organization ID", value: data.organization_id },
-          { label: "Person ID", value: data.person_id },
+          { label: "Account Role", value: formatLabel(data.role) },
+                    { label: "Person ID", value: data.person_id },
           { label: "Mobile", value: data.mobile },
           { label: "Telephone", value: data.telephone },
           { label: "Created", value: formatDate(data.created_at) },
@@ -585,7 +585,7 @@ async function getResourceDetail(
       const { data, error } = (await supabase
         .from("organization_memberships")
         .select(
-          "*, profile:profiles!organization_memberships_profile_id_fkey(id, email, role, account_role, person_id, organization_id), organization:organizations!organization_memberships_organization_id_fkey(id, name, type_code, status)",
+          "*, profile:profiles!organization_memberships_profile_id_fkey(id, email, role, person_id), organization:organizations!organization_memberships_organization_id_fkey(id, name, type_code, status)",
         )
         .eq("id", id)
         .maybeSingle()) as {
@@ -608,13 +608,10 @@ async function getResourceDetail(
           { label: "ID", value: data.id },
           { label: "User Email", value: data.profile?.email },
           { label: "Profile ID", value: data.profile_id },
-          { label: "Legacy Profile Role", value: formatLabel(data.profile?.role ?? null) },
-          { label: "Account Role", value: formatLabel(data.profile?.account_role ?? null) },
+          { label: "Account Role", value: formatLabel(data.profile?.role ?? null) },
           { label: "Profile Person ID", value: data.profile?.person_id },
-          { label: "Legacy Profile Organization ID", value: data.profile?.organization_id },
-          { label: "Organization", value: data.organization?.name },
-          { label: "Organization ID", value: data.organization_id },
-          { label: "Organization Type", value: formatLabel(data.organization?.type_code ?? null) },
+                    { label: "Organization", value: data.organization?.name },
+                    { label: "Organization Type", value: formatLabel(data.organization?.type_code ?? null) },
           { label: "Organization Status", value: formatLabel(data.organization?.status ?? null) },
           { label: "Membership Role", value: formatLabel(data.role) },
           { label: "Membership Status", value: formatLabel(data.status) },
@@ -680,7 +677,7 @@ function ClientClassificationForm({ client }: { client: ClientDetailRow }) {
   return (
     <Card className="rounded-lg">
       <CardHeader>
-        <CardDescription>Phase 3F Controlled Mutation</CardDescription>
+        <CardDescription>Classification Control</CardDescription>
         <CardTitle>Classify legacy client</CardTitle>
       </CardHeader>
       <CardContent>
@@ -770,7 +767,7 @@ function ClientMappingForm({
   return (
     <Card className="rounded-lg">
       <CardHeader>
-        <CardDescription>Phase 3G-C Controlled Mapping</CardDescription>
+        <CardDescription>Canonical Mapping</CardDescription>
         <CardTitle>Map to canonical record</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-2">
@@ -778,7 +775,7 @@ function ClientMappingForm({
           <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground lg:col-span-2">
             This legacy client already has a confirmed canonical mapping. A
             client can be mapped to either one organization or one person during
-            this phase, not both.
+            this workshop workflow, not both.
           </p>
         ) : null}
 
@@ -1056,17 +1053,16 @@ function MembershipStatusForm({
 }) {
   const nextStatuses = membershipStatusTransitions[membership.status];
 
-  if (membership.role !== "member") {
+  if (membership.role === "org_admin") {
     return (
       <Card className="rounded-lg">
         <CardHeader>
-          <CardDescription>Phase 3H-C Controlled Membership</CardDescription>
+          <CardDescription>Membership Controls</CardDescription>
           <CardTitle>Membership status</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Org-admin membership role changes are deferred. This phase only
-            manages ordinary member status.
+            Organization-admin membership status changes are deferred. This workflow only manages viewer and editor access.
           </p>
         </CardContent>
       </Card>
@@ -1076,14 +1072,14 @@ function MembershipStatusForm({
   return (
     <Card className="rounded-lg">
       <CardHeader>
-        <CardDescription>Phase 3H-C Controlled Membership</CardDescription>
-        <CardTitle>Update ordinary member status</CardTitle>
+        <CardDescription>Membership Controls</CardDescription>
+        <CardTitle>Update non-admin membership status</CardTitle>
       </CardHeader>
       <CardContent>
         {nextStatuses.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Removed memberships are retained for audit history and cannot be
-            reactivated from this phase.
+            reactivated from this workflow.
           </p>
         ) : (
           <form
@@ -1126,7 +1122,7 @@ function MembershipStatusForm({
 
             <div className="flex flex-col gap-3 lg:col-span-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="max-w-2xl text-sm text-muted-foreground">
-                This changes only ordinary membership status. It does not create
+                This changes only viewer or editor membership status. It does not create
                 auth users, promote org admins, move users across organizations,
                 or delete records.
               </p>
@@ -1185,8 +1181,7 @@ export default async function AdminDetailPage({
           <p className="max-w-3xl text-sm text-muted-foreground">
             {detail.description} Most admin detail data remains read-only.
             Legacy client classification, canonical client mapping, and
-            ordinary membership status updates are the only controlled
-            mutations enabled here.
+            viewer and editor membership status updates are the only controlled mutations enabled here.
           </p>
         </div>
       </div>

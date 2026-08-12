@@ -13,7 +13,14 @@ import type {
 import { createClient } from "@/utils/supabase/server";
 
 type MembershipStatus = Database["public"]["Enums"]["membership_status"];
-type TargetProfile = Pick<Tables<"profiles">, "id" | "role" | "account_role">;
+type MembershipRole = Database["public"]["Enums"]["membership_role"] | "viewer" | "editor";
+type TargetProfile = Pick<Tables<"profiles">, "id" | "role">;
+type StoredMembership = Pick<
+  Tables<"organization_memberships">,
+  "id" | "status"
+> & {
+  role: MembershipRole;
+};
 
 type MembershipInsertTable = {
   insert(values: TablesInsert<"organization_memberships">): PromiseLike<{
@@ -30,6 +37,7 @@ type MembershipUpdateTable = {
 };
 
 const allowedInitialStatuses = ["pending", "active"] as const satisfies readonly MembershipStatus[];
+const ordinaryMembershipRoles = ["viewer", "editor"] as const satisfies readonly MembershipRole[];
 const allowedStatusTransitions = {
   invited: ["pending", "removed"],
   pending: ["active", "removed"],
@@ -64,12 +72,24 @@ function parseInitialStatus(value: string): MembershipStatus {
   throw new Error("Invalid initial membership status.");
 }
 
+function parseMembershipRole(value: string): MembershipRole {
+  if ((ordinaryMembershipRoles as readonly string[]).includes(value)) {
+    return value as MembershipRole;
+  }
+
+  throw new Error("Invalid membership role.");
+}
+
 function parseMembershipStatus(value: string): MembershipStatus {
   if (value in allowedStatusTransitions) {
     return value as MembershipStatus;
   }
 
   throw new Error("Invalid membership status.");
+}
+
+function isOrdinaryMembershipRole(value: string): value is MembershipRole {
+  return (ordinaryMembershipRoles as readonly string[]).includes(value);
 }
 
 export async function createOrganizationMembership(formData: FormData) {
@@ -81,13 +101,14 @@ export async function createOrganizationMembership(formData: FormData) {
 
   const profileId = readRequiredString(formData, "profileId");
   const organizationId = readRequiredString(formData, "organizationId");
+  const role = parseMembershipRole(readRequiredString(formData, "role"));
   const status = parseInitialStatus(readRequiredString(formData, "status"));
   const notes = readOptionalNotes(formData, "membershipNotes");
   const supabase = await createClient();
 
   const { data: targetProfile, error: profileError } = (await supabase
     .from("profiles")
-    .select("id, role, account_role")
+    .select("id, role")
     .eq("id", profileId)
     .maybeSingle()) as {
     data: TargetProfile | null;
@@ -104,10 +125,7 @@ export async function createOrganizationMembership(formData: FormData) {
     throw new Error("Target user account not found.");
   }
 
-  if (
-    targetProfile.role === "platform_admin" ||
-    targetProfile.account_role === "platform_admin"
-  ) {
+  if (targetProfile.role === "platform_admin") {
     throw new Error("Platform administrators do not need organization memberships.");
   }
 
@@ -147,7 +165,7 @@ export async function createOrganizationMembership(formData: FormData) {
   const insertPayload: TablesInsert<"organization_memberships"> = {
     profile_id: profileId,
     organization_id: organizationId,
-    role: "member",
+    role: role as TablesInsert<"organization_memberships">["role"],
     status,
     notes,
     invited_by: profile.id,
@@ -188,10 +206,7 @@ export async function updateOrganizationMembershipStatus(formData: FormData) {
     .select("id, role, status")
     .eq("id", membershipId)
     .maybeSingle()) as {
-    data: Pick<
-      Tables<"organization_memberships">,
-      "id" | "role" | "status"
-    > | null;
+    data: StoredMembership | null;
     error: PostgrestError | null;
   };
 
@@ -205,8 +220,12 @@ export async function updateOrganizationMembershipStatus(formData: FormData) {
     throw new Error("Organization membership not found.");
   }
 
-  if (membership.role !== "member") {
-    throw new Error("Org-admin membership role changes are not enabled yet.");
+  if (membership.role === "org_admin") {
+    throw new Error("Organization-admin membership status changes are not enabled yet.");
+  }
+
+  if (!isOrdinaryMembershipRole(membership.role)) {
+    throw new Error("This membership role is not supported in the current workflow.");
   }
 
   const allowedNextStatuses = allowedStatusTransitions[membership.status];

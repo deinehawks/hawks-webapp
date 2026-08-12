@@ -6,6 +6,8 @@ Reviewed source: `docs/ASIMOV-HAWKS_Web_App_Deployment_Plan_Final.docx` (owner-s
 
 Repository evidence in this document describes checked-in contracts only. It does not prove the current state of any remote staging or production Supabase project.
 
+Role model update (2026-08-12): `docs/role-permission-model-and-migration-plan.md` supersedes the earlier global `account_role` split described in older phase language. The approved target is `profiles.role` as the account-level source of truth (`platform_admin` or `user`), `organization_memberships.role` as the organization-level source (`org_admin`, `editor`, or `viewer`), and explicit farm/survey grants for resource exceptions. `profiles.account_role` is planned for removal after dependency gates; `profiles.organization_id` remains legacy compatibility until membership/grant authorization is proven.
+
 ## 1. Purpose
 
 Integrate the interns' Admin Dashboard into the main ASIMOV-HAWKS application without disrupting existing authentication, survey access, geospatial visualization, or production data. The work must reconcile two independently developed Next.js/Supabase systems, preserve the main Supabase project as the source of truth, and deliver the combined application through the proposed Docker/NGINX/MinIO/Cloudflare architecture for invited users over the public internet during the October 2026 workshop.
@@ -197,8 +199,8 @@ No Admin Dashboard business mutation, domain migration, deferred contract operat
 
 The first-release authorization direction is approved:
 
-1. Global account roles are `platform_admin` and `individual`.
-2. Organization membership roles are `org_admin` and `member`.
+1. Account-level roles are held in `profiles.role` only, with target values `platform_admin` and `user`.
+2. Organization membership roles are held in `organization_memberships.role`, with target values `org_admin`, `editor`, and `viewer`.
 3. Normal accounts have at most one live organization membership.
 4. Organization admins may invite, approve, suspend, and remove ordinary members only in their organization.
 5. Only platform admins may promote or manage organization admins, classify legacy clients, or issue exceptional access grants.

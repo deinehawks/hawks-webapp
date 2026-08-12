@@ -39,14 +39,20 @@ const data = {
 
 export function NavMain({
   surveys,
-  userProfile,
+  userProfile: _userProfile,
 }: {
   surveys: Survey[];
   userProfile: UserProfile;
 }) {
   const params = useParams();
   const selectedSurvey = params.surveyId;
-  const clientCode = userProfile.client?.code;
+  const plantationParam =
+    typeof params.plantation === "string"
+      ? params.plantation
+      : Array.isArray(params.plantation)
+        ? params.plantation[0]
+        : undefined;
+  const clientCode = surveys[0]?.client.code ?? plantationParam;
   const sixMonthsAgo = useMemo(() => subMonths(new Date(), 6), []);
 
   const surveyNewMap = useMemo(() => {
@@ -67,6 +73,7 @@ export function NavMain({
       const isNew = s.flight_date
         ? isAfter(new Date(s.flight_date), subMonths(new Date(), 3))
         : false;
+      if (!key) return;
       if (!map[key]) map[key] = { total: 0, new: 0 };
       map[key].total += 1;
       if (isNew) map[key].new += 1;
