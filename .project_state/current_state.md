@@ -1,35 +1,37 @@
 # Current State
 
-Last updated: 2026-08-12
+Last updated: 2026-08-13
 
 Current branch observed by Codex: `feature/workshop-manifest-gate`.
 
 Compressed startup workflow is active through `AGENTS.override.md` and `.project_state/`.
 
-Workshop protected-asset baseline remains in place: authenticated NGINX delivery works for the approved staging manifest, the app uses protected tile/point-cloud routes successfully, and the workshop asset publisher/report flow is implemented locally.
+Protected asset baseline remains in place: authenticated NGINX delivery, protected tile/point-cloud routes, workshop manifest gating, and the publisher/report flow are implemented and user-smoke-confirmed for the staging control samples.
 
-Admin MVP is user-smoke-confirmed. Platform-admin access, non-platform redirect, client classification/mapping workflows, allowed membership transitions, and the read-only Recent Admin Activity list are working. The admin surface remains intentionally mostly read-only.
+Dedicated admin shell status:
 
-Approved role/permission target model is documented in `docs/role-permission-model-and-migration-plan.md`:
-- `profiles.role` is the account-level role source (`platform_admin | user` target)
-- `organization_memberships.role` is the organization-level role source (`org_admin | editor | viewer` target)
-- explicit survey/farm grants remain resource exceptions
-- individual farmers are modeled through `people` / `client_people` plus explicit survey grants, not fabricated one-person organizations
+- A dedicated `/admin` route tree and layout now exist locally for `platform_admin` users.
+- The former `/dashboard/admin/*` pages are now transitional redirects to `/admin/*`.
+- Existing admin overview/detail workflows were moved under `/admin` without changing their underlying server actions, RLS reliance, or mutation scope.
+- Root landing plus password-login and OTP-confirm redirects now send `platform_admin` users to `/admin` and `user` accounts to `/dashboard`.
+- Platform admins still have an explicit navigation path back into the user application through the admin shell.
 
-Role-model implementation status:
-- `20260812000000_remove_account_role_platform_helper_dependency.sql` removed live platform-admin helper dependence on `profiles.account_role`
-- `20260812001000` through `20260812002500` expanded membership roles, backfilled memberships from confirmed legacy mappings, normalized non-platform `profiles.role` values to `user`, regenerated local DB types, and shifted app/RLS authorization toward memberships and grants
-- `20260812003000_remove_legacy_profile_organization_fallback.sql` removed the live SQL/RLS fallback to `profiles.organization_id`
-- `20260812004000_drop_account_role.sql` drops `profiles.account_role`, its index, and the now-unused enum/function dependency
-- `20260812005000_drop_profiles_organization_id.sql` drops `profiles.organization_id`, its FK/index, and remaining compatibility trigger checks; `app_private.current_organization_id()` remains as a compatibility stub returning `null`
-- `20260812005500_enforce_profile_account_role_scope.sql` adds a validated check constraint so `profiles.role` can only store `platform_admin` or `user`
-- PostgreSQL enum labels still include historical `org_admin`/`editor`/`viewer`; actual rows are constrained and clean, while full enum rebuild is deferred as a separate cleanup slice
-- admin overview now includes a platform-admin-only survey access grant workflow for individual users and a read-only Survey Access Grants list
+Admin scope still in force:
 
-Validation baseline:
-- local `npm run supabase:reset` passes through `20260812005500`
-- local `npx tsc --noEmit --incremental false` passes after the individual survey-grant workflow
-- local `npm run lint` still fails only on the pre-existing `components/maplibre.tsx` `@ts-nocheck` ban, with unrelated warnings remaining
-- staging Supabase has all migrations through `20260812005500`
-- staging `profiles.role` rows are normalized: 2 `platform_admin`, 21 `user`, and no `org_admin`/`editor`/`viewer` profile rows
-- `dagaang.viz.hawks@gmail.com` is `profiles.role = user` with 0 total memberships and 0 active memberships, so access should be granted through explicit survey grants after the appropriate individual client/person mapping is confirmed
+- Users & Access for existing accounts is the first delivery wave.
+- Effective-access preview remains planned and read-only; it never creates another user's session.
+- Admin mutations still require authenticated server actions, platform-admin checks, RLS, transition validation, and audit coverage.
+- Auth-user invitations, platform-admin role changes, true impersonation, destructive deletion, and broad infrastructure controls remain deferred.
+
+Role/permission state:
+
+- `profiles.role` is the account-level source and permits `platform_admin | user`.
+- `organization_memberships.role` is the organization-level source and uses `org_admin | editor | viewer`.
+- survey/farm grants are resource exceptions.
+- `profiles.account_role` and `profiles.organization_id` are removed locally and in staging.
+- historical `app_role` enum labels remain blocked by a check constraint pending a separate enum rebuild.
+
+Validation note for this slice:
+
+- `git diff --check` is being used as the formatting gate for current local edits.
+- `npx tsc --noEmit --incremental false` and `npm run lint` both exceeded the local timeout window during this session, so they are not yet recorded as pass/fail for this slice.

@@ -1,4 +1,7 @@
-# Supabase UUID Tenant and Domain Migration Runbook
+﻿# Supabase UUID Tenant and Domain Migration Runbook
+
+Last updated: 2026-08-13
+Status: Authoritative database rollout runbook
 
 Target staging project: `llealjcaqvltrtdwwzrh`
 
@@ -9,20 +12,7 @@ current staging or production state.
 Contract cleanup, storage finalization, and deletion of legacy objects require
 separate approval.
 
-Phase 3F authorizes only the application-level `clients` classification-field
-update path for platform admins. Phase 3G-A adds audit infrastructure for
-`client_people` and `client_organizations`. Phase 3G-B authorizes checked RPCs
-that map a legacy client to an existing canonical person or organization.
-Phase 3G-C authorizes checked RPCs that create minimal canonical people or
-organizations and immediately map them to a legacy client. Phase 3H-A adds
-read-only membership review views. Phase 3H-B adds a platform-admin-only
-server action for creating ordinary member memberships for existing profiles and
-existing organizations. Phase 3H-C adds platform-admin-only status changes for
-ordinary member memberships without deleting records or changing roles. Future SQL
-or server actions for org-admin promotion, Auth-user creation, farm, grant,
-output, storage, or destructive mutations
-must be created, reviewed, and rehearsed only after the blocking human decisions
-below are approved.
+The additive Phase 3F-3I work and the 2026-08-12 role cleanup are completed in local and staging environments. `profiles.account_role` and `profiles.organization_id` are removed; `profiles.role` is constrained to `platform_admin | user`; organization authority comes from `organization_memberships.role`; resource exceptions come from explicit grants. The original sequence remains documented as rollout history. Current admin architecture and delivery order are owned by `docs/admin-dashboard-integration-plan.md`.
 
 ## Required inputs
 
@@ -35,9 +25,7 @@ below are approved.
   as organization, individual, or unclassified without changing the row.
 - Approved single-organization membership, multi-farm survey, explicit farm and
   survey grant, and platform-only organization-admin promotion rules.
-- Approved role-source-of-truth model from
-  `docs/role-permission-model-and-migration-plan.md` before account-role
-  cleanup or membership role expansion.
+- Current role-source-of-truth model from `docs/role-permission-model-and-migration-plan.md` for every authorization or admin change.
 - Separate approval for Auth provisioning, output/report lifecycle, audit
   retention, invitation delivery, and protected asset delivery before those
   capabilities are implemented.
@@ -72,22 +60,24 @@ Do not apply `supabase/deferred/contract_uuid_tenant_keys.sql` or
 `supabase/deferred/secure_detected_objects_storage.sql` while any blocking
 domain or authorization decision remains unresolved.
 
-## Role cleanup pre-contract gate
+## Completed role cleanup and current pre-contract gate
 
-Follow `docs/role-permission-model-and-migration-plan.md` before any contract
-cleanup. The required path is: remove active app/RLS/test dependence on
-`profiles.account_role`; drop that column/enum/helpers only after no active code,
-SQL, tests, verification, or generated types reference it; expand
-`organization_memberships.role` to `org_admin`, `editor`, and `viewer`; backfill
-memberships from `profiles.organization_id` only through approved canonical
-organization mappings; normalize non-platform `profiles.role` values to `user`;
-then cut authorization to memberships and explicit grants with a temporary legacy
-fallback.
+The role cleanup was applied through migrations `20260812000000` to
+`20260812005500`. Its historical order was: remove active `account_role`
+dependence; expand and backfill membership roles; normalize profile roles; cut
+authorization to memberships/grants; remove the legacy profile-organization
+fallback; drop both legacy profile columns; regenerate types; and constrain
+`profiles.role` to `platform_admin | user`.
 
-`profiles.organization_id` must not be dropped during this cleanup. It remains
-the legacy compatibility tenant pointer until membership/grant authorization,
-protected asset access, route behavior, and direct RLS tests all pass without
-fallback.
+Current contract work must preserve these post-removal invariants:
+
+- no live policy, helper, action, test, verification query, or generated type
+  depends on either removed profile column;
+- organization access comes from active memberships and explicit grants;
+- protected asset and application reads use the same access model;
+- `surveys.client_id` and legacy asset paths remain compatibility relationships,
+  not profile-owned authorization;
+- the deferred `app_role` enum rebuild remains a separate reviewed migration.
 
 ## Delivery gates
 
@@ -138,8 +128,7 @@ codes or names alone.
 ```sql
 select id, code, name from public.clients order by code;
 
-select role, count(*) as profiles,
-  count(*) filter (where organization_id is null) as unassigned
+select role, count(*) as profiles
 from public.profiles group by role order by role;
 
 select client_id, count(*) as surveys,
@@ -377,9 +366,7 @@ After the observation window:
    sequence again.
 8. Delete legacy storage objects only through a separately reviewed operation.
 
-The contract must not require every non-platform profile to have an
-`organization_id`, because a `user` account may be unassigned. It must
-enforce at most one live organization membership for normal accounts and must
+The contract must allow a `user` account to have no active membership. It must enforce at most one live organization membership for normal accounts and must
 not make `surveys.client_id` the sole permanent relationship when surveys span
 multiple farms.
 
@@ -387,14 +374,8 @@ multiple farms.
 
 - Keep `clients.code` for `/dashboard/orthomap/[plantation]`, labels, local tile
   directories, and point-cloud asset paths.
-- Keep `profiles.organization_id`, `surveys.client_id`, legacy code columns, and
-  current role compatibility until compatible reads and RLS pass the observation
-  gate. `profiles.role` is the long-term account-level source of truth, but
-  non-platform values must not be normalized to `user` until the role migration
-  gate passes.
-- Add canonical people/organization mappings, memberships, `survey_farms`, and
-  explicit grants alongside legacy relationships; unresolved clients continue
-  through the current tenant path.
+- Keep `surveys.client_id`, reviewed client mappings, and required legacy code columns while routes and datasets still depend on them. They do not grant profile access by themselves.
+- Preserve canonical people/organization mappings, memberships, `survey_farms`, and explicit grants. Unresolved clients may retain compatibility metadata but must not regain a profile-owned authorization fallback.
 - Keep `orthos.survey_id`, `point_clouds.survey_id`, current-output uniqueness,
   and existing survey normalization in `lib/actions/surveys.ts`.
 - Add farm and output/report relationships as nullable metadata first. Existing

@@ -184,7 +184,7 @@ export async function createOrganizationMembership(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin");
+  revalidatePath("/admin");
 }
 
 export async function updateOrganizationMembershipStatus(formData: FormData) {
@@ -266,6 +266,6 @@ export async function updateOrganizationMembershipStatus(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin");
-  revalidatePath(`/dashboard/admin/memberships/${membershipId}`);
+  revalidatePath("/admin");
+  revalidatePath(`/admin/memberships/${membershipId}`);
 }

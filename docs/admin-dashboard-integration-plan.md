@@ -1,112 +1,102 @@
-# Admin Dashboard Integration and Production Rollout Plan
+﻿# Admin Dashboard Integration and Production Rollout Plan
 
-Status: Phase 3I-A workshop manifest gate implemented for review
-Scope: Current plan plus completed additive foundation. Classification, membership, asset, and destructive mutations still require separate approval.
-Reviewed source: `docs/ASIMOV-HAWKS_Web_App_Deployment_Plan_Final.docx` (owner-supplied)
+Last updated: 2026-08-13
+Status: Authoritative current admin architecture and delivery plan
 
-Repository evidence in this document describes checked-in contracts only. It does not prove the current state of any remote staging or production Supabase project.
+This is the primary source of truth for platform-admin routes, navigation, delivery order, and deferred admin scope. The permission model is owned by `docs/role-permission-model-and-migration-plan.md`; database rollout procedures are owned by `docs/supabase-migration-runbook.md`.
 
-Role model update (2026-08-12): `docs/role-permission-model-and-migration-plan.md` supersedes the earlier global `account_role` split described in older phase language. The approved target is `profiles.role` as the account-level source of truth (`platform_admin` or `user`), `organization_memberships.role` as the organization-level source (`org_admin`, `editor`, or `viewer`), and explicit farm/survey grants for resource exceptions. `profiles.account_role` is planned for removal after dependency gates; `profiles.organization_id` remains legacy compatibility until membership/grant authorization is proven.
+Earlier Phase 3A-3I milestones remain below as historical implementation evidence. Where their route, role, or scope language conflicts with the current direction in Sections 1-3, Sections 1-3 take precedence.
 
-## 1. Purpose
+## 1. Approved Direction
 
-Integrate the interns' Admin Dashboard into the main ASIMOV-HAWKS application without disrupting existing authentication, survey access, geospatial visualization, or production data. The work must reconcile two independently developed Next.js/Supabase systems, preserve the main Supabase project as the source of truth, and deliver the combined application through the proposed Docker/NGINX/MinIO/Cloudflare architecture for invited users over the public internet during the October 2026 workshop.
+Build a dedicated platform-admin application surface at `/admin` inside the existing Next.js application. It is a separate route tree and layout, not a separately deployed frontend.
 
-This remains a gated plan. Phase 3A established the additive domain foundation, Phase 3B-3D added platform-admin read-only visibility, Phase 3E added classification readiness, Phase 3F enables only audited legacy-client classification-field updates, Phase 3G-A adds audit coverage for canonical client mapping tables, Phase 3G-B maps legacy clients to existing canonical people or organizations, Phase 3G-C creates minimal canonical people/organizations before immediately mapping them to a legacy client, Phase 3H-A adds read-only membership readiness visibility, Phase 3H-B enables platform-admin creation of ordinary member memberships for existing profiles and existing organizations, Phase 3H-C enables platform-admin status changes for ordinary memberships, and Phase 3I-A adds a sanitized workshop manifest gate. Organization-admin promotion, Auth-user creation, farm, grant, asset migration, infrastructure cutover, and destructive workflows still require separate approval.
+- Authenticated `platform_admin` accounts land on `/admin`.
+- Authenticated `user` accounts land on `/dashboard`.
+- `/admin` and `/dashboard` independently enforce their role boundary on the server and render separate navigation and layouts.
+- The current `/dashboard/admin/*` Admin MVP is transitional. During cutover, its URLs redirect to equivalent `/admin/*` routes.
+- Platform admins may open the normal application only through an explicit operator navigation path. Admin authorization must never be inferred from UI visibility.
+- User access inspection is a read-only effective-access preview. The actor remains the authenticated platform admin; no user session, token, cookie, or mutation authority is impersonated.
 
-## 2. Confirmed baseline
+The first delivery wave is Users & Access for existing accounts: profiles, memberships, survey grants, farm grants where required, status/role transitions, effective-access diagnosis, and audit visibility. Auth-user creation or invitation, platform-admin promotion/demotion, true impersonation, hard deletion, and broad infrastructure administration remain deferred.
 
-### Main application
+## 2. Current Baseline And Sources Of Authority
 
-- Next.js 15 App Router, React 19, TypeScript, Tailwind CSS, and shadcn/Radix UI.
-- Supabase provides authentication, relational data, and detected-object storage.
-- The compatible application uses `profiles.organization_id` and `surveys.client_id` as UUID tenant keys while legacy code columns remain during the expand phase.
-- Database roles and RLS are checked in for `platform_admin`, `org_admin`, `editor`, and `viewer`; additive domain tables and platform-admin Admin Dashboard list/detail pages are implemented. Phase 3F adds a platform-admin-only legacy-client classification-field mutation, Phase 3G adds controlled canonical client mapping, and Phase 3H adds controlled ordinary membership creation and status management.
-- Server Components and server actions perform protected reads; MapLibre and Three.js views are dynamically loaded as client-only modules.
-- Orthomosaic tiles and PCD point clouds are served from ignored `public/tiles` and `public/3d` directories.
-- The repository contains a reconstructed Supabase baseline, UUID tenant migrations, hardened RLS, deferred contract/storage SQL, generated types, verification SQL, and pgTAP authorization tests. There is no general application test suite or CI workflow.
-- Lint and type-check baselines currently fail, and the production build reached the Node heap limit during repository assessment.
-- `SUPABASE_SERVICE_ROLE_KEY` is restricted to local administrative operations and must not be used by the application or deployment jobs.
+### Current implementation
 
-### Intern Admin Dashboard
+- The live admin UI remains under `/dashboard/admin` and inherits the ordinary user dashboard shell. It is a transitional MVP, not the approved final architecture.
+- Existing controlled mutations include legacy-client classification and canonical mapping, organization membership creation/status management, and survey-grant creation. Existing audit visibility is read-only.
+- `profiles.role` is the account-level source and is constrained to `platform_admin | user`.
+- `organization_memberships.role` is the organization-level source and uses `org_admin | editor | viewer`; membership status is evaluated separately.
+- Explicit `survey_access_grants` and `farm_access_grants` are resource-level exceptions.
+- `profiles.account_role` and `profiles.organization_id` have been removed from the local and staging schema. Historical PostgreSQL `app_role` enum labels are blocked by a check constraint and await a separate enum-rebuild cleanup.
+- `surveys.client_id`, client mappings, and legacy asset paths remain compatible dataset relationships. They are not profile-owned authorization state.
+- Server-side authentication checks and Supabase RLS remain the authorization boundary. Service-role credentials remain prohibited in app/runtime code.
 
-The following are known:
+### Historical integration input
 
-- It was developed as a separate project.
-- It uses a different Supabase project.
-- Its schema was modified because the interns could not access the main project or production database.
-
-Everything else—including its routes, feature set, dependencies, role model, data assumptions, migrations, policies, test coverage, and deployment readiness—must be inspected rather than assumed.
+The intern Admin Dashboard was built as a separate project against a different Supabase schema. Its UI concepts remain reference material only; its demo schema, exposed role helpers, and authorization assumptions are not application contracts. `docs/admin-dashboard-phase-2-discovery.md` preserves that evidence.
 
 ### Deployment direction
 
-The owner-supplied deployment plan proposes:
+The application remains one Next.js deployment behind the approved Cloudflare/NGINX boundary. Admin and user route trees share authentication infrastructure, database types, UI primitives, release process, and rollback process while maintaining separate layouts and server-side route guards.
 
-- Cloudflare as the public edge and cache.
-- NGINX for stable path-based origin routing.
-- A stateless Dockerized Next.js application.
-- Supabase for authentication, relational metadata, roles, and application data.
-- MinIO as S3-compatible storage for tiles, point clouds, exports, and manifests.
-- Separate application and asset publication pipelines.
-- Prometheus/Grafana metrics and centralized logs, with Loki suggested.
-- Incremental scaling; Kubernetes is explicitly deferred.
-- Immutable asset versions, checksums, backups, recovery testing, load testing, and rollback gates before production.
+The workshop remains limited to approved invited datasets. Protected GIS assets must remain fail-closed through membership/grant authorization and the active workshop manifest. Cloudflare must not create public cache entries for restricted assets.
 
-The document reports approximately six million files and 200 GB in the current public asset tree. Treat those values as an owner-supplied infrastructure baseline to remeasure before migration.
-
-### Workshop deployment clarification
-
-The September 28-30 release is a limited public-internet production deployment for invited workshop users, not a LAN-only trial. Dockerized Next.js, NGINX, Cloudflare DNS/HTTPS/proxying/basic protection, Supabase, and MinIO or another approved asset origin are therefore workshop-critical scope.
-
-Only an approved manifest of invited clients and their required organizations, accounts, surveys, maps, tiles, point clouds, detections, outputs, and metadata must move before the workshop. Phase 3I-A records the sanitized manifest gate in `docs/workshop-manifest-template.md` and the machine-readable example shape in `docs/workshop-manifest.example.json`. The full historical dataset and all other clients remain deferred. Reliability, organization-based authorization, stable URLs, external-internet testing, backup, and rollback take priority over complete infrastructure automation.
-
-Cloudflare must not turn restricted survey assets into public cache entries. Cache rules and asset URLs must preserve the approved organization and explicit-grant access model. The exact signed URL, signed cookie, authorization gateway, or equivalent protected-delivery mechanism remains a blocking security design decision before workshop asset cutover.
-
-## 3. Recommended target architecture
-
-The default recommendation is to integrate the Admin Dashboard into the existing Next.js application under a protected `/admin` route group, not deploy it as a permanent second frontend.
-
-Reasons:
-
-- Authentication, layouts, types, UI primitives, and Supabase access can be shared.
-- One origin avoids duplicated session handling and cross-application authorization drift.
-- Admin changes can participate in the same migration, testing, release, and rollback process.
-- The main application is still small enough at the route level to support a well-bounded admin domain.
-
-This recommendation must be revisited after the code comparison. A separately deployed admin application is justified only if the interns' implementation has materially incompatible framework/runtime constraints, independent release or isolation requirements, or a security boundary that cannot be cleanly expressed in one application.
+## 3. Target Architecture And Delivery Order
 
 ```mermaid
 flowchart LR
     U[Browser] --> C[Cloudflare]
     C --> N[NGINX]
     N --> A[Next.js application]
-    N --> O[MinIO asset origin]
+    N --> O[Protected asset origin]
 
-    A --> P[User dashboard routes]
-    A --> D[Protected /admin routes]
+    A --> D[User routes /dashboard]
+    A --> P[Platform admin routes /admin]
     A --> S[Supabase Auth and Postgres]
 
-    D --> R[Server-side authorization checks]
-    R --> S
-
-    O --> T[Tiles]
-    O --> PC[Point clouds]
-    O --> E[Exports and manifests]
+    D --> R1[Membership and grant authorization]
+    P --> R2[Platform-admin checks and audited actions]
+    R1 --> S
+    R2 --> S
 ```
 
 ### Application boundaries
 
-- `app/dashboard/`: existing farmer/field-personnel experience.
-- `app/admin/` or an equivalent protected route group: admin-only pages and layouts.
-- `lib/actions/`: server-side use cases, separated by domain; authorization is checked inside every protected operation.
-- `lib/authz/`: proposed centralized role and permission evaluation after the schema is approved.
-- `components/admin/`: admin-specific components.
-- `components/ui/`: shared primitives only; do not place domain behavior here.
+- `app/dashboard/`: user survey and geospatial experience only.
+- `app/admin/`: platform-admin pages with a dedicated layout and navigation.
+- `lib/actions/`: authenticated server-side use cases with authorization inside every protected operation.
+- `components/admin/`: admin-specific UI; shared primitives remain in `components/ui/`.
 - Supabase RLS: authoritative data boundary.
-- Server-side checks: defense in depth and clearer application errors.
-- Client-side checks: display behavior only, never authorization.
+- Server-side checks: defense in depth and clear application errors.
+- Client-side checks: presentation only, never authorization.
 
-## 4. ASIMOV-HAWKS Farmer and Plantation Domain Model
+### Implementation order
+
+1. Add the dedicated `/admin` layout, navigation, overview, loading/error states, and server-side platform-admin guard.
+2. Add role-based post-login landing and cross-role redirects. Preserve `/dashboard/admin/*` through temporary redirects.
+3. Build Users & Access pages for existing profiles, memberships, grants, and effective-access diagnosis.
+4. Add read-only effective-access preview using the same membership/grant rules as live authorization. Preview must never become an impersonated session.
+5. Split the legacy admin mega-page into dedicated resource routes and move existing audited controls to the relevant detail pages.
+6. Add approved domain and workshop operations only after the first access wave is stable.
+
+Every admin mutation must authenticate the actor, require `platform_admin`, rely on RLS, validate identifiers and transitions, retain history instead of hard deleting access records, and produce an `admin_audit_log` entry. Audit coverage does not make an otherwise unauthorized mutation acceptable.
+
+### Deferred scope
+
+- Auth-user creation and invitation delivery
+- platform-admin promotion or demotion
+- true impersonation or user-equivalent session issuance
+- destructive deletion and broad bulk mutation
+- broad asset-management and infrastructure controls
+- general multi-organization account workflows beyond an approved later slice
+
+## 4. Historical Domain And Delivery Plan
+
+The remaining sections preserve the original discovery, additive-domain, and Phase 3A-3I planning record. Statements about `/dashboard/admin`, ordinary `member` roles, `profiles.account_role`, or `profiles.organization_id` describe the implementation state at that historical phase and are superseded by Sections 1-3 and the current role-model document.
+
+### ASIMOV-HAWKS Farmer and Plantation Domain Model
 
 ### Confirmed repository facts
 

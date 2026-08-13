@@ -1,10 +1,10 @@
-# Protected Asset Delivery Design
+﻿# Protected Asset Delivery Design
 
-Last updated: 2026-08-04
+Last updated: 2026-08-13
 
-Status: design contract only. Do not implement NGINX, MinIO, or application route changes until reviewed.
+Status: Supporting design reference; implementation and current authorization corrections are recorded in the protected-asset implementation/review documents.
 
-This document defines the v1 protected GIS asset delivery design for the ASIMOV-HAWKS workshop deployment. It follows the approved direction: NGINX is the public asset endpoint, MinIO remains internal, protected GIS assets bypass Cloudflare cache, authorization is organization-scoped, and unauthorized asset requests return `401`.
+This document defines the v1 protected GIS asset delivery design for the ASIMOV-HAWKS workshop deployment. It follows the approved direction: NGINX is the public asset endpoint, MinIO remains internal, protected GIS assets bypass Cloudflare cache, authorization is membership/grant scoped against the active manifest, and unauthorized asset requests return `401`.
 
 ## Goals
 
@@ -13,7 +13,7 @@ This document defines the v1 protected GIS asset delivery design for the ASIMOV-
   - `/asimov-hawks/tiles/...`
   - `/asimov-hawks/3d/...`
 - Keep MinIO URLs private and unreachable from browsers.
-- Enforce authenticated organization-scoped access before asset delivery.
+- Enforce authenticated membership or explicit-grant access before asset delivery.
 - Use NGINX `auth_request` with a dedicated internal Next.js authorization endpoint.
 - Bypass Cloudflare cache for protected GIS assets in v1.
 - Keep detections server-side through Supabase Storage for v1.
@@ -141,8 +141,7 @@ Implementation requirements:
 - Load the current profile and platform/organization context.
 - Parse `X-Original-URI` into an asset request.
 - Map the asset request to a manifest entry, survey, client, and organization.
-- Allow platform admins.
-- Allow active members of the owning organization.
+- Allow platform admins, active members of the owning organization, and applicable explicit resource grants.
 - Deny anonymous and cross-organization access.
 - Deny removed or suspended memberships.
 - Return `401` for all denied cases.

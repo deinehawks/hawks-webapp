@@ -1,16 +1,33 @@
-# Decisions
+﻿# Decisions
 
-Last updated: 2026-08-12
+Last updated: 2026-08-13
 
-- Integrate Admin Dashboard work into the existing Next.js application under protected admin routes unless later evidence proves a separate frontend is required. This avoids duplicated auth/session/authorization contracts.
-- Preserve UUID tenant compatibility through `profiles.organization_id` and `surveys.client_id` while additive domain tables mature.
-- Treat profiles, people, clients, organizations, farms, surveys, outputs, and application accounts as distinct domain concepts.
-- Keep normal accounts limited to one live organization membership for the first release; general multi-organization access is deferred.
-- Preserve RLS and server-side checks as authorization boundaries. UI filtering is display behavior only.
-- Keep service-role credentials local/admin-only. They must not appear in browser code, deployment jobs, logs, or generated artifacts.
-- Keep workshop deployment limited to approved invited datasets and stable public-internet access through Cloudflare/NGINX/Supabase/protected asset origin.
-- Do not apply deferred UUID contract cleanup or secure detected-object storage SQL until documented gates pass.
-- Keep local tiles and point clouds out of production Docker images; asset publication must be independent, verified, reversible, and protected.
-- Use compressed project state first for Codex context; retrieve deeper docs progressively by task.
-- Use `profiles.role` as the long-term account-level role source of truth (`platform_admin` or `user`), `organization_memberships.role` as the organization-level source (`org_admin`, `editor`, or `viewer`), and explicit farm/survey grants for resource exceptions. Remove `profiles.account_role` after dependency gates; keep `profiles.organization_id` as legacy compatibility until membership/grant parity is proven. This is the 2026-08-12 role-source-of-truth decision.
-- Individual farmer users should not be placed into fabricated organizations. Model their identity through `people` and `client_people`, and grant app access through explicit survey grants or future farm grants. Keep historical `app_role` enum label removal as a separate enum-rebuild cleanup because the current check constraint already prevents old labels from being stored in `profiles.role`.
+## Current Decisions
+
+- Keep the platform-admin and user experiences in one Next.js application and deployment, but use separate route trees and layouts.
+- `platform_admin` will land on `/admin`; `user` will land on `/dashboard`.
+- The current `/dashboard/admin/*` nesting is superseded and transitional. Preserve it through redirects during implementation.
+- Users & Access for existing accounts is the first admin delivery wave.
+- Effective-access preview is read-only. The authenticated actor remains the platform admin; no user-equivalent session, cookie, token, or mutation authority is issued.
+- Every admin mutation must authenticate server-side, require platform-admin authority, rely on RLS, validate identifiers/transitions, preserve required history, and produce the expected audit record.
+- Use `profiles.role` as the sole account-level source (`platform_admin | user`).
+- Use `organization_memberships.role` as the organization-level source (`org_admin | editor | viewer`) and evaluate membership status separately.
+- Use explicit survey/farm grants for resource exceptions. Individual farmers are represented through people/client mappings and grants, not fabricated organizations.
+- `profiles.account_role` and `profiles.organization_id` are removed locally and in staging. Do not reintroduce either as compatibility or default-selection state.
+- Derive UI defaults from accessible memberships/grants at read time; do not add `default_organization_id` in the current scope.
+- Keep normal accounts limited to one live organization membership for the workshop release; general multi-organization workflows are deferred.
+- Preserve RLS and server-side checks as authorization boundaries. UI filtering is presentation only.
+- Keep service-role credentials local/admin-only and outside browser/runtime/deployment code.
+- Keep workshop deployment limited to approved invited datasets and protected public-internet delivery through Cloudflare, NGINX, Supabase, and the approved asset origin.
+- Preserve legacy survey/client and asset-path compatibility where required, but never treat those relationships as profile authorization.
+- Defer Auth-user invitations, platform-admin role changes, true impersonation, hard deletion, broad asset/infrastructure administration, and full-history migration.
+
+## Superseded Decisions
+
+- The earlier decision to place the final admin experience under the ordinary dashboard route/layout is superseded by the dedicated `/admin` route tree. The single-application decision remains in force.
+- The earlier compatibility decision to preserve authorization through `profiles.organization_id` is complete and superseded; memberships and grants are now authoritative.
+- The earlier plan to remove `profiles.account_role` only after future dependency gates is complete; the column has been dropped.
+- Earlier ordinary `member` workflow terminology is superseded by `viewer`, `editor`, and `org_admin` membership roles.
+- The earlier statement that the Admin MVP should remain permanently mostly read-only is superseded. Mutations may expand incrementally only with the approved authorization and audit boundaries.
+
+Use compressed project state first for Codex context and retrieve deeper documentation progressively through `.project_state/project_index.md`.

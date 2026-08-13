@@ -1,8 +1,9 @@
-# Admin MVP Operator Guide
+﻿# Admin MVP Operator Guide
 
-Last updated: 2026-08-12
+Last updated: 2026-08-13
+Status: Transitional current-state guide
 
-This guide describes the current workshop-safe Admin MVP. The admin panel is intentionally mostly read-only. That is a safety boundary, not a broken or unfinished state.
+This guide describes only the currently implemented Admin MVP under `/dashboard/admin`. The approved dedicated `/admin` architecture and delivery order are defined in `docs/admin-dashboard-integration-plan.md`. Until that cutover is implemented, this guide remains the operator reference for existing workflows; it does not define the final admin scope or navigation.
 
 ## Access
 
@@ -10,7 +11,7 @@ Platform admins can open `/dashboard/admin` from the dashboard sidebar. Non-plat
 
 Admin authorization still depends on server-side checks and Supabase RLS. UI visibility is only presentation.
 
-Current role and membership labels are transitional. The approved target model is documented in `docs/role-permission-model-and-migration-plan.md`; this MVP keeps existing behavior until a separate migration slice updates roles, RLS, tests, and generated types.
+The current role model is documented in `docs/role-permission-model-and-migration-plan.md`. `profiles.role` contains only `platform_admin` or `user`; organization authority comes from membership roles.
 
 ## What Platform Admins Can Do
 
@@ -41,9 +42,9 @@ Use membership detail pages to update viewer or editor status only through allow
 
 Removed memberships are retained for audit history and are not reactivated in this MVP.
 
-## Read-Only Areas
+## Currently Read-Only Areas
 
-Profiles, organizations, people, farms, surveys, and outputs are visible for review, but most fields are read-only in the app. This preserves the workshop deadline and avoids introducing unapproved data mutation paths.
+Profiles, organizations, people, farms, surveys, and outputs are currently visible for review, but most fields have no implemented mutation workflow yet. The dedicated admin plan will add approved audited operations incrementally, starting with Users & Access.
 
 The Recent Admin Activity list is read-only and shows compact audit context for controlled writes. Use it with readiness signals to confirm that controlled changes were recorded and that records are ready for workshop use.
 
@@ -74,6 +75,6 @@ Before a workshop user relies on an admin-managed organization:
 6. Check readiness signals and the Recent Admin Activity list after each controlled mutation.
 7. Smoke the user login and tenant access through the app.
 
-## Deferred Decisions
+## Approved Next Direction
 
-Future admin releases can add more mutation workflows only after separate approval, RLS review, audit coverage, and rollback notes. The current MVP should stay narrow: platform-admin review plus controlled classification, mapping, and viewer/editor membership management.
+The next admin release moves platform admins to a separate `/admin` layout and prioritizes existing-account membership, grant, and effective-access management. Access preview is read-only and keeps the authenticated actor as the platform admin. True impersonation, Auth-user invitations, platform-admin role changes, hard deletion, and broad infrastructure administration remain deferred.

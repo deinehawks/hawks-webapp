@@ -1,9 +1,9 @@
-# Protected Asset Implementation Plan
+﻿# Protected Asset Implementation Plan
 
-Last updated: 2026-08-04
+Last updated: 2026-08-13
+Status: Implemented historical plan with current authorization correction
 
-Status: approved planning contract.
-
+Current authorization note: `profiles.organization_id` has been removed. Live access is derived from active organization memberships and explicit survey/farm grants under the current role model in `docs/role-permission-model-and-migration-plan.md`. Historical implementation steps below are preserved where useful.
 ## Commit Baseline
 
 Planning starts after commit `aa9f81d3` (`feat(workshop): add manifest gate and protected asset plans`).
@@ -15,7 +15,7 @@ Implement v1 protected GIS asset delivery for workshop datasets:
 - preserve browser-facing `/asimov-hawks/tiles/...` and `/asimov-hawks/3d/...` paths;
 - protect those paths with NGINX `auth_request`;
 - resolve opaque manifest aliases to private MinIO bucket/prefix config server-side;
-- authorize by active 2026 approved manifest and organization membership;
+- authorize by the active approved manifest plus platform-admin, active membership, or applicable explicit-grant access;
 - bypass Cloudflare cache for protected GIS assets;
 - keep detections on the existing server-side Supabase Storage path for v1.
 
@@ -54,10 +54,10 @@ Repository boundary:
    - Match entries by `entry_type`, `survey_id`, route pattern, and opaque alias fields.
    - Use `workshop_manifest_entries.organization_id` as the authorization organization.
 
-5. Add organization authorization.
+5. Add membership and grant authorization.
    - Platform admins are allowed.
-   - Normal users are allowed only when `profiles.organization_id` matches the manifest entry organization.
-   - Deny missing profile, missing organization, cross-organization access, suspended/removed membership state if represented in current schema, unknown survey, and inactive manifest.
+   - Normal users are allowed through an active membership for the manifest organization or an applicable explicit resource grant.
+   - Deny missing profiles, cross-scope access, suspended/removed memberships, inactive/expired/revoked grants, unknown surveys, and inactive manifests.
 
 6. Add MinIO alias resolver.
    - Recommended file: `lib/assets/minio-aliases.ts`.

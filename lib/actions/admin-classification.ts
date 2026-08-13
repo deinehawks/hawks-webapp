@@ -134,8 +134,8 @@ export async function updateClientClassification(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin");
-  revalidatePath(`/dashboard/admin/clients/${clientId}`);
+  revalidatePath("/admin");
+  revalidatePath(`/admin/clients/${clientId}`);
 }
 
 export async function confirmClientOrganizationMapping(formData: FormData) {
@@ -164,8 +164,8 @@ export async function confirmClientOrganizationMapping(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin");
-  revalidatePath("/dashboard/admin/clients/" + clientId);
+  revalidatePath("/admin");
+  revalidatePath("/admin/clients/" + clientId);
 }
 
 export async function confirmClientPersonMapping(formData: FormData) {
@@ -191,8 +191,8 @@ export async function confirmClientPersonMapping(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin");
-  revalidatePath("/dashboard/admin/clients/" + clientId);
+  revalidatePath("/admin");
+  revalidatePath("/admin/clients/" + clientId);
 }
 
 
@@ -231,8 +231,8 @@ export async function createOrganizationForClientMapping(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin");
-  revalidatePath("/dashboard/admin/clients/" + clientId);
+  revalidatePath("/admin");
+  revalidatePath("/admin/clients/" + clientId);
 }
 
 export async function createPersonForClientMapping(formData: FormData) {
@@ -269,6 +269,6 @@ export async function createPersonForClientMapping(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin");
-  revalidatePath("/dashboard/admin/clients/" + clientId);
+  revalidatePath("/admin");
+  revalidatePath("/admin/clients/" + clientId);
 }

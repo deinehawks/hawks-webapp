@@ -1,8 +1,13 @@
-# Admin Dashboard Phase 2 Discovery
+﻿# Admin Dashboard Phase 2 Discovery
 
 Status: read-only discovery on `phase/domain-discovery`
 Date: 2026-07-28
 Scope: repository, connected staging Supabase metadata, and intern dashboard code inventory only
+
+> Historical snapshot: this document preserves Phase 2 evidence and is not a
+> current implementation plan. The authoritative admin direction is
+> docs/admin-dashboard-integration-plan.md; current role and permission facts
+> are in docs/role-permission-model-and-migration-plan.md.
 
 No application code, migrations, remote data, storage objects, dependencies, commits, pushes, or deployments are changed by this document.
 

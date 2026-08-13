@@ -1,8 +1,10 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+
+import { resolveAuthenticatedHomePath } from "@/lib/auth/post-auth-redirect";
+import { createClient } from "@/utils/supabase/server";
 
 export async function signup(form_data: { email: string; password: string }) {
   const supabase = await createClient();
@@ -33,11 +35,8 @@ export async function login(form_data: { email: string; password: string }) {
     return { error: error.message };
   }
 
-  // Revalidate all routes to clear any cached data
   revalidatePath("/", "layout");
-
-  // Server-side redirect after successful login
-  redirect("/dashboard");
+  redirect(await resolveAuthenticatedHomePath());
 }
 
 export async function logout() {

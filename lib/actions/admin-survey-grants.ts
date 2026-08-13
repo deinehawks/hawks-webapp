@@ -129,5 +129,5 @@ export async function createSurveyAccessGrant(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin");
+  revalidatePath("/admin");
 }
