@@ -34,7 +34,7 @@ export default async function AdminOutputNewPage({ searchParams }: { searchParam
         <Button asChild className="w-fit" size="sm" variant="outline"><Link href="/admin/outputs"><ArrowLeft />Outputs</Link></Button>
         <div className="flex items-center gap-2">
           <FilePlus2 className="size-5 text-muted-foreground" />
-          <div><h1 className="text-2xl font-semibold tracking-normal">Register survey output</h1><p className="text-sm text-muted-foreground">Create a draft catalog record. Storage references are populated through the approved asset workflow.</p></div>
+          <div><h1 className="text-2xl font-semibold tracking-normal">Register survey output</h1><p className="text-sm text-muted-foreground">Create a draft catalog record. Attach the existing storage prefix or object key after creation.</p></div>
         </div>
       </div>
 

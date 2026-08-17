@@ -16,7 +16,7 @@ Completed foundations:
 8. Organization Operations v1: create/edit canonical organizations, active/inactive status transitions, membership roster, and add existing users as viewer/editor members.
 9. Farm Operations v1: create/edit canonical farms, active/inactive status transitions, confirmed organization links, and read-only survey relationship visibility.
 10. Survey Operations v1: edit workshop-safe survey metadata/status, link active farms/organizations, and inspect output readiness.
-11. Output Operations v1: register draft output records, edit safe metadata, attach existing storage references, enforce readiness transitions/storage gates, atomically select the current eligible output, and use clearer admin survey selector labels.
+11. Output Operations v1: register draft output records, edit safe metadata, attach existing storage references as object keys or package prefixes, show workshop-readiness checklist status, enforce readiness transitions/storage gates, atomically select the current eligible output, and use clearer admin survey selector labels.
 
 Approved next implementation sequence:
 

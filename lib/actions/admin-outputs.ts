@@ -282,7 +282,7 @@ export async function transitionOutputStatus(formData: FormData) {
     (!output.storage_bucket?.trim() || !output.storage_path?.trim())
   ) {
     throw new Error(
-      "Storage bucket and path are required before this output can become ready or approved.",
+      "Storage bucket and prefix/key are required before this output can become ready or approved.",
     );
   }
 

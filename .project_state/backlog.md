@@ -15,7 +15,7 @@ Last updated: 2026-08-17
 - Organization Operations v1: organization create/edit/status, membership roster, and existing-user viewer/editor membership creation.
 - Farm Operations v1: farm create/edit/status, confirmed organization links, and read-only survey relationship visibility.
 - Survey Operations v1: survey metadata/status edit, active farm/organization links, and output readiness visibility.
-- Output Operations v1: draft registration, safe metadata edits, storage-reference attachment, readiness transitions, storage-reference gates, and atomic current-output selection.
+- Output Operations v1: draft registration, safe metadata edits, storage-reference attachment, readiness checklist visibility, readiness transitions, storage-reference gates, and atomic current-output selection.
 
 ## P1
 
