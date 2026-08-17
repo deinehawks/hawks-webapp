@@ -20,6 +20,7 @@ Dedicated admin status:
 - `/admin/organizations/new` and `/admin/organizations/[id]` provide Organization Operations v1: create canonical organizations, edit organization metadata, toggle active/inactive status, inspect membership roster, and add existing users as viewer/editor members.
 - `/admin/farms/new` and `/admin/farms/[id]` provide Farm Operations v1: create canonical farms, edit farm metadata, toggle active/inactive status, inspect organization/survey relationships, and link active organizations as confirmed farm relationships.
 - `/admin/surveys/[id]` provides Survey Operations v1: edit workshop-safe survey metadata/status, link active farms, link active organizations, and inspect output readiness without mutating asset paths.
+- `/admin/outputs/new` and `/admin/outputs/[id]` provide Output Operations v1: register draft output records, edit safe catalog metadata, manage readiness through approved transitions, and atomically select the current ready/approved output. Storage references and publishing remain outside this workflow. Survey pickers now show short survey ID plus code/context instead of duplicate client-code labels.
 - `profiles.role` is not mutable in this workflow and remains account-level `platform_admin | user` only.
 - Auth invitations, platform-admin role changes, true impersonation, organization-admin promotion, deletion, and broad infrastructure controls remain deferred.
 
@@ -31,10 +32,10 @@ Role/permission state:
 - `profiles.account_role` and `profiles.organization_id` are removed locally and in staging.
 - Historical `app_role` enum labels remain blocked by a check constraint pending a separate enum rebuild.
 
-Validation for the current Users & Access wave:
+Validation for the current admin wave:
 
 - `npx tsc --noEmit --incremental false`: pass.
 - Targeted lint for changed admin access/resource files: pass with no warnings or errors.
-- Full pgTAP suite: pass, 74 tests across 4 files.
+- Full pgTAP suite: pass, 91 tests across 5 files.
 - User smoke confirmed platform-admin access and normal-user denial for `/admin`.
 - Authenticated visual smoke for new preview/farm controls remains manual.

@@ -250,9 +250,9 @@ export default async function AdminResourceListPage({ params }: { params: Promis
             <h1 className="text-2xl font-semibold tracking-normal">{config.title}</h1>
             <Badge variant="secondary">{config.rows.length} shown</Badge>
           </div>
-          {resource === "organizations" || resource === "farms" ? (
+          {resource === "organizations" || resource === "farms" || resource === "outputs" ? (
             <Button asChild size="sm">
-              <Link href={resource === "organizations" ? "/admin/organizations/new" : "/admin/farms/new"}><Plus />{resource === "organizations" ? "New organization" : "New farm"}</Link>
+              <Link href={resource === "organizations" ? "/admin/organizations/new" : resource === "farms" ? "/admin/farms/new" : "/admin/outputs/new"}><Plus />{resource === "organizations" ? "New organization" : resource === "farms" ? "New farm" : "New output"}</Link>
             </Button>
           ) : null}
         </div>

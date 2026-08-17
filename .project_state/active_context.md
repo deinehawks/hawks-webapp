@@ -16,6 +16,7 @@ Completed foundations:
 8. Organization Operations v1: create/edit canonical organizations, active/inactive status transitions, membership roster, and add existing users as viewer/editor members.
 9. Farm Operations v1: create/edit canonical farms, active/inactive status transitions, confirmed organization links, and read-only survey relationship visibility.
 10. Survey Operations v1: edit workshop-safe survey metadata/status, link active farms/organizations, and inspect output readiness.
+11. Output Operations v1: register draft output records, edit safe metadata, enforce readiness transitions/storage gates, atomically select the current eligible output, and use clearer admin survey selector labels.
 
 Approved next implementation sequence:
 
@@ -24,8 +25,9 @@ Approved next implementation sequence:
 3. Smoke Organization Operations v1 in a platform-admin session: create org, edit metadata, toggle status, add existing user membership, and confirm normal-user denial.
 4. Smoke Farm Operations v1 in a platform-admin session: create farm, edit metadata, toggle status, link active organization, and confirm normal-user denial.
 5. Smoke Survey Operations v1 in a platform-admin session: edit survey metadata/status, link active farm, link active organization, and inspect outputs.
-6. Continue with output/workshop readiness controls after survey smoke passes.
-7. Keep enum rebuild, Auth invitations, platform-admin promotion, destructive workflows, and true impersonation deferred.
+6. Smoke Output Operations v1 as platform admin and confirm normal-user denial.
+7. Continue approved workshop asset migration/readiness work after output smoke passes.
+8. Keep output publication, enum rebuild, Auth invitations, platform-admin promotion, destructive workflows, and true impersonation deferred.
 
 Key constraints:
 

@@ -27,6 +27,7 @@ import {
   createSurveyAccessGrant,
   updateSurveyAccessGrantStatus,
 } from "@/lib/actions/admin-survey-grants";
+import { formatAdminSurveyLabel } from "@/lib/admin/survey-labels";
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
 import type { Database, Json, Tables } from "@/lib/database.types";
 import { createClient } from "@/utils/supabase/server";
@@ -48,7 +49,7 @@ type SurveyGrantRow = Pick<
   Tables<"survey_access_grants">,
   "id" | "profile_id" | "survey_id" | "status" | "expires_at" | "reason" | "created_at" | "updated_at"
 > & {
-  survey: (Pick<Tables<"surveys">, "id" | "location" | "flight_date" | "client_id"> & {
+  survey: (Pick<Tables<"surveys">, "id" | "code" | "location" | "flight_date" | "client_id"> & {
     client: Pick<Tables<"clients">, "code" | "name"> | null;
   }) | null;
 };
@@ -59,7 +60,7 @@ type FarmGrantRow = Pick<
   farm: Pick<Tables<"farms">, "id" | "name" | "code" | "status"> | null;
 };
 type OrganizationOption = Pick<Tables<"organizations">, "id" | "name" | "type_code">;
-type SurveyOption = Pick<Tables<"surveys">, "id" | "location" | "flight_date" | "client_id"> & {
+type SurveyOption = Pick<Tables<"surveys">, "id" | "code" | "location" | "flight_date" | "client_id"> & {
   client: Pick<Tables<"clients">, "code" | "name"> | null;
 };
 type FarmOption = Pick<Tables<"farms">, "id" | "name" | "code" | "status">;
@@ -97,8 +98,7 @@ function formatDate(value: string | null): string {
 
 function formatSurvey(survey: SurveyOption | SurveyGrantRow["survey"]): string {
   if (!survey) return "Unknown survey";
-  const client = survey.client?.code ?? survey.client?.name ?? survey.client_id ?? "Unmapped";
-  return `${client} - ${survey.location ?? survey.id}`;
+  return formatAdminSurveyLabel(survey);
 }
 
 function isEffectiveGrant(status: GrantStatus, expiresAt: string | null): boolean {
@@ -245,10 +245,10 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const [profileResponse, membershipsResponse, surveyGrantsResponse, farmGrantsResponse, organizationsResponse, surveysResponse, farmsResponse, auditResponse] = await Promise.all([
     supabase.from("profiles").select("id, email, first_name, last_name, role, person_id, created_at, updated_at").eq("id", id).maybeSingle(),
     supabase.from("organization_memberships").select("id, profile_id, organization_id, role, status, notes, invited_at, approved_at, removed_at, updated_at, organization:organizations!organization_memberships_organization_id_fkey(id, name, type_code, status)").eq("profile_id", id).order("updated_at", { ascending: false }),
-    supabase.from("survey_access_grants").select("id, profile_id, survey_id, status, expires_at, reason, created_at, updated_at, survey:surveys!survey_access_grants_survey_id_fkey(id, location, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name))").eq("profile_id", id).order("updated_at", { ascending: false }),
+    supabase.from("survey_access_grants").select("id, profile_id, survey_id, status, expires_at, reason, created_at, updated_at, survey:surveys!survey_access_grants_survey_id_fkey(id, code, location, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name))").eq("profile_id", id).order("updated_at", { ascending: false }),
     supabase.from("farm_access_grants").select("id, profile_id, farm_id, status, expires_at, reason, created_at, farm:farms!farm_access_grants_farm_id_fkey(id, name, code, status)").eq("profile_id", id).order("updated_at", { ascending: false }),
     supabase.from("organizations").select("id, name, type_code").eq("status", "active").order("name"),
-    supabase.from("surveys").select("id, location, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name)").order("flight_date", { ascending: false, nullsFirst: false }),
+    supabase.from("surveys").select("id, code, location, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name)").order("flight_date", { ascending: false, nullsFirst: false }),
     supabase.from("farms").select("id, name, code, status").eq("status", "active").order("name"),
     supabase.from("admin_audit_log").select("id, occurred_at, action, table_name, record_pk, old_data, new_data, actor:profiles!admin_audit_log_actor_profile_id_fkey(email)").in("table_name", ["organization_memberships", "survey_access_grants", "farm_access_grants"]).order("occurred_at", { ascending: false }).limit(100),
   ]);

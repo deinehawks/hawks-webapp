@@ -50,7 +50,6 @@ export type Database = {
           {
             foreignKeyName: "admin_audit_log_actor_profile_id_fkey"
             columns: ["actor_profile_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -91,21 +90,18 @@ export type Database = {
           {
             foreignKeyName: "client_organizations_client_id_fkey"
             columns: ["client_id"]
-            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "client_organizations_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "client_organizations_organization_id_fkey"
             columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -146,21 +142,18 @@ export type Database = {
           {
             foreignKeyName: "client_people_client_id_fkey"
             columns: ["client_id"]
-            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "client_people_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "client_people_person_id_fkey"
             columns: ["person_id"]
-            isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -201,7 +194,6 @@ export type Database = {
           {
             foreignKeyName: "clients_classification_reviewed_by_fkey"
             columns: ["classification_reviewed_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -248,28 +240,24 @@ export type Database = {
           {
             foreignKeyName: "farm_access_grants_farm_id_fkey"
             columns: ["farm_id"]
-            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_access_grants_granted_by_fkey"
             columns: ["granted_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_access_grants_profile_id_fkey"
             columns: ["profile_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_access_grants_revoked_by_fkey"
             columns: ["revoked_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -307,21 +295,18 @@ export type Database = {
           {
             foreignKeyName: "farm_organizations_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_organizations_farm_id_fkey"
             columns: ["farm_id"]
-            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_organizations_organization_id_fkey"
             columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -359,21 +344,18 @@ export type Database = {
           {
             foreignKeyName: "farm_people_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_people_farm_id_fkey"
             columns: ["farm_id"]
-            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_people_person_id_fkey"
             columns: ["person_id"]
-            isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -426,7 +408,6 @@ export type Database = {
           {
             foreignKeyName: "farms_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -482,28 +463,24 @@ export type Database = {
           {
             foreignKeyName: "organization_memberships_approved_by_fkey"
             columns: ["approved_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "organization_memberships_invited_by_fkey"
             columns: ["invited_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "organization_memberships_organization_id_fkey"
             columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "organization_memberships_profile_id_fkey"
             columns: ["profile_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -541,21 +518,18 @@ export type Database = {
           {
             foreignKeyName: "organization_people_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "organization_people_organization_id_fkey"
             columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "organization_people_person_id_fkey"
             columns: ["person_id"]
-            isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -656,14 +630,12 @@ export type Database = {
           {
             foreignKeyName: "organizations_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "organizations_type_code_fkey"
             columns: ["type_code"]
-            isOneToOne: false
             referencedRelation: "organization_types"
             referencedColumns: ["code"]
           },
@@ -704,7 +676,6 @@ export type Database = {
           {
             foreignKeyName: "orthos_survey_id_fkey"
             columns: ["survey_id"]
-            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -763,7 +734,6 @@ export type Database = {
           {
             foreignKeyName: "people_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -795,7 +765,6 @@ export type Database = {
           {
             foreignKeyName: "point_clouds_survey_id_fkey"
             columns: ["survey_id"]
-            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -887,14 +856,12 @@ export type Database = {
           {
             foreignKeyName: "profiles_organization_fkey"
             columns: ["organization"]
-            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["code"]
           },
           {
             foreignKeyName: "profiles_person_id_fkey"
             columns: ["person_id"]
-            isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -941,28 +908,24 @@ export type Database = {
           {
             foreignKeyName: "survey_access_grants_granted_by_fkey"
             columns: ["granted_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_access_grants_profile_id_fkey"
             columns: ["profile_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_access_grants_revoked_by_fkey"
             columns: ["revoked_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_access_grants_survey_id_fkey"
             columns: ["survey_id"]
-            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -1003,21 +966,18 @@ export type Database = {
           {
             foreignKeyName: "survey_farms_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_farms_farm_id_fkey"
             columns: ["farm_id"]
-            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_farms_survey_id_fkey"
             columns: ["survey_id"]
-            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -1055,21 +1015,18 @@ export type Database = {
           {
             foreignKeyName: "survey_organizations_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_organizations_organization_id_fkey"
             columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_organizations_survey_id_fkey"
             columns: ["survey_id"]
-            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -1125,14 +1082,12 @@ export type Database = {
           {
             foreignKeyName: "survey_outputs_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_outputs_survey_id_fkey"
             columns: ["survey_id"]
-            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -1230,28 +1185,24 @@ export type Database = {
           {
             foreignKeyName: "surveys_client_id_fkey"
             columns: ["client_id"]
-            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "surveys_organization_code_fkey"
             columns: ["organization_code"]
-            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["code"]
           },
           {
             foreignKeyName: "surveys_ortho_fkey"
             columns: ["ortho"]
-            isOneToOne: false
             referencedRelation: "orthos"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "surveys_point_cloud_fkey"
             columns: ["point_cloud"]
-            isOneToOne: false
             referencedRelation: "point_clouds"
             referencedColumns: ["code"]
           },
@@ -1334,56 +1285,48 @@ export type Database = {
           {
             foreignKeyName: "workshop_manifest_entries_client_id_fkey"
             columns: ["client_id"]
-            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_farm_id_fkey"
             columns: ["farm_id"]
-            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_manifest_id_fkey"
             columns: ["manifest_id"]
-            isOneToOne: false
             referencedRelation: "workshop_manifests"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_organization_id_fkey"
             columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_output_id_fkey"
             columns: ["output_id"]
-            isOneToOne: false
             referencedRelation: "survey_outputs"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_profile_id_fkey"
             columns: ["profile_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_survey_id_fkey"
             columns: ["survey_id"]
-            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -1457,28 +1400,24 @@ export type Database = {
           {
             foreignKeyName: "workshop_manifests_approved_by_fkey"
             columns: ["approved_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifests_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifests_superseded_by_manifest_id_fkey"
             columns: ["superseded_by_manifest_id"]
-            isOneToOne: false
             referencedRelation: "workshop_manifests"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifests_supersedes_manifest_id_fkey"
             columns: ["supersedes_manifest_id"]
-            isOneToOne: false
             referencedRelation: "workshop_manifests"
             referencedColumns: ["id"]
           },
@@ -1527,6 +1466,10 @@ export type Database = {
           target_client_id: string
         }
         Returns: string
+      }
+      admin_set_current_survey_output: {
+        Args: { target_output_id: string }
+        Returns: undefined
       }
       authorize_workshop_protected_asset: {
         Args: {

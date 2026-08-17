@@ -27,6 +27,7 @@ The first delivery wave is Users & Access for existing accounts: profiles, membe
 - The dedicated `/admin` route tree, layout, navigation, role-based landing, and server-side platform-admin guard are implemented locally. Legacy `/dashboard/admin/*` URLs redirect to equivalent `/admin/*` routes.
 - Dedicated `/admin/users`, `/admin/users/[id]`, and `/admin/access-preview/[profileId]` workflows are implemented locally for existing accounts. They show membership/grant access state, read-only effective-access calculation, related audit activity, and account-scoped controls.
 - Dedicated read-only resource list routes are implemented locally through `/admin/[resource]` for clients, organizations, people, farms, surveys, memberships, and outputs, with links to existing detail pages.
+- Organization, farm, survey, and output operations now have dedicated audited workflows. Output Operations v1 registers draft catalog records, edits safe metadata, manages readiness through approved transitions, and selects the current eligible output atomically without publishing or changing storage references. Admin survey selectors identify records by short survey ID plus survey code, client context, and date when available to avoid duplicate client-code labels.
 - Existing controlled mutations include legacy-client classification and canonical mapping, viewer/editor membership creation, status and role management, and survey/farm-grant creation, revocation, and reactivation. Audit visibility remains read-only while the underlying mutations are audited.
 - `profiles.role` is the account-level source and is constrained to `platform_admin | user`.
 - `organization_memberships.role` is the organization-level source and uses `org_admin | editor | viewer`; membership status is evaluated separately.
@@ -81,7 +82,8 @@ flowchart LR
 3. **Completed locally:** `/admin/users` and `/admin/users/[id]` for existing profiles, membership/grant diagnosis, viewer/editor membership controls, survey/farm-grant lifecycle controls, and related audit visibility.
 4. **Completed locally:** read-only `/admin/access-preview/[profileId]` using membership/grant rules without impersonation or session switching.
 5. **Completed locally:** read-only `/admin/[resource]` list routes for clients, organizations, people, farms, surveys, memberships, and outputs.
-6. **Next:** smoke preview, farm-grant controls, and new resource-list routes with a platform-admin session, then continue approved domain/workshop operations after the access workflow remains stable.
+6. **Completed locally:** Organization, Farm, Survey, and Output Operations v1, including guarded output readiness transitions, atomic current-output selection, and clearer admin survey selector labels.
+7. **Next:** smoke Output Operations v1, then continue approved workshop asset migration/readiness work. Output publication remains separately gated.
 
 Every admin mutation must authenticate the actor, require `platform_admin`, rely on RLS, validate identifiers and transitions, retain history instead of hard deleting access records, and produce an `admin_audit_log` entry. Audit coverage does not make an otherwise unauthorized mutation acceptable.
 
