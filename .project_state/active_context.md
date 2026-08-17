@@ -15,6 +15,7 @@ Completed foundations:
 7. Read-only `/admin/[resource]` list route for clients, organizations, people, farms, surveys, memberships, and outputs.
 8. Organization Operations v1: create/edit canonical organizations, active/inactive status transitions, membership roster, and add existing users as viewer/editor members.
 9. Farm Operations v1: create/edit canonical farms, active/inactive status transitions, confirmed organization links, and read-only survey relationship visibility.
+10. Survey Operations v1: edit workshop-safe survey metadata/status, link active farms/organizations, and inspect output readiness.
 
 Approved next implementation sequence:
 
@@ -22,8 +23,9 @@ Approved next implementation sequence:
 2. Smoke new `/admin/[resource]` list routes and existing detail links.
 3. Smoke Organization Operations v1 in a platform-admin session: create org, edit metadata, toggle status, add existing user membership, and confirm normal-user denial.
 4. Smoke Farm Operations v1 in a platform-admin session: create farm, edit metadata, toggle status, link active organization, and confirm normal-user denial.
-5. Continue with Survey Operations v1 after farm smoke passes.
-6. Keep enum rebuild, Auth invitations, platform-admin promotion, destructive workflows, and true impersonation deferred.
+5. Smoke Survey Operations v1 in a platform-admin session: edit survey metadata/status, link active farm, link active organization, and inspect outputs.
+6. Continue with output/workshop readiness controls after survey smoke passes.
+7. Keep enum rebuild, Auth invitations, platform-admin promotion, destructive workflows, and true impersonation deferred.
 
 Key constraints:
 

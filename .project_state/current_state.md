@@ -19,6 +19,7 @@ Dedicated admin status:
 - `/admin/[resource]` provides read-only list routes for clients, organizations, people, farms, surveys, memberships, and outputs, linked from the admin sidebar where currently prioritized.
 - `/admin/organizations/new` and `/admin/organizations/[id]` provide Organization Operations v1: create canonical organizations, edit organization metadata, toggle active/inactive status, inspect membership roster, and add existing users as viewer/editor members.
 - `/admin/farms/new` and `/admin/farms/[id]` provide Farm Operations v1: create canonical farms, edit farm metadata, toggle active/inactive status, inspect organization/survey relationships, and link active organizations as confirmed farm relationships.
+- `/admin/surveys/[id]` provides Survey Operations v1: edit workshop-safe survey metadata/status, link active farms, link active organizations, and inspect output readiness without mutating asset paths.
 - `profiles.role` is not mutable in this workflow and remains account-level `platform_admin | user` only.
 - Auth invitations, platform-admin role changes, true impersonation, organization-admin promotion, deletion, and broad infrastructure controls remain deferred.
 

@@ -14,6 +14,7 @@ Last updated: 2026-08-17
 - Read-only `/admin/[resource]` list route for clients, organizations, people, farms, surveys, memberships, and outputs.
 - Organization Operations v1: organization create/edit/status, membership roster, and existing-user viewer/editor membership creation.
 - Farm Operations v1: farm create/edit/status, confirmed organization links, and read-only survey relationship visibility.
+- Survey Operations v1: survey metadata/status edit, active farm/organization links, and output readiness visibility.
 
 ## P1
 
@@ -21,7 +22,8 @@ Last updated: 2026-08-17
 - Confirm normal-user denial remains intact for `/admin`, `/admin/users`, and `/admin/access-preview/*`.
 - Smoke Organization Operations v1 and `/admin/[resource]` list routes.
 - Smoke Farm Operations v1.
-- Implement Survey Operations v1 after farm smoke is confirmed.
+- Smoke Survey Operations v1.
+- Implement output/workshop readiness controls after survey smoke is confirmed.
 - Continue approved workshop asset migration waves and protected-asset smoke coverage.
 
 ## P2
