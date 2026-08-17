@@ -13,13 +13,15 @@ Completed foundations:
 5. Dedicated `/admin` shell, legacy redirects, and role-based landing.
 6. Users & Access vertical slice: account list/detail, access diagnosis, viewer/editor membership role/status controls, survey/farm-grant create/revoke/reactivate, read-only effective-access preview, repaired pgTAP coverage, and account-related audit summaries.
 7. Read-only `/admin/[resource]` list route for clients, organizations, people, farms, surveys, memberships, and outputs.
+8. Organization Operations v1: create/edit canonical organizations, active/inactive status transitions, membership roster, and add existing users as viewer/editor members.
 
 Approved next implementation sequence:
 
 1. Smoke `/admin/access-preview/[profileId]` plus farm-grant create/revoke/reactivate in a platform-admin session and confirm normal-user denial remains intact.
 2. Smoke new `/admin/[resource]` list routes and existing detail links.
-3. Continue approved workshop operations after the access wave is stable.
-4. Keep enum rebuild, Auth invitations, platform-admin promotion, destructive workflows, and true impersonation deferred.
+3. Smoke Organization Operations v1 in a platform-admin session: create org, edit metadata, toggle status, add existing user membership, and confirm normal-user denial.
+4. Continue with Farm Operations and Survey Operations once organization smoke passes.
+5. Keep enum rebuild, Auth invitations, platform-admin promotion, destructive workflows, and true impersonation deferred.
 
 Key constraints:
 

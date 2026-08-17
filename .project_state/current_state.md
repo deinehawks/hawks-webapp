@@ -17,8 +17,9 @@ Dedicated admin status:
 - Platform admins can create viewer/editor memberships, update ordinary membership status/role, create survey/farm grants, and revoke/reactivate survey/farm grants through authenticated RLS-bound audited actions.
 - `/admin/access-preview/[profileId]` provides read-only effective-access calculation from active memberships and grants without impersonation.
 - `/admin/[resource]` provides read-only list routes for clients, organizations, people, farms, surveys, memberships, and outputs, linked from the admin sidebar where currently prioritized.
+- `/admin/organizations/new` and `/admin/organizations/[id]` provide the first mutable Organization Operations slice: create canonical organizations, edit organization metadata, toggle active/inactive status, inspect membership roster, and add existing users as viewer/editor members.
 - `profiles.role` is not mutable in this workflow and remains account-level `platform_admin | user` only.
-- Auth invitations, platform-admin role changes, true impersonation, deletion, and broad infrastructure controls remain deferred.
+- Auth invitations, platform-admin role changes, true impersonation, organization-admin promotion, deletion, and broad infrastructure controls remain deferred.
 
 Role/permission state:
 

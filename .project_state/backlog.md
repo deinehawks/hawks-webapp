@@ -12,12 +12,14 @@ Last updated: 2026-08-17
 - Farm-grant creation, revocation, and reactivation with audit coverage.
 - Stale pgTAP fixture repair for removed `organizations.slug` and `profiles.organization_id` fields.
 - Read-only `/admin/[resource]` list route for clients, organizations, people, farms, surveys, memberships, and outputs.
+- Organization Operations v1: organization create/edit/status, membership roster, and existing-user viewer/editor membership creation.
 
 ## P1
 
 - Smoke `/admin/access-preview/[profileId]` and farm-grant controls with a platform-admin session.
 - Confirm normal-user denial remains intact for `/admin`, `/admin/users`, and `/admin/access-preview/*`.
-- Smoke `/admin/[resource]` list routes and decide the next mutable domain/workshop operation slice.
+- Smoke Organization Operations v1 and `/admin/[resource]` list routes.
+- Implement Farm Operations and Survey Operations after organization smoke is confirmed.
 - Continue approved workshop asset migration waves and protected-asset smoke coverage.
 
 ## P2

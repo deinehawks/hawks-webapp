@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowRight, Building2, ClipboardList, FileBarChart, Landmark, Map, Users } from "lucide-react";
+import { ArrowRight, Building2, ClipboardList, FileBarChart, Landmark, Map, Plus, Users } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import type { PostgrestError } from "@supabase/supabase-js";
 
@@ -244,10 +244,17 @@ export default async function AdminResourceListPage({ params }: { params: Promis
   return (
     <main className="@container/main flex flex-1 flex-col gap-6 p-4 md:p-6">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <Icon className="size-5 text-muted-foreground" />
-          <h1 className="text-2xl font-semibold tracking-normal">{config.title}</h1>
-          <Badge variant="secondary">{config.rows.length} shown</Badge>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Icon className="size-5 text-muted-foreground" />
+            <h1 className="text-2xl font-semibold tracking-normal">{config.title}</h1>
+            <Badge variant="secondary">{config.rows.length} shown</Badge>
+          </div>
+          {resource === "organizations" ? (
+            <Button asChild size="sm">
+              <Link href="/admin/organizations/new"><Plus />New organization</Link>
+            </Button>
+          ) : null}
         </div>
         <p className="max-w-3xl text-sm text-muted-foreground">{config.description}</p>
       </div>
