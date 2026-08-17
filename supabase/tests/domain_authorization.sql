@@ -204,7 +204,7 @@ values (
   true
 );
 
-select extensions.plan(40);
+select extensions.plan(43);
 
 set local role authenticated;
 
@@ -290,6 +290,20 @@ select extensions.is(
   (select count(*) from public.surveys),
   0::bigint,
   'farm grant does not imply survey access'
+);
+
+update public.farm_access_grants
+set status = 'revoked'
+where farm_id = '50000000-0000-0000-0000-000000000011'
+  and profile_id = '20000000-0000-0000-0000-000000000015';
+
+select extensions.is(
+  (select status::text
+   from public.farm_access_grants
+   where farm_id = '50000000-0000-0000-0000-000000000011'
+     and profile_id = '20000000-0000-0000-0000-000000000015'),
+  'active',
+  'ordinary user cannot revoke their own farm grant'
 );
 
 reset role;
@@ -465,6 +479,24 @@ select extensions.is(
      and action = 'UPDATE'),
   1::bigint,
   'survey grant status update is audited'
+);
+
+select extensions.lives_ok(
+  $$update public.farm_access_grants
+    set status = 'revoked',
+        revoked_by = '20000000-0000-0000-0000-000000000011',
+        updated_at = now()
+    where farm_id = '50000000-0000-0000-0000-000000000011'
+      and profile_id = '20000000-0000-0000-0000-000000000015'$$,
+  'platform admin can revoke a farm grant'
+);
+
+select extensions.is(
+  (select count(*) from public.admin_audit_log
+   where table_name = 'farm_access_grants'
+     and action = 'UPDATE'),
+  1::bigint,
+  'farm grant status update is audited'
 );
 
 select extensions.lives_ok(

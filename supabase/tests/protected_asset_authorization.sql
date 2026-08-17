@@ -56,14 +56,11 @@ set role = 'platform_admin'
 where id = '20000000-0000-0000-0000-000000000201';
 
 update public.profiles
-set role = 'user',
-    organization_id = '30000000-0000-0000-0000-000000000201'
-where id = '20000000-0000-0000-0000-000000000202';
-
-update public.profiles
-set role = 'user',
-    organization_id = '30000000-0000-0000-0000-000000000202'
-where id = '20000000-0000-0000-0000-000000000203';
+set role = 'user'
+where id in (
+  '20000000-0000-0000-0000-000000000202',
+  '20000000-0000-0000-0000-000000000203'
+);
 
 insert into public.surveys (
   id,

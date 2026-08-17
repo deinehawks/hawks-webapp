@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, History, KeyRound, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, Eye, History, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 import type { PostgrestError } from "@supabase/supabase-js";
 
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,10 @@ import {
   updateOrganizationMembershipRole,
   updateOrganizationMembershipStatus,
 } from "@/lib/actions/admin-memberships";
+import {
+  createFarmAccessGrant,
+  updateFarmAccessGrantStatus,
+} from "@/lib/actions/admin-farm-grants";
 import {
   createSurveyAccessGrant,
   updateSurveyAccessGrantStatus,
@@ -58,6 +62,7 @@ type OrganizationOption = Pick<Tables<"organizations">, "id" | "name" | "type_co
 type SurveyOption = Pick<Tables<"surveys">, "id" | "location" | "flight_date" | "client_id"> & {
   client: Pick<Tables<"clients">, "code" | "name"> | null;
 };
+type FarmOption = Pick<Tables<"farms">, "id" | "name" | "code" | "status">;
 type AuditRow = Pick<
   Tables<"admin_audit_log">,
   "id" | "occurred_at" | "action" | "table_name" | "record_pk" | "old_data" | "new_data"
@@ -169,6 +174,11 @@ function CreateMembershipForm({ profileId, organizations }: { profileId: string;
   );
 }
 
+function formatFarm(farm: FarmOption | FarmGrantRow["farm"]): string {
+  if (!farm) return "Unknown farm";
+  return farm.code ? `${farm.code} - ${farm.name}` : farm.name;
+}
+
 function CreateSurveyGrantForm({ profileId, surveys }: { profileId: string; surveys: SurveyOption[] }) {
   return (
     <Card className="rounded-lg">
@@ -197,6 +207,34 @@ function CreateSurveyGrantForm({ profileId, surveys }: { profileId: string; surv
   );
 }
 
+function CreateFarmGrantForm({ farms, profileId }: { farms: FarmOption[]; profileId: string }) {
+  return (
+    <Card className="rounded-lg">
+      <CardHeader><CardTitle className="text-base">Add farm access grant</CardTitle></CardHeader>
+      <CardContent>
+        <form action={createFarmAccessGrant} className="grid gap-4">
+          <input name="profileId" type="hidden" value={profileId} />
+          <label className="grid gap-2 text-sm font-medium">
+            Farm
+            <select className="h-9 rounded-md border bg-background px-3 text-sm" disabled={farms.length === 0} name="farmId" required>
+              <option value="">{farms.length === 0 ? "No farms available" : "Select farm"}</option>
+              {farms.map((farm) => <option key={farm.id} value={farm.id}>{formatFarm(farm)}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            Reason
+            <textarea className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm" maxLength={2000} name="farmGrantReason" />
+          </label>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">This exception grants only the selected farm.</p>
+            <Button disabled={farms.length === 0} type="submit">Create grant</Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { profile: actor } = await getAuthenticatedUserContext();
 
@@ -204,13 +242,14 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
 
   const { id } = await params;
   const supabase = await createClient();
-  const [profileResponse, membershipsResponse, surveyGrantsResponse, farmGrantsResponse, organizationsResponse, surveysResponse, auditResponse] = await Promise.all([
+  const [profileResponse, membershipsResponse, surveyGrantsResponse, farmGrantsResponse, organizationsResponse, surveysResponse, farmsResponse, auditResponse] = await Promise.all([
     supabase.from("profiles").select("id, email, first_name, last_name, role, person_id, created_at, updated_at").eq("id", id).maybeSingle(),
     supabase.from("organization_memberships").select("id, profile_id, organization_id, role, status, notes, invited_at, approved_at, removed_at, updated_at, organization:organizations!organization_memberships_organization_id_fkey(id, name, type_code, status)").eq("profile_id", id).order("updated_at", { ascending: false }),
     supabase.from("survey_access_grants").select("id, profile_id, survey_id, status, expires_at, reason, created_at, updated_at, survey:surveys!survey_access_grants_survey_id_fkey(id, location, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name))").eq("profile_id", id).order("updated_at", { ascending: false }),
     supabase.from("farm_access_grants").select("id, profile_id, farm_id, status, expires_at, reason, created_at, farm:farms!farm_access_grants_farm_id_fkey(id, name, code, status)").eq("profile_id", id).order("updated_at", { ascending: false }),
     supabase.from("organizations").select("id, name, type_code").eq("status", "active").order("name"),
     supabase.from("surveys").select("id, location, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name)").order("flight_date", { ascending: false, nullsFirst: false }),
+    supabase.from("farms").select("id, name, code, status").eq("status", "active").order("name"),
     supabase.from("admin_audit_log").select("id, occurred_at, action, table_name, record_pk, old_data, new_data, actor:profiles!admin_audit_log_actor_profile_id_fkey(email)").in("table_name", ["organization_memberships", "survey_access_grants", "farm_access_grants"]).order("occurred_at", { ascending: false }).limit(100),
   ]);
 
@@ -223,6 +262,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
     ["farm grants", farmGrantsResponse.error],
     ["organizations", organizationsResponse.error],
     ["surveys", surveysResponse.error],
+    ["farms", farmsResponse.error],
     ["audit activity", auditResponse.error],
   ];
   const failure = failures.find(([, error]) => error);
@@ -234,6 +274,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const farmGrants = (farmGrantsResponse.data ?? []) as FarmGrantRow[];
   const organizations = (organizationsResponse.data ?? []) as OrganizationOption[];
   const surveys = (surveysResponse.data ?? []) as SurveyOption[];
+  const farms = (farmsResponse.data ?? []) as FarmOption[];
   const recordIds = new Set([...memberships, ...surveyGrants, ...farmGrants].map((row) => row.id));
   const auditRows = ((auditResponse.data ?? []) as AuditRow[]).filter((row) => {
     const targetId = recordId(row.record_pk);
@@ -242,13 +283,18 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const hasLiveMembership = memberships.some((row) => ["invited", "pending", "active", "suspended"].includes(row.status));
   const previouslyGrantedSurveyIds = new Set(surveyGrants.map((grant) => grant.survey_id));
   const availableSurveys = surveys.filter((survey) => !previouslyGrantedSurveyIds.has(survey.id));
+  const previouslyGrantedFarmIds = new Set(farmGrants.map((grant) => grant.farm_id));
+  const availableFarms = farms.filter((farm) => !previouslyGrantedFarmIds.has(farm.id));
   const activeMembership = memberships.find((row) => row.status === "active");
   const effectiveSurveyGrants = surveyGrants.filter((row) => isEffectiveGrant(row.status, row.expires_at)).length;
   const effectiveFarmGrants = farmGrants.filter((row) => isEffectiveGrant(row.status, row.expires_at)).length;
 
   return (
     <main className="@container/main flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <Button asChild className="w-fit" size="sm" variant="outline"><Link href="/admin/users"><ArrowLeft />Users &amp; Access</Link></Button>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild className="w-fit" size="sm" variant="outline"><Link href="/admin/users"><ArrowLeft />Users &amp; Access</Link></Button>
+        <Button asChild className="w-fit" size="sm" variant="outline"><Link href={`/admin/access-preview/${profile.id}`}><Eye />Access preview</Link></Button>
+      </div>
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -272,6 +318,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
         <section className="grid gap-4 xl:grid-cols-2">
           {!hasLiveMembership ? <CreateMembershipForm organizations={organizations} profileId={profile.id} /> : null}
           <CreateSurveyGrantForm profileId={profile.id} surveys={availableSurveys} />
+          <CreateFarmGrantForm farms={availableFarms} profileId={profile.id} />
         </section>
       )}
 
@@ -316,10 +363,10 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
       </section>
 
       <section className="grid gap-3">
-        <div><h2 className="font-semibold">Farm grants</h2><p className="text-sm text-muted-foreground">Current farm-specific exceptions. Mutation controls are planned for the next access slice.</p></div>
+        <div><h2 className="font-semibold">Farm grants</h2><p className="text-sm text-muted-foreground">Explicit farm exceptions can be revoked or reactivated without deleting history.</p></div>
         <div className="overflow-hidden rounded-lg border bg-card">
           {farmGrants.length === 0 ? <p className="p-6 text-sm text-muted-foreground">No farm grants.</p> : (
-            <Table><TableHeader><TableRow><TableHead>Farm</TableHead><TableHead>Status</TableHead><TableHead>Expiry</TableHead><TableHead>Reason</TableHead></TableRow></TableHeader><TableBody>{farmGrants.map((grant) => <TableRow key={grant.id}><TableCell>{grant.farm?.name ?? grant.farm_id}</TableCell><TableCell><Badge variant="outline">{formatLabel(grant.status)}</Badge></TableCell><TableCell>{formatDate(grant.expires_at)}</TableCell><TableCell className="whitespace-normal">{grant.reason ?? "Not provided"}</TableCell></TableRow>)}</TableBody></Table>
+            <Table><TableHeader><TableRow><TableHead>Farm</TableHead><TableHead>Status</TableHead><TableHead>Expiry</TableHead><TableHead>Reason</TableHead><TableHead>Control</TableHead></TableRow></TableHeader><TableBody>{farmGrants.map((grant) => <TableRow key={grant.id}><TableCell>{formatFarm(grant.farm)}</TableCell><TableCell><Badge variant={isEffectiveGrant(grant.status, grant.expires_at) ? "default" : "outline"}>{formatLabel(grant.status)}</Badge></TableCell><TableCell>{formatDate(grant.expires_at)}</TableCell><TableCell className="whitespace-normal">{grant.reason ?? "Not provided"}</TableCell><TableCell><form action={updateFarmAccessGrantStatus}><input name="grantId" type="hidden" value={grant.id} /><input name="nextStatus" type="hidden" value={grant.status === "active" ? "revoked" : "active"} /><Button size="sm" type="submit" variant={grant.status === "active" ? "outline" : "default"}>{grant.status === "active" ? "Revoke" : "Reactivate"}</Button></form></TableCell></TableRow>)}</TableBody></Table>
           )}
         </div>
       </section>

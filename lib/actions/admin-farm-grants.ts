@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { revalidatePath } from "next/cache";
 import type { PostgrestError } from "@supabase/supabase-js";
@@ -13,22 +13,22 @@ import type {
 import { createClient } from "@/utils/supabase/server";
 
 type TargetProfile = Pick<Tables<"profiles">, "id" | "role">;
-type TargetSurvey = Pick<Tables<"surveys">, "id">;
-type ExistingGrant = Pick<Tables<"survey_access_grants">, "id">;
-type SurveyGrantStatus = Database["public"]["Enums"]["access_grant_status"];
-type StoredSurveyGrant = Pick<
-  Tables<"survey_access_grants">,
-  "id" | "profile_id" | "survey_id" | "status"
+type TargetFarm = Pick<Tables<"farms">, "id">;
+type ExistingGrant = Pick<Tables<"farm_access_grants">, "id">;
+type FarmGrantStatus = Database["public"]["Enums"]["access_grant_status"];
+type StoredFarmGrant = Pick<
+  Tables<"farm_access_grants">,
+  "id" | "profile_id" | "farm_id" | "status"
 >;
 
-type SurveyGrantInsertTable = {
-  insert(values: TablesInsert<"survey_access_grants">): PromiseLike<{
+type FarmGrantInsertTable = {
+  insert(values: TablesInsert<"farm_access_grants">): PromiseLike<{
     error: PostgrestError | null;
   }>;
 };
 
-type SurveyGrantUpdateTable = {
-  update(values: TablesUpdate<"survey_access_grants">): {
+type FarmGrantUpdateTable = {
+  update(values: TablesUpdate<"farm_access_grants">): {
     eq(column: "id", value: string): PromiseLike<{
       error: PostgrestError | null;
     }>;
@@ -39,13 +39,13 @@ const allowedGrantTransitions = {
   active: ["revoked"],
   revoked: ["active"],
   expired: ["active"],
-} as const satisfies Record<SurveyGrantStatus, readonly SurveyGrantStatus[]>;
+} as const satisfies Record<FarmGrantStatus, readonly FarmGrantStatus[]>;
 
 function readRequiredString(formData: FormData, key: string): string {
   const value = formData.get(key);
 
   if (typeof value !== "string" || value.trim().length === 0) {
-    throw new Error("Missing required survey grant field.");
+    throw new Error("Missing required farm grant field.");
   }
 
   return value.trim();
@@ -59,24 +59,24 @@ function readOptionalReason(formData: FormData, key: string): string | null {
     : null;
 }
 
-function parseGrantStatus(value: string): SurveyGrantStatus {
+function parseGrantStatus(value: string): FarmGrantStatus {
   if (value in allowedGrantTransitions) {
-    return value as SurveyGrantStatus;
+    return value as FarmGrantStatus;
   }
 
-  throw new Error("Invalid survey grant status.");
+  throw new Error("Invalid farm grant status.");
 }
 
-export async function createSurveyAccessGrant(formData: FormData) {
+export async function createFarmAccessGrant(formData: FormData) {
   const { profile } = await getAuthenticatedUserContext();
 
   if (profile.role !== "platform_admin") {
-    throw new Error("Only platform admins can create survey access grants.");
+    throw new Error("Only platform admins can create farm access grants.");
   }
 
   const profileId = readRequiredString(formData, "profileId");
-  const surveyId = readRequiredString(formData, "surveyId");
-  const reason = readOptionalReason(formData, "surveyGrantReason");
+  const farmId = readRequiredString(formData, "farmId");
+  const reason = readOptionalReason(formData, "farmGrantReason");
   const supabase = await createClient();
 
   const { data: targetProfile, error: profileError } = (await supabase
@@ -99,31 +99,31 @@ export async function createSurveyAccessGrant(formData: FormData) {
   }
 
   if (targetProfile.role === "platform_admin") {
-    throw new Error("Platform administrators do not need survey access grants.");
+    throw new Error("Platform administrators do not need farm access grants.");
   }
 
-  const { data: targetSurvey, error: surveyError } = (await supabase
-    .from("surveys")
+  const { data: targetFarm, error: farmError } = (await supabase
+    .from("farms")
     .select("id")
-    .eq("id", surveyId)
+    .eq("id", farmId)
     .maybeSingle()) as {
-    data: TargetSurvey | null;
+    data: TargetFarm | null;
     error: PostgrestError | null;
   };
 
-  if (surveyError) {
-    throw new Error("Failed to verify the survey.", { cause: surveyError });
+  if (farmError) {
+    throw new Error("Failed to verify the farm.", { cause: farmError });
   }
 
-  if (!targetSurvey) {
-    throw new Error("Survey not found.");
+  if (!targetFarm) {
+    throw new Error("Farm not found.");
   }
 
   const { data: existingGrant, error: existingGrantError } = (await supabase
-    .from("survey_access_grants")
+    .from("farm_access_grants")
     .select("id")
     .eq("profile_id", profileId)
-    .eq("survey_id", surveyId)
+    .eq("farm_id", farmId)
     .eq("status", "active")
     .maybeSingle()) as {
     data: ExistingGrant | null;
@@ -131,19 +131,19 @@ export async function createSurveyAccessGrant(formData: FormData) {
   };
 
   if (existingGrantError) {
-    throw new Error("Failed to check existing survey access grants.", {
+    throw new Error("Failed to check existing farm access grants.", {
       cause: existingGrantError,
     });
   }
 
   if (existingGrant) {
-    throw new Error("This user already has an active grant for this survey.");
+    throw new Error("This user already has an active grant for this farm.");
   }
 
   const now = new Date().toISOString();
-  const insertPayload: TablesInsert<"survey_access_grants"> = {
+  const insertPayload: TablesInsert<"farm_access_grants"> = {
     profile_id: profileId,
-    survey_id: surveyId,
+    farm_id: farmId,
     status: "active",
     granted_by: profile.id,
     reason,
@@ -152,11 +152,11 @@ export async function createSurveyAccessGrant(formData: FormData) {
   };
 
   const grantsTable = supabase
-    .from("survey_access_grants") as unknown as SurveyGrantInsertTable;
+    .from("farm_access_grants") as unknown as FarmGrantInsertTable;
   const { error: insertError } = await grantsTable.insert(insertPayload);
 
   if (insertError) {
-    throw new Error("Failed to create survey access grant.", {
+    throw new Error("Failed to create farm access grant.", {
       cause: insertError,
     });
   }
@@ -167,11 +167,11 @@ export async function createSurveyAccessGrant(formData: FormData) {
   revalidatePath(`/admin/access-preview/${profileId}`);
 }
 
-export async function updateSurveyAccessGrantStatus(formData: FormData) {
+export async function updateFarmAccessGrantStatus(formData: FormData) {
   const { profile } = await getAuthenticatedUserContext();
 
   if (profile.role !== "platform_admin") {
-    throw new Error("Only platform admins can update survey access grants.");
+    throw new Error("Only platform admins can update farm access grants.");
   }
 
   const grantId = readRequiredString(formData, "grantId");
@@ -180,36 +180,36 @@ export async function updateSurveyAccessGrantStatus(formData: FormData) {
   const supabase = await createClient();
 
   const { data: grant, error: grantError } = (await supabase
-    .from("survey_access_grants")
-    .select("id, profile_id, survey_id, status")
+    .from("farm_access_grants")
+    .select("id, profile_id, farm_id, status")
     .eq("id", grantId)
     .maybeSingle()) as {
-    data: StoredSurveyGrant | null;
+    data: StoredFarmGrant | null;
     error: PostgrestError | null;
   };
 
   if (grantError) {
-    throw new Error("Failed to verify the survey access grant.", {
+    throw new Error("Failed to verify the farm access grant.", {
       cause: grantError,
     });
   }
 
   if (!grant) {
-    throw new Error("Survey access grant not found.");
+    throw new Error("Farm access grant not found.");
   }
 
   const allowedNextStatuses = allowedGrantTransitions[grant.status];
 
-  if (!(allowedNextStatuses as readonly SurveyGrantStatus[]).includes(nextStatus)) {
-    throw new Error("This survey grant status transition is not allowed.");
+  if (!(allowedNextStatuses as readonly FarmGrantStatus[]).includes(nextStatus)) {
+    throw new Error("This farm grant status transition is not allowed.");
   }
 
   if (nextStatus === "active") {
     const { data: duplicateGrant, error: duplicateError } = (await supabase
-      .from("survey_access_grants")
+      .from("farm_access_grants")
       .select("id")
       .eq("profile_id", grant.profile_id)
-      .eq("survey_id", grant.survey_id)
+      .eq("farm_id", grant.farm_id)
       .eq("status", "active")
       .neq("id", grant.id)
       .maybeSingle()) as {
@@ -218,17 +218,17 @@ export async function updateSurveyAccessGrantStatus(formData: FormData) {
     };
 
     if (duplicateError) {
-      throw new Error("Failed to check active survey access grants.", {
+      throw new Error("Failed to check active farm access grants.", {
         cause: duplicateError,
       });
     }
 
     if (duplicateGrant) {
-      throw new Error("This user already has an active grant for this survey.");
+      throw new Error("This user already has an active grant for this farm.");
     }
   }
 
-  const updatePayload: TablesUpdate<"survey_access_grants"> = {
+  const updatePayload: TablesUpdate<"farm_access_grants"> = {
     status: nextStatus,
     updated_at: new Date().toISOString(),
     revoked_by: nextStatus === "revoked" ? profile.id : null,
@@ -243,13 +243,13 @@ export async function updateSurveyAccessGrantStatus(formData: FormData) {
   }
 
   const grantsTable = supabase
-    .from("survey_access_grants") as unknown as SurveyGrantUpdateTable;
+    .from("farm_access_grants") as unknown as FarmGrantUpdateTable;
   const { error: updateError } = await grantsTable
     .update(updatePayload)
     .eq("id", grantId);
 
   if (updateError) {
-    throw new Error("Failed to update survey access grant.", {
+    throw new Error("Failed to update farm access grant.", {
       cause: updateError,
     });
   }

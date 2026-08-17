@@ -11,15 +11,15 @@ Completed foundations:
 3. Role-model cleanup through `20260812005500`, including removal of `profiles.account_role` and `profiles.organization_id` locally and in staging.
 4. Documentation synchronization establishing one current admin architecture and permission model.
 5. Dedicated `/admin` shell, legacy redirects, and role-based landing.
-6. First Users & Access vertical slice: account list/detail, access diagnosis, viewer/editor membership role/status controls, survey-grant create/revoke/reactivate, and account-related audit summaries.
+6. Users & Access vertical slice: account list/detail, access diagnosis, viewer/editor membership role/status controls, survey/farm-grant create/revoke/reactivate, read-only effective-access preview, repaired pgTAP coverage, and account-related audit summaries.
+7. Read-only `/admin/[resource]` list route for clients, organizations, people, farms, surveys, memberships, and outputs.
 
 Approved next implementation sequence:
 
-1. Authenticated smoke the new `/admin/users` workflow as a platform admin and confirm non-platform denial.
-2. Add read-only effective-access preview without user-session impersonation.
-3. Add audited farm-grant creation/revocation and confirm farm grants do not reveal surveys or outputs.
-4. Continue splitting remaining legacy overview resources into dedicated admin routes.
-5. Continue approved workshop operations after the access wave is stable.
+1. Smoke `/admin/access-preview/[profileId]` plus farm-grant create/revoke/reactivate in a platform-admin session and confirm normal-user denial remains intact.
+2. Smoke new `/admin/[resource]` list routes and existing detail links.
+3. Continue approved workshop operations after the access wave is stable.
+4. Keep enum rebuild, Auth invitations, platform-admin promotion, destructive workflows, and true impersonation deferred.
 
 Key constraints:
 

@@ -1,6 +1,6 @@
 # Admin Dashboard Integration and Production Rollout Plan
 
-Last updated: 2026-08-13
+Last updated: 2026-08-17
 Status: Authoritative current admin architecture and delivery plan
 
 This is the primary source of truth for platform-admin routes, navigation, delivery order, and deferred admin scope. The permission model is owned by `docs/role-permission-model-and-migration-plan.md`; database rollout procedures are owned by `docs/supabase-migration-runbook.md`.
@@ -25,8 +25,9 @@ The first delivery wave is Users & Access for existing accounts: profiles, membe
 ### Current implementation
 
 - The dedicated `/admin` route tree, layout, navigation, role-based landing, and server-side platform-admin guard are implemented locally. Legacy `/dashboard/admin/*` URLs redirect to equivalent `/admin/*` routes.
-- Dedicated `/admin/users` and `/admin/users/[id]` workflows are implemented locally for existing accounts. They show membership/grant access state, related audit activity, and account-scoped controls.
-- Existing controlled mutations include legacy-client classification and canonical mapping, viewer/editor membership creation, status and role management, and survey-grant creation, revocation, and reactivation. Audit visibility remains read-only while the underlying mutations are audited.
+- Dedicated `/admin/users`, `/admin/users/[id]`, and `/admin/access-preview/[profileId]` workflows are implemented locally for existing accounts. They show membership/grant access state, read-only effective-access calculation, related audit activity, and account-scoped controls.
+- Dedicated read-only resource list routes are implemented locally through `/admin/[resource]` for clients, organizations, people, farms, surveys, memberships, and outputs, with links to existing detail pages.
+- Existing controlled mutations include legacy-client classification and canonical mapping, viewer/editor membership creation, status and role management, and survey/farm-grant creation, revocation, and reactivation. Audit visibility remains read-only while the underlying mutations are audited.
 - `profiles.role` is the account-level source and is constrained to `platform_admin | user`.
 - `organization_memberships.role` is the organization-level source and uses `org_admin | editor | viewer`; membership status is evaluated separately.
 - Explicit `survey_access_grants` and `farm_access_grants` are resource-level exceptions.
@@ -77,10 +78,10 @@ flowchart LR
 
 1. **Completed locally:** dedicated `/admin` layout, navigation, overview, loading/error states, and server-side platform-admin guard.
 2. **Completed locally:** role-based post-login landing, cross-role redirects, and temporary `/dashboard/admin/*` redirects.
-3. **Completed first slice locally:** `/admin/users` and `/admin/users/[id]` for existing profiles, membership/grant diagnosis, viewer/editor membership controls, survey-grant lifecycle controls, and related audit visibility.
-4. **Next:** read-only effective-access preview using the same membership/grant rules as live authorization. Preview must never become an impersonated session.
-5. Continue splitting the legacy admin mega-page into dedicated resource routes and move remaining audited controls to the relevant detail pages.
-6. Add farm-grant controls and approved domain/workshop operations only after the first access slice is stable.
+3. **Completed locally:** `/admin/users` and `/admin/users/[id]` for existing profiles, membership/grant diagnosis, viewer/editor membership controls, survey/farm-grant lifecycle controls, and related audit visibility.
+4. **Completed locally:** read-only `/admin/access-preview/[profileId]` using membership/grant rules without impersonation or session switching.
+5. **Completed locally:** read-only `/admin/[resource]` list routes for clients, organizations, people, farms, surveys, memberships, and outputs.
+6. **Next:** smoke preview, farm-grant controls, and new resource-list routes with a platform-admin session, then continue approved domain/workshop operations after the access workflow remains stable.
 
 Every admin mutation must authenticate the actor, require `platform_admin`, rely on RLS, validate identifiers and transitions, retain history instead of hard deleting access records, and produce an `admin_audit_log` entry. Audit coverage does not make an otherwise unauthorized mutation acceptable.
 

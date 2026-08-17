@@ -187,6 +187,7 @@ export async function createOrganizationMembership(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${profileId}`);
+  revalidatePath(`/admin/access-preview/${profileId}`);
 }
 
 export async function updateOrganizationMembershipRole(formData: FormData) {
@@ -249,6 +250,7 @@ export async function updateOrganizationMembershipRole(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${membership.profile_id}`);
+  revalidatePath(`/admin/access-preview/${membership.profile_id}`);
   revalidatePath(`/admin/memberships/${membershipId}`);
 }
 
@@ -334,5 +336,6 @@ export async function updateOrganizationMembershipStatus(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${membership.profile_id}`);
+  revalidatePath(`/admin/access-preview/${membership.profile_id}`);
   revalidatePath(`/admin/memberships/${membershipId}`);
 }

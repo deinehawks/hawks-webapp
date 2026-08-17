@@ -8,14 +8,16 @@ Last updated: 2026-08-17
 - Existing-account Users & Access list/detail workflow.
 - Viewer/editor membership creation, role changes, and status transitions.
 - Survey-grant creation, revocation, and reactivation with audit coverage.
+- Read-only effective-access preview without session impersonation.
+- Farm-grant creation, revocation, and reactivation with audit coverage.
+- Stale pgTAP fixture repair for removed `organizations.slug` and `profiles.organization_id` fields.
+- Read-only `/admin/[resource]` list route for clients, organizations, people, farms, surveys, memberships, and outputs.
 
 ## P1
 
-- Authenticated platform-admin and denied normal-user smoke for `/admin/users`.
-- Add read-only effective-access preview using live membership/grant rules without session impersonation.
-- Add audited farm-grant creation/revocation while preserving farm-only scope.
-- Continue splitting the legacy overview into dedicated resource routes.
-- Repair stale pgTAP fixtures that still reference removed `organizations.slug` and `profiles.organization_id` fields.
+- Smoke `/admin/access-preview/[profileId]` and farm-grant controls with a platform-admin session.
+- Confirm normal-user denial remains intact for `/admin`, `/admin/users`, and `/admin/access-preview/*`.
+- Smoke `/admin/[resource]` list routes and decide the next mutable domain/workshop operation slice.
 - Continue approved workshop asset migration waves and protected-asset smoke coverage.
 
 ## P2

@@ -14,9 +14,11 @@ Dedicated admin status:
 - Legacy `/dashboard/admin/*` routes redirect to `/admin/*`.
 - `/admin/users` lists existing accounts with concise membership/grant access status.
 - `/admin/users/[id]` shows account context, membership history, survey/farm grants, and related audit summaries.
-- Platform admins can create viewer/editor memberships, update ordinary membership status/role, create survey grants, and revoke/reactivate survey grants through authenticated RLS-bound audited actions.
+- Platform admins can create viewer/editor memberships, update ordinary membership status/role, create survey/farm grants, and revoke/reactivate survey/farm grants through authenticated RLS-bound audited actions.
+- `/admin/access-preview/[profileId]` provides read-only effective-access calculation from active memberships and grants without impersonation.
+- `/admin/[resource]` provides read-only list routes for clients, organizations, people, farms, surveys, memberships, and outputs, linked from the admin sidebar where currently prioritized.
 - `profiles.role` is not mutable in this workflow and remains account-level `platform_admin | user` only.
-- Effective-access preview, farm-grant mutations, Auth invitations, platform-admin role changes, true impersonation, deletion, and broad infrastructure controls remain deferred.
+- Auth invitations, platform-admin role changes, true impersonation, deletion, and broad infrastructure controls remain deferred.
 
 Role/permission state:
 
@@ -26,11 +28,10 @@ Role/permission state:
 - `profiles.account_role` and `profiles.organization_id` are removed locally and in staging.
 - Historical `app_role` enum labels remain blocked by a check constraint pending a separate enum rebuild.
 
-Validation for the Users & Access slice:
+Validation for the current Users & Access wave:
 
 - `npx tsc --noEmit --incremental false`: pass.
-- Targeted lint for changed files: pass with no warnings or errors.
-- `supabase/tests/domain_authorization.sql`: 40/40 pass.
-- Full pgTAP run remains red because older `authorization.sql` and `protected_asset_authorization.sql` fixtures reference removed schema fields.
-- Unauthenticated `/admin/users` request redirects to `/auth/login` on the local server.
-- Authenticated visual smoke remains manual because the in-app browser runtime failed to start in this environment.
+- Targeted lint for changed admin access/resource files: pass with no warnings or errors.
+- Full pgTAP suite: pass, 74 tests across 4 files.
+- User smoke confirmed platform-admin access and normal-user denial for `/admin`.
+- Authenticated visual smoke for new preview/farm controls remains manual.

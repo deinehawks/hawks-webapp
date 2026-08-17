@@ -7,7 +7,7 @@ values
   ('10000000-0000-0000-0000-000000000001', 'ORG-A', 'Organization A'),
   ('10000000-0000-0000-0000-000000000002', 'ORG-B', 'Organization B');
 
-insert into public.organizations (id, name, slug, type_code, status)
+insert into public.organizations (id, name, code, type_code, status)
 values
   ('30000000-0000-0000-0000-000000000001', 'Org A', 'org-a', 'cooperative', 'active'),
   ('30000000-0000-0000-0000-000000000002', 'Org B', 'org-b', 'cooperative', 'active');
@@ -98,7 +98,7 @@ values
   ('survey-b', 'ORG-B', 'ORG-B', 'ORG-B',
    '10000000-0000-0000-0000-000000000002', 'completed');
 
-select extensions.plan(11);
+select extensions.plan(12);
 
 set local role authenticated;
 

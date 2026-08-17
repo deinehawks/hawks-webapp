@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { LayoutDashboardIcon, ShieldCheckIcon, UsersIcon } from "lucide-react";
+import { Building2Icon, ClipboardListIcon, FileBarChartIcon, LayoutDashboardIcon, MapIcon, ShieldCheckIcon, UsersIcon } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
 import hawksLogo from "@/public/hawks/logo.png";
@@ -98,6 +98,54 @@ export function AdminSidebar({
                 <Link href="/admin/users">
                   <UsersIcon />
                   <span>Users &amp; Access</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="Organizations"
+                className="transition-colors hover:bg-primary/10"
+                asChild
+              >
+                <Link href="/admin/organizations">
+                  <Building2Icon />
+                  <span>Organizations</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="Farms"
+                className="transition-colors hover:bg-primary/10"
+                asChild
+              >
+                <Link href="/admin/farms">
+                  <ClipboardListIcon />
+                  <span>Farms</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="Surveys"
+                className="transition-colors hover:bg-primary/10"
+                asChild
+              >
+                <Link href="/admin/surveys">
+                  <MapIcon />
+                  <span>Surveys</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="Outputs"
+                className="transition-colors hover:bg-primary/10"
+                asChild
+              >
+                <Link href="/admin/outputs">
+                  <FileBarChartIcon />
+                  <span>Outputs</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
