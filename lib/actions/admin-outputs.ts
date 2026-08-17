@@ -57,6 +57,27 @@ function parseOutputType(value: string): string {
   if (!/^[a-z0-9_]+$/.test(normalized)) throw new Error("Output type must use lowercase letters, numbers, and underscores only.");
   return normalized;
 }
+function parseStorageBucket(value: string): string {
+  const normalized = value.trim().slice(0, 100);
+  if (!/^[a-z0-9][a-z0-9._-]*[a-z0-9]$/.test(normalized)) {
+    throw new Error("Storage bucket must use lowercase letters, numbers, dots, underscores, or hyphens.");
+  }
+  return normalized;
+}
+
+function parseStoragePath(value: string): string {
+  const normalized = value.trim().replaceAll("\\", "/").replace(/^\/+/, "").slice(0, 1024);
+  const segments = normalized.split("/");
+  if (
+    normalized.length === 0
+    || normalized.includes("//")
+    || segments.some((segment) => segment.length === 0 || segment === "." || segment === "..")
+    || /[\u0000-\u001f\u007f]/.test(normalized)
+  ) {
+    throw new Error("Storage path must be a relative object path without empty, current, or parent segments.");
+  }
+  return normalized;
+}
 
 function parseStatus(value: string): OutputStatus {
   if (["draft", "ready", "approved", "published", "archived"].includes(value)) return value as OutputStatus;
@@ -146,6 +167,24 @@ export async function updateOutput(formData: FormData) {
 
   revalidateOutputPaths(outputId, output.survey_id);
   if (surveyId !== output.survey_id) revalidatePath(`/admin/surveys/${surveyId}`);
+}
+
+export async function updateOutputStorageReference(formData: FormData) {
+  await assertPlatformAdmin();
+  const outputId = readRequiredString(formData, "outputId");
+  const output = await loadOutput(outputId);
+  if (lockedStatuses.has(output.status)) throw new Error(`${output.status} outputs are locked.`);
+
+  const supabase = await createClient();
+  const outputsTable = supabase.from("survey_outputs") as unknown as OutputUpdateTable;
+  const { error } = await outputsTable.update({
+    storage_bucket: parseStorageBucket(readRequiredString(formData, "storageBucket")),
+    storage_path: parseStoragePath(readRequiredString(formData, "storagePath")),
+    updated_at: new Date().toISOString(),
+  }).eq("id", outputId);
+  if (error) throw new Error("Failed to update output storage reference.", { cause: error });
+
+  revalidateOutputPaths(outputId, output.survey_id);
 }
 
 export async function transitionOutputStatus(formData: FormData) {

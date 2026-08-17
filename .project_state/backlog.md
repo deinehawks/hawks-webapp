@@ -15,7 +15,7 @@ Last updated: 2026-08-17
 - Organization Operations v1: organization create/edit/status, membership roster, and existing-user viewer/editor membership creation.
 - Farm Operations v1: farm create/edit/status, confirmed organization links, and read-only survey relationship visibility.
 - Survey Operations v1: survey metadata/status edit, active farm/organization links, and output readiness visibility.
-- Output Operations v1: draft registration, safe metadata edits, readiness transitions, storage-reference gates, and atomic current-output selection.
+- Output Operations v1: draft registration, safe metadata edits, storage-reference attachment, readiness transitions, storage-reference gates, and atomic current-output selection.
 
 ## P1
 
@@ -24,7 +24,7 @@ Last updated: 2026-08-17
 - Smoke Organization Operations v1 and `/admin/[resource]` list routes.
 - Smoke Farm Operations v1.
 - Smoke Survey Operations v1.
-- Smoke Output Operations v1, including draft creation, metadata edits, readiness transitions, current selection, locked states, and normal-user denial.
+- Smoke Output Operations v1, including draft creation, metadata edits, storage-reference attachment, readiness transitions, current selection, locked states, and normal-user denial.
 - Continue approved workshop asset migration waves and protected-asset smoke coverage.
 
 ## P2

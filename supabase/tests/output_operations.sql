@@ -38,9 +38,11 @@ values
   ('73000000-0000-0000-0000-000000000004', 'output-survey-a', 'published_report', 'published',
    'Published report', 'reports', 'output-survey-a/published.pdf', false),
   ('73000000-0000-0000-0000-000000000005', 'output-survey-a', 'archived_report', 'archived',
-   'Archived report', 'reports', 'output-survey-a/archived.pdf', false);
+   'Archived report', 'reports', 'output-survey-a/archived.pdf', false),
+  ('73000000-0000-0000-0000-000000000006', 'output-survey-a', 'map', 'draft',
+   'Draft attach target', null, null, false);
 
-select extensions.plan(17);
+select extensions.plan(20);
 
 set local role authenticated;
 set local request.jwt.claims =
@@ -80,6 +82,31 @@ select extensions.throws_ok(
   'P0001',
   null,
   'output without storage references cannot become ready'
+);
+
+select extensions.lives_ok(
+  $$update public.survey_outputs
+    set storage_bucket = 'reports',
+        storage_path = 'output-survey-a/map-v1.json'
+    where id = '73000000-0000-0000-0000-000000000006'$$,
+  'platform admin can attach storage references to an unlocked draft output'
+);
+
+select extensions.is(
+  (select storage_bucket || '/' || storage_path
+   from public.survey_outputs
+   where id = '73000000-0000-0000-0000-000000000006'),
+  'reports/output-survey-a/map-v1.json',
+  'attached storage reference is stored on the draft output'
+);
+
+select extensions.throws_ok(
+  $$update public.survey_outputs
+    set storage_path = 'output-survey-a/published-v2.pdf'
+    where id = '73000000-0000-0000-0000-000000000004'$$,
+  'P0001',
+  null,
+  'published output storage reference is locked'
 );
 
 select extensions.lives_ok(
