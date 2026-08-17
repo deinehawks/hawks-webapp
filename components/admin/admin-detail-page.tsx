@@ -86,7 +86,10 @@ type MembershipOrganizationDetail = Pick<
 >;
 
 type MembershipStatus = Database["public"]["Enums"]["membership_status"];
-type MembershipRoleValue = Database["public"]["Enums"]["membership_role"] | "viewer" | "editor";
+type MembershipRoleValue =
+  | Database["public"]["Enums"]["membership_role"]
+  | "viewer"
+  | "editor";
 
 type MembershipDetailRow = Omit<Tables<"organization_memberships">, "role"> & {
   role: MembershipRoleValue;
@@ -208,11 +211,17 @@ function formatClientMappingState(client: ClientDetailRow): string {
     return "Review required: confirmed person and organization mappings both exist.";
   }
 
-  if (client.classification_kind === "organization" && confirmedOrganizations.length === 0) {
+  if (
+    client.classification_kind === "organization" &&
+    confirmedOrganizations.length === 0
+  ) {
     return "Review required: classified as organization without a confirmed organization mapping.";
   }
 
-  if (client.classification_kind === "individual" && confirmedPeople.length === 0) {
+  if (
+    client.classification_kind === "individual" &&
+    confirmedPeople.length === 0
+  ) {
     return "Review required: classified as individual without a confirmed person mapping.";
   }
 
@@ -299,12 +308,7 @@ function formatClientPersonMappings(client: ClientDetailRow): string {
       const primary = mapping.is_primary ? "primary" : "secondary";
 
       return (
-        name +
-        " (" +
-        formatLabel(mapping.review_status) +
-        ", " +
-        primary +
-        ")"
+        name + " (" + formatLabel(mapping.review_status) + ", " + primary + ")"
       );
     })
     .join("; ");
@@ -320,7 +324,9 @@ async function getResourceDetail(
     case "clients": {
       const { data, error } = (await supabase
         .from("clients")
-        .select("*, client_people(is_primary, relationship_type, review_status, person:people(id, display_name, first_name, last_name)), client_organizations(is_primary, relationship_type, review_status, organization:organizations(id, name, type_code))")
+        .select(
+          "*, client_people(is_primary, relationship_type, review_status, person:people(id, display_name, first_name, last_name)), client_organizations(is_primary, relationship_type, review_status, organization:organizations(id, name, type_code))",
+        )
         .eq("id", id)
         .maybeSingle()) as {
         data: ClientDetailRow | null;
@@ -335,27 +341,24 @@ async function getResourceDetail(
 
       if (!data) return null;
 
-      const [
-        organizationsResponse,
-        organizationTypesResponse,
-        peopleResponse,
-      ] = await Promise.all([
-        supabase
-          .from("organizations")
-          .select("id, name, type_code, status")
-          .order("name", { ascending: true })
-          .limit(100),
-        supabase
-          .from("organization_types")
-          .select("code, label")
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true }),
-        supabase
-          .from("people")
-          .select("id, display_name, first_name, last_name, status")
-          .order("display_name", { ascending: true, nullsFirst: false })
-          .limit(100),
-      ]);
+      const [organizationsResponse, organizationTypesResponse, peopleResponse] =
+        await Promise.all([
+          supabase
+            .from("organizations")
+            .select("id, name, type_code, status")
+            .order("name", { ascending: true })
+            .limit(100),
+          supabase
+            .from("organization_types")
+            .select("code, label")
+            .eq("is_active", true)
+            .order("sort_order", { ascending: true }),
+          supabase
+            .from("people")
+            .select("id, display_name, first_name, last_name, status")
+            .order("display_name", { ascending: true, nullsFirst: false })
+            .limit(100),
+        ]);
 
       if (organizationsResponse.error) {
         throw new Error("Failed to load organization mapping options.", {
@@ -380,20 +383,29 @@ async function getResourceDetail(
         description: "Mixed historical tenant record.",
         badge: formatLabel(data.classification_kind),
         client: data,
-        organizationOptions:
-          (organizationsResponse.data ?? []) as MappingOrganizationOption[],
-        organizationTypeOptions:
-          (organizationTypesResponse.data ?? []) as MappingOrganizationTypeOption[],
+        organizationOptions: (organizationsResponse.data ??
+          []) as MappingOrganizationOption[],
+        organizationTypeOptions: (organizationTypesResponse.data ??
+          []) as MappingOrganizationTypeOption[],
         personOptions: (peopleResponse.data ?? []) as MappingPersonOption[],
         fields: [
           { label: "ID", value: data.id },
           { label: "Code", value: data.code },
           { label: "Name", value: data.name },
-          { label: "Classification", value: formatLabel(data.classification_kind) },
+          {
+            label: "Classification",
+            value: formatLabel(data.classification_kind),
+          },
           { label: "Classification Notes", value: data.classification_notes },
-          { label: "Classification Reviewed At", value: formatDate(data.classification_reviewed_at) },
+          {
+            label: "Classification Reviewed At",
+            value: formatDate(data.classification_reviewed_at),
+          },
           { label: "Mapping Readiness", value: formatClientMappingState(data) },
-          { label: "Organization Mappings", value: formatClientOrganizationMappings(data) },
+          {
+            label: "Organization Mappings",
+            value: formatClientOrganizationMappings(data),
+          },
           { label: "Person Mappings", value: formatClientPersonMappings(data) },
           { label: "Created", value: formatDate(data.created_at) },
         ],
@@ -429,7 +441,7 @@ async function getResourceDetail(
           { label: "ID", value: data.id },
           { label: "Email", value: data.email },
           { label: "Account Role", value: formatLabel(data.role) },
-                    { label: "Person ID", value: data.person_id },
+          { label: "Person ID", value: data.person_id },
           { label: "Mobile", value: data.mobile },
           { label: "Telephone", value: data.telephone },
           { label: "Created", value: formatDate(data.created_at) },
@@ -462,7 +474,10 @@ async function getResourceDetail(
         badge: formatLabel(survey.status),
         fields: [
           { label: "ID", value: survey.id },
-          { label: "Client", value: survey.client?.code ?? formatShortId(survey.client_id) },
+          {
+            label: "Client",
+            value: survey.client?.code ?? formatShortId(survey.client_id),
+          },
           { label: "Client Name", value: survey.client?.name },
           { label: "Status", value: formatLabel(survey.status) },
           { label: "Flight Date", value: formatDate(survey.flight_date) },
@@ -487,7 +502,9 @@ async function getResourceDetail(
       };
 
       if (error) {
-        throw new Error("Failed to load organization detail.", { cause: error });
+        throw new Error("Failed to load organization detail.", {
+          cause: error,
+        });
       }
 
       if (!data) return null;
@@ -608,11 +625,20 @@ async function getResourceDetail(
           { label: "ID", value: data.id },
           { label: "User Email", value: data.profile?.email },
           { label: "Profile ID", value: data.profile_id },
-          { label: "Account Role", value: formatLabel(data.profile?.role ?? null) },
+          {
+            label: "Account Role",
+            value: formatLabel(data.profile?.role ?? null),
+          },
           { label: "Profile Person ID", value: data.profile?.person_id },
-                    { label: "Organization", value: data.organization?.name },
-                    { label: "Organization Type", value: formatLabel(data.organization?.type_code ?? null) },
-          { label: "Organization Status", value: formatLabel(data.organization?.status ?? null) },
+          { label: "Organization", value: data.organization?.name },
+          {
+            label: "Organization Type",
+            value: formatLabel(data.organization?.type_code ?? null),
+          },
+          {
+            label: "Organization Status",
+            value: formatLabel(data.organization?.status ?? null),
+          },
           { label: "Membership Role", value: formatLabel(data.role) },
           { label: "Membership Status", value: formatLabel(data.status) },
           { label: "Readiness", value: formatMembershipReadiness(data) },
@@ -653,7 +679,7 @@ async function getResourceDetail(
           { label: "Status", value: formatLabel(data.status) },
           { label: "Current", value: data.is_current },
           { label: "Storage Bucket", value: data.storage_bucket },
-          { label: "Storage Path", value: data.storage_path },
+          { label: "Storage Prefix", value: data.storage_path },
           { label: "Description", value: data.description },
           { label: "Metadata", value: data.metadata },
           { label: "Created", value: formatDate(data.created_at) },
@@ -685,10 +711,7 @@ function ClientClassificationForm({ client }: { client: ClientDetailRow }) {
           <input name="clientId" type="hidden" value={client.id} />
 
           <div className="grid gap-2">
-            <label
-              className="text-sm font-medium"
-              htmlFor="classificationKind"
-            >
+            <label className="text-sm font-medium" htmlFor="classificationKind">
               Classification
             </label>
             <select
@@ -756,8 +779,9 @@ function ClientMappingForm({
   organizationTypeOptions: MappingOrganizationTypeOption[];
   personOptions: MappingPersonOption[];
 }) {
-  const hasConfirmedOrganizationMapping = (client.client_organizations ?? [])
-    .some((mapping) => mapping.review_status === "confirmed");
+  const hasConfirmedOrganizationMapping = (
+    client.client_organizations ?? []
+  ).some((mapping) => mapping.review_status === "confirmed");
   const hasConfirmedPersonMapping = (client.client_people ?? []).some(
     (mapping) => mapping.review_status === "confirmed",
   );
@@ -779,7 +803,10 @@ function ClientMappingForm({
           </p>
         ) : null}
 
-        <form action={createOrganizationForClientMapping} className="grid gap-4 rounded-md border p-4">
+        <form
+          action={createOrganizationForClientMapping}
+          className="grid gap-4 rounded-md border p-4"
+        >
           <input name="clientId" type="hidden" value={client.id} />
           <div>
             <h3 className="text-sm font-medium">Create organization</h3>
@@ -801,7 +828,10 @@ function ClientMappingForm({
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-sm font-medium" htmlFor="organizationTypeCode">
+            <label
+              className="text-sm font-medium"
+              htmlFor="organizationTypeCode"
+            >
               Organization type
             </label>
             <select
@@ -829,7 +859,10 @@ function ClientMappingForm({
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-sm font-medium" htmlFor="newOrganizationNotes">
+            <label
+              className="text-sm font-medium"
+              htmlFor="newOrganizationNotes"
+            >
               Organization notes
             </label>
             <textarea
@@ -852,7 +885,10 @@ function ClientMappingForm({
           </Button>
         </form>
 
-        <form action={createPersonForClientMapping} className="grid gap-4 rounded-md border p-4">
+        <form
+          action={createPersonForClientMapping}
+          className="grid gap-4 rounded-md border p-4"
+        >
           <input name="clientId" type="hidden" value={client.id} />
           <div>
             <h3 className="text-sm font-medium">Create person</h3>
@@ -957,7 +993,10 @@ function ClientMappingForm({
             </select>
           </div>
           <div className="grid gap-2">
-            <label className="text-sm font-medium" htmlFor="organizationMappingNotes">
+            <label
+              className="text-sm font-medium"
+              htmlFor="organizationMappingNotes"
+            >
               Mapping notes
             </label>
             <textarea
@@ -1004,7 +1043,8 @@ function ClientMappingForm({
               </option>
               {personOptions.map((person) => (
                 <option key={person.id} value={person.id}>
-                  {formatMappingPersonOption(person)} ({formatLabel(person.status)})
+                  {formatMappingPersonOption(person)} (
+                  {formatLabel(person.status)})
                 </option>
               ))}
             </select>
@@ -1062,7 +1102,8 @@ function MembershipStatusForm({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Organization-admin membership status changes are deferred. This workflow only manages viewer and editor access.
+            Organization-admin membership status changes are deferred. This
+            workflow only manages viewer and editor access.
           </p>
         </CardContent>
       </Card>
@@ -1122,9 +1163,9 @@ function MembershipStatusForm({
 
             <div className="flex flex-col gap-3 lg:col-span-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="max-w-2xl text-sm text-muted-foreground">
-                This changes only viewer or editor membership status. It does not create
-                auth users, promote org admins, move users across organizations,
-                or delete records.
+                This changes only viewer or editor membership status. It does
+                not create auth users, promote org admins, move users across
+                organizations, or delete records.
               </p>
               <Button className="w-fit" type="submit">
                 Update status
@@ -1179,9 +1220,10 @@ export default async function AdminDetailPage({
             <Badge variant="outline">{detail.badge}</Badge>
           </div>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            {detail.description} Admin detail data stays scoped to approved workflows.
-            Legacy client classification, canonical client mapping, and
-            viewer and editor membership status updates are the only controlled mutations enabled here.
+            {detail.description} Admin detail data stays scoped to approved
+            workflows. Legacy client classification, canonical client mapping,
+            and viewer and editor membership status updates are the only
+            controlled mutations enabled here.
           </p>
         </div>
       </div>
@@ -1213,7 +1255,9 @@ export default async function AdminDetailPage({
         </CardContent>
       </Card>
 
-      {detail.client ? <ClientClassificationForm client={detail.client} /> : null}
+      {detail.client ? (
+        <ClientClassificationForm client={detail.client} />
+      ) : null}
 
       {detail.membership ? (
         <MembershipStatusForm membership={detail.membership} />
@@ -1230,4 +1274,3 @@ export default async function AdminDetailPage({
     </main>
   );
 }
-
