@@ -66,3 +66,7 @@ next-env.d.ts
 
 # local database backups
 /backups/
+
+.tmp/
+issues.txt
+workflow.txt
