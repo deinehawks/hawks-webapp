@@ -1,21 +1,20 @@
 # Session Handoff
 
-Last updated: 2026-08-13
+Last updated: 2026-08-17
 
-The role-model migration wave is implemented locally and applied to staging through `20260812005500`. `profiles.role` is the sole account-level source, membership roles provide organization authority, grants provide resource exceptions, and both legacy profile columns are gone. The extra PostgreSQL enum labels remain a deferred cleanup only.
+The first dedicated Users & Access vertical slice is implemented locally. `/admin/users` lists existing accounts and summarizes organization/resource access. `/admin/users/[id]` owns the membership and survey-grant workflows previously located on the admin overview and shows farm grants plus compact related audit activity.
 
-The dedicated admin shell now exists locally under `/admin`. It uses its own layout/sidebar, keeps server-side `platform_admin` guarding, and reuses the existing admin overview/detail workflows without changing the underlying mutation boundaries. The former `/dashboard/admin` routes now redirect to `/admin`.
+New controlled mutations are limited to viewer/editor membership role changes and survey-grant revoke/reactivate transitions. They re-authenticate the actor, require `platform_admin`, preserve records, rely on existing RLS, reject unsupported transitions, and use existing row audit triggers. No code path changes `profiles.role`; account roles remain only `platform_admin | user`, while `org_admin | editor | viewer` belong to memberships.
 
-Role-based landing is also wired locally: the root page plus password-login and OTP-confirm flows now send `platform_admin` users to `/admin` and `user` accounts to `/dashboard`. Platform admins still have an explicit navigation path back into the user app from the admin shell.
+Validation:
 
-Authoritative docs remain:
+- TypeScript passes.
+- Targeted lint passes with no findings; repository-wide lint still fails on the pre-existing `components/maplibre.tsx` ban-ts-comment error.
+- Focused domain pgTAP passes 40/40.
+- The full pgTAP command remains red because two older fixture files reference removed schema columns.
+- Local unauthenticated `/admin/users` redirects to login. The dev server is running at `http://localhost:3002/asimov-hawks`.
+- Authenticated visual smoke remains manual because the browser runtime failed to start.
 
-- `docs/admin-dashboard-integration-plan.md` for admin architecture and delivery order.
-- `docs/role-permission-model-and-migration-plan.md` for authorization semantics and migration history.
-- `docs/supabase-migration-runbook.md` for rollout history and current invariants.
+Next task: smoke the account-management workflow with a platform-admin session, then implement read-only effective-access preview. Farm-grant mutation controls follow after preview or as the next bounded mutation slice.
 
-Next task: build dedicated `/admin` Users & Access routes, then add the read-only effective-access preview.
-
-Validation note: `npx tsc --noEmit --incremental false` and `npm run lint` both timed out during this session, so they still need a clean recorded result for this slice.
-
-Do not touch unrelated scratch work currently visible in `.tmp/`, `issues.txt`, `workflow.txt`, or the user-owned deletion of `improve.txt`.
+Do not touch unrelated scratch work in `.tmp/`, `issues.txt`, `workflow.txt`, or the user-owned deletion of `improve.txt`.

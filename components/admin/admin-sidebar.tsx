@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { LayoutDashboardIcon, ShieldCheckIcon } from "lucide-react";
+import { LayoutDashboardIcon, ShieldCheckIcon, UsersIcon } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
 import hawksLogo from "@/public/hawks/logo.png";
@@ -62,7 +62,7 @@ export function AdminSidebar({
             <SidebarMenuItem>
               <SidebarMenuButton
                 tooltip="Admin Overview"
-                className="bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
+                className="transition-colors hover:bg-primary/10"
                 asChild
               >
                 <Link href="/admin">
@@ -90,8 +90,15 @@ export function AdminSidebar({
           <SidebarGroupLabel>Current Wave</SidebarGroupLabel>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton className="pointer-events-none opacity-100">
-                <span>Users &amp; Access</span>
+              <SidebarMenuButton
+                tooltip="Users & Access"
+                className="transition-colors hover:bg-primary/10"
+                asChild
+              >
+                <Link href="/admin/users">
+                  <UsersIcon />
+                  <span>Users &amp; Access</span>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

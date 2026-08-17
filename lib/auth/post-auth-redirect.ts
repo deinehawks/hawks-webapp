@@ -1,9 +1,11 @@
 import "server-only";
 
+import type { PostgrestError } from "@supabase/supabase-js";
+
 import type { Tables } from "@/lib/database.types";
 import { createClient } from "@/utils/supabase/server";
 
-type AccountRole = Tables<"profiles">["role"];
+type AccountRole = "platform_admin" | "user";
 
 const DASHBOARD_PATH = "/dashboard";
 const ADMIN_PATH = "/admin";
@@ -56,11 +58,14 @@ export async function resolveAuthenticatedRole(): Promise<AccountRole | null> {
     return null;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = (await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .maybeSingle();
+    .maybeSingle()) as {
+    data: Pick<Tables<"profiles">, "role"> | null;
+    error: PostgrestError | null;
+  };
 
   if (error) {
     throw new Error("Failed to resolve authenticated account role.", {
@@ -68,7 +73,9 @@ export async function resolveAuthenticatedRole(): Promise<AccountRole | null> {
     });
   }
 
-  return data?.role ?? null;
+  return data?.role === "platform_admin" || data?.role === "user"
+    ? data.role
+    : null;
 }
 
 export function resolvePostAuthRedirectPath({

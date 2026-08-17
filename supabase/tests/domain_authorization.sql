@@ -204,7 +204,7 @@ values (
   true
 );
 
-select extensions.plan(34);
+select extensions.plan(40);
 
 set local role authenticated;
 
@@ -323,6 +323,35 @@ select extensions.is(
   'explicit survey grant reads that survey output'
 );
 
+update public.survey_access_grants
+set status = 'revoked'
+where survey_id = 'domain-survey-a'
+  and profile_id = '20000000-0000-0000-0000-000000000015';
+
+select extensions.is(
+  (select status::text
+   from public.survey_access_grants
+   where survey_id = 'domain-survey-a'
+     and profile_id = '20000000-0000-0000-0000-000000000015'),
+  'active',
+  'ordinary user cannot revoke their own survey grant'
+);
+
+set local request.jwt.claims =
+  '{"sub":"20000000-0000-0000-0000-000000000013","role":"authenticated"}';
+
+update public.organization_memberships
+set role = 'editor'
+where id = '40000000-0000-0000-0000-000000000012';
+
+select extensions.is(
+  (select role::text
+   from public.organization_memberships
+   where id = '40000000-0000-0000-0000-000000000012'),
+  'viewer',
+  'ordinary user cannot change their own membership role'
+);
+
 set local request.jwt.claims =
   '{"sub":"20000000-0000-0000-0000-000000000012","role":"authenticated"}';
 
@@ -400,6 +429,43 @@ select extensions.is(
 
 set local request.jwt.claims =
   '{"sub":"20000000-0000-0000-0000-000000000011","role":"authenticated"}';
+
+select extensions.lives_ok(
+  $$update public.organization_memberships
+    set role = 'editor',
+        updated_at = now()
+    where id = '40000000-0000-0000-0000-000000000012'$$,
+  'platform admin can change an ordinary membership role'
+);
+
+select extensions.is(
+  (select count(*) from public.admin_audit_log
+   where table_name = 'organization_memberships'
+     and action = 'UPDATE'
+     and record_pk @> jsonb_build_object(
+       'id', '40000000-0000-0000-0000-000000000012'
+     )),
+  1::bigint,
+  'membership role update is audited'
+);
+
+select extensions.lives_ok(
+  $$update public.survey_access_grants
+    set status = 'revoked',
+        revoked_by = '20000000-0000-0000-0000-000000000011',
+        updated_at = now()
+    where survey_id = 'domain-survey-a'
+      and profile_id = '20000000-0000-0000-0000-000000000015'$$,
+  'platform admin can revoke a survey grant'
+);
+
+select extensions.is(
+  (select count(*) from public.admin_audit_log
+   where table_name = 'survey_access_grants'
+     and action = 'UPDATE'),
+  1::bigint,
+  'survey grant status update is audited'
+);
 
 select extensions.lives_ok(
   $$update public.clients

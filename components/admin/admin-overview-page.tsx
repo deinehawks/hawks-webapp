@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+
 import {
   Card,
   CardContent,
@@ -23,8 +23,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { createOrganizationMembership } from "@/lib/actions/admin-memberships";
-import { createSurveyAccessGrant } from "@/lib/actions/admin-survey-grants";
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
 import type { Database as AppDatabase, Json, Tables } from "@/lib/database.types";
 import { createClient } from "@/utils/supabase/server";
@@ -106,9 +104,6 @@ type MembershipOrganizationRow = Pick<
 
 type MembershipRoleValue = AppDatabase["public"]["Enums"]["membership_role"] | "viewer" | "editor";
 
-type MembershipProfileOption = MembershipProfileRow;
-type MembershipOrganizationOption = MembershipOrganizationRow;
-type SurveyGrantProfileOption = MembershipProfileRow;
 
 type SurveyGrantSurveyOption = Pick<
   Tables<"surveys">,
@@ -515,130 +510,6 @@ function AdminListSection<T extends { id: string }>({
   );
 }
 
-function CreateMembershipForm({
-  profileOptions,
-  organizationOptions,
-}: {
-  profileOptions: MembershipProfileOption[];
-  organizationOptions: MembershipOrganizationOption[];
-}) {
-  const disabled = profileOptions.length === 0 || organizationOptions.length === 0;
-
-  return (
-    <Card className="rounded-lg">
-      <CardHeader>
-        <CardDescription>Access Management</CardDescription>
-        <CardTitle>Create non-admin organization access</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form action={createOrganizationMembership} className="grid gap-4 lg:grid-cols-2">
-          <div className="grid gap-2">
-            <label className="text-sm font-medium" htmlFor="profileId">
-              Existing user account
-            </label>
-            <select
-              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              disabled={disabled}
-              id="profileId"
-              name="profileId"
-              required
-            >
-              <option value="">
-                {profileOptions.length === 0 ? "No eligible users" : "Select user"}
-              </option>
-              {profileOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.email ?? formatShortId(option.id)} ({formatLabel(option.role)})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid gap-2">
-            <label className="text-sm font-medium" htmlFor="organizationId">
-              Existing organization
-            </label>
-            <select
-              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              disabled={disabled}
-              id="organizationId"
-              name="organizationId"
-              required
-            >
-              <option value="">
-                {organizationOptions.length === 0 ? "No organizations" : "Select organization"}
-              </option>
-              {organizationOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name} ({formatLabel(option.type_code)})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid gap-2">
-            <label className="text-sm font-medium" htmlFor="role">
-              Membership role
-            </label>
-            <select
-              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              defaultValue="viewer"
-              disabled={disabled}
-              id="role"
-              name="role"
-              required
-            >
-              <option value="viewer">Viewer</option>
-              <option value="editor">Editor</option>
-            </select>
-          </div>
-
-          <div className="grid gap-2">
-            <label className="text-sm font-medium" htmlFor="status">
-              Initial status
-            </label>
-            <select
-              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              defaultValue="pending"
-              disabled={disabled}
-              id="status"
-              name="status"
-              required
-            >
-              <option value="pending">Pending</option>
-              <option value="active">Active</option>
-            </select>
-          </div>
-
-          <div className="grid gap-2 lg:row-span-2">
-            <label className="text-sm font-medium" htmlFor="membershipNotes">
-              Notes
-            </label>
-            <textarea
-              className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              id="membershipNotes"
-              maxLength={2000}
-              name="membershipNotes"
-              rows={3}
-            />
-          </div>
-
-          <div className="flex flex-col gap-3 lg:col-span-2 lg:flex-row lg:items-center lg:justify-between">
-            <p className="max-w-3xl text-sm text-muted-foreground">
-              This creates only a viewer or editor organization membership for an existing user and existing organization. Organization-admin
-              promotion, Auth-user creation, invite email delivery, and
-              destructive removal workflows remain blocked.
-            </p>
-            <Button className="w-fit" disabled={disabled} type="submit">
-              Create membership
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
-  );
-}
-
 function formatSurveyOption(survey: SurveyGrantSurveyOption): string {
   const clientLabel = survey.client?.code ?? formatShortId(survey.client_id);
   const surveyLabel = survey.location ?? formatShortId(survey.id);
@@ -647,93 +518,6 @@ function formatSurveyOption(survey: SurveyGrantSurveyOption): string {
   return `${clientLabel} - ${surveyLabel}${dateLabel}`;
 }
 
-function CreateSurveyGrantForm({
-  profileOptions,
-  surveyOptions,
-}: {
-  profileOptions: SurveyGrantProfileOption[];
-  surveyOptions: SurveyGrantSurveyOption[];
-}) {
-  const disabled = profileOptions.length === 0 || surveyOptions.length === 0;
-
-  return (
-    <Card className="rounded-lg">
-      <CardHeader>
-        <CardDescription>Individual Access</CardDescription>
-        <CardTitle>Create survey access grant</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form action={createSurveyAccessGrant} className="grid gap-4 lg:grid-cols-2">
-          <div className="grid gap-2">
-            <label className="text-sm font-medium" htmlFor="surveyGrantProfileId">
-              Existing user account
-            </label>
-            <select
-              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              disabled={disabled}
-              id="surveyGrantProfileId"
-              name="profileId"
-              required
-            >
-              <option value="">
-                {profileOptions.length === 0 ? "No eligible users" : "Select user"}
-              </option>
-              {profileOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.email ?? formatShortId(option.id)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid gap-2">
-            <label className="text-sm font-medium" htmlFor="surveyGrantSurveyId">
-              Existing survey
-            </label>
-            <select
-              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              disabled={disabled}
-              id="surveyGrantSurveyId"
-              name="surveyId"
-              required
-            >
-              <option value="">
-                {surveyOptions.length === 0 ? "No surveys" : "Select survey"}
-              </option>
-              {surveyOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {formatSurveyOption(option)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid gap-2 lg:col-span-2">
-            <label className="text-sm font-medium" htmlFor="surveyGrantReason">
-              Grant reason
-            </label>
-            <textarea
-              className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              id="surveyGrantReason"
-              maxLength={2000}
-              name="surveyGrantReason"
-              rows={3}
-            />
-          </div>
-
-          <div className="flex flex-col gap-3 lg:col-span-2 lg:flex-row lg:items-center lg:justify-between">
-            <p className="max-w-3xl text-sm text-muted-foreground">
-              This creates a survey-only exception for an existing user. It does not create organization membership, farm access, account-role changes, or broad client access.
-            </p>
-            <Button className="w-fit" disabled={disabled} type="submit">
-              Create survey grant
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
-  );
-}
 function ReadinessCard({ metric }: { metric: ReadinessMetric }) {
   const isWarning = metric.variant === "warning";
   const iconClassName = isWarning
@@ -791,10 +575,7 @@ export default async function AdminPage() {
     membershipRows,
     outputRows,
     auditRows,
-    membershipProfileOptionsResponse,
-    membershipOrganizationOptionsResponse,
-    liveMembershipProfileIdsResponse,
-    surveyGrantSurveyOptionsResponse,
+
     surveyGrantRows,
   ] = await Promise.all([
     getTableCount("clients"),
@@ -874,29 +655,7 @@ export default async function AdminPage() {
       )
       .order("occurred_at", { ascending: false })
       .limit(8),
-    supabase
-      .from("profiles")
-      .select("id, email, role")
-      .neq("role", "platform_admin")
-      .order("email", { ascending: true, nullsFirst: false })
-      .limit(100),
-    supabase
-      .from("organizations")
-      .select("id, name, type_code, status")
-      .eq("status", "active")
-      .order("name", { ascending: true })
-      .limit(100),
-    supabase
-      .from("organization_memberships")
-      .select("profile_id")
-      .in("status", ["invited", "pending", "active", "suspended"])
-      .limit(1000),
-    supabase
-      .from("surveys")
-      .select("id, location, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name)")
-      .order("flight_date", { ascending: false, nullsFirst: false })
-      .order("location", { ascending: true, nullsFirst: false })
-      .limit(200),
+
     supabase
       .from("survey_access_grants")
       .select("id, profile_id, survey_id, status, reason, created_at, expires_at, profile:profiles!survey_access_grants_profile_id_fkey(email), survey:surveys!survey_access_grants_survey_id_fkey(id, location, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name))")
@@ -918,10 +677,7 @@ export default async function AdminPage() {
     ["reviewed client count", reviewedClients],
     ["confirmed person mappings count", confirmedPersonMappings],
     ["confirmed organization mappings count", confirmedOrganizationMappings],
-    ["membership profile options", membershipProfileOptionsResponse],
-    ["membership organization options", membershipOrganizationOptionsResponse],
-    ["live membership profile ids", liveMembershipProfileIdsResponse],
-    ["survey grant survey options", surveyGrantSurveyOptionsResponse],
+
     ["survey grant rows", surveyGrantRows],
   ] as const;
 
@@ -992,17 +748,6 @@ export default async function AdminPage() {
   const outputList = (outputRows.data ?? []) as OutputListRow[];
   const auditList = (auditRows.data ?? []) as AdminAuditListRow[];
   const surveyGrantList = (surveyGrantRows.data ?? []) as SurveyAccessGrantListRow[];
-  const surveyGrantSurveyOptions = (surveyGrantSurveyOptionsResponse.data ?? []) as SurveyGrantSurveyOption[];
-  const liveMembershipProfileIds = new Set(
-    ((liveMembershipProfileIdsResponse.data ?? []) as Pick<
-      Tables<"organization_memberships">,
-      "profile_id"
-    >[]).map((row) => row.profile_id),
-  );
-  const surveyGrantProfileOptions = (membershipProfileOptionsResponse.data ?? []) as SurveyGrantProfileOption[];
-  const membershipProfileOptions = (surveyGrantProfileOptions as MembershipProfileOption[])
-    .filter((option) => !liveMembershipProfileIds.has(option.id));
-  const membershipOrganizationOptions = (membershipOrganizationOptionsResponse.data ?? []) as MembershipOrganizationOption[];
   const readinessMetrics: ReadinessMetric[] = [
     {
       label: "Unclassified Clients",
@@ -1077,15 +822,6 @@ export default async function AdminPage() {
       </section>
 
       <section className="grid gap-4">
-        <CreateMembershipForm
-          profileOptions={membershipProfileOptions}
-          organizationOptions={membershipOrganizationOptions}
-        />
-
-        <CreateSurveyGrantForm
-          profileOptions={surveyGrantProfileOptions}
-          surveyOptions={surveyGrantSurveyOptions}
-        />
 
         <AdminListSection
           title="Recent Admin Activity"

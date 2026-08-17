@@ -1,8 +1,9 @@
-import { type EmailOtpType } from "@supabase/supabase-js";
+import { type EmailOtpType, type PostgrestError } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { type NextRequest } from "next/server";
 
 import { resolvePostAuthRedirectPath } from "@/lib/auth/post-auth-redirect";
+import type { Tables } from "@/lib/database.types";
 import { createClient } from "@/utils/supabase/server";
 
 export async function GET(request: NextRequest) {
@@ -27,11 +28,14 @@ export async function GET(request: NextRequest) {
       let role: "platform_admin" | "user" | null = null;
 
       if (user) {
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile, error: profileError } = (await supabase
           .from("profiles")
           .select("role")
           .eq("id", user.id)
-          .maybeSingle();
+          .maybeSingle()) as {
+          data: Pick<Tables<"profiles">, "role"> | null;
+          error: PostgrestError | null;
+        };
 
         if (profileError) {
           throw new Error("Failed to resolve authenticated account role.", {
@@ -39,7 +43,9 @@ export async function GET(request: NextRequest) {
           });
         }
 
-        role = profile?.role ?? null;
+        role = profile?.role === "platform_admin" || profile?.role === "user"
+          ? profile.role
+          : null;
       }
 
       redirect(resolvePostAuthRedirectPath({ role, next }));

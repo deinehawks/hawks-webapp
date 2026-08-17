@@ -17,7 +17,7 @@ type MembershipRole = Database["public"]["Enums"]["membership_role"] | "viewer" 
 type TargetProfile = Pick<Tables<"profiles">, "id" | "role">;
 type StoredMembership = Pick<
   Tables<"organization_memberships">,
-  "id" | "status"
+  "id" | "profile_id" | "status"
 > & {
   role: MembershipRole;
 };
@@ -185,6 +185,71 @@ export async function createOrganizationMembership(formData: FormData) {
   }
 
   revalidatePath("/admin");
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${profileId}`);
+}
+
+export async function updateOrganizationMembershipRole(formData: FormData) {
+  const { profile } = await getAuthenticatedUserContext();
+
+  if (profile.role !== "platform_admin") {
+    throw new Error("Only platform admins can update membership roles.");
+  }
+
+  const membershipId = readRequiredString(formData, "membershipId");
+  const nextRole = parseMembershipRole(readRequiredString(formData, "nextRole"));
+  const supabase = await createClient();
+
+  const { data: membership, error: membershipError } = (await supabase
+    .from("organization_memberships")
+    .select("id, profile_id, role, status")
+    .eq("id", membershipId)
+    .maybeSingle()) as {
+    data: StoredMembership | null;
+    error: PostgrestError | null;
+  };
+
+  if (membershipError) {
+    throw new Error("Failed to verify organization membership.", {
+      cause: membershipError,
+    });
+  }
+
+  if (!membership) {
+    throw new Error("Organization membership not found.");
+  }
+
+  if (!isOrdinaryMembershipRole(membership.role)) {
+    throw new Error("Organization-admin membership roles cannot be changed here.");
+  }
+
+  if (membership.status === "removed") {
+    throw new Error("Removed memberships are retained as history and cannot be changed.");
+  }
+
+  if (membership.role === nextRole) {
+    throw new Error("The membership already has this role.");
+  }
+
+  const membershipsTable = supabase
+    .from("organization_memberships") as unknown as MembershipUpdateTable;
+  const { error: updateError } = await membershipsTable
+    .update({
+      role: nextRole as TablesUpdate<"organization_memberships">["role"],
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", membershipId);
+
+  if (updateError) {
+    throw new Error("Failed to update organization membership role.", {
+      cause: updateError,
+    });
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${membership.profile_id}`);
+  revalidatePath(`/admin/memberships/${membershipId}`);
 }
 
 export async function updateOrganizationMembershipStatus(formData: FormData) {
@@ -203,7 +268,7 @@ export async function updateOrganizationMembershipStatus(formData: FormData) {
 
   const { data: membership, error: membershipError } = (await supabase
     .from("organization_memberships")
-    .select("id, role, status")
+    .select("id, profile_id, role, status")
     .eq("id", membershipId)
     .maybeSingle()) as {
     data: StoredMembership | null;
@@ -267,5 +332,7 @@ export async function updateOrganizationMembershipStatus(formData: FormData) {
   }
 
   revalidatePath("/admin");
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${membership.profile_id}`);
   revalidatePath(`/admin/memberships/${membershipId}`);
 }
