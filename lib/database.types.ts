@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
       account_signup_approvals: {
@@ -738,6 +743,7 @@ export type Database = {
           requested_by: string
           requested_email: string
           requested_name: string | null
+          review_notes: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
@@ -751,6 +757,7 @@ export type Database = {
           requested_by: string
           requested_email: string
           requested_name?: string | null
+          review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -764,6 +771,7 @@ export type Database = {
           requested_by?: string
           requested_email?: string
           requested_name?: string | null
+          review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -1710,6 +1718,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_approve_organization_user_request: {
+        Args: { target_request_id: string; target_review_notes?: string }
+        Returns: string
+      }
       admin_approve_signup_request: {
         Args: {
           target_initial_role: Database["public"]["Enums"]["membership_role"]
@@ -1756,6 +1768,10 @@ export type Database = {
           person_notes?: string
           target_client_id: string
         }
+        Returns: string
+      }
+      admin_reject_organization_user_request: {
+        Args: { target_request_id: string; target_review_notes?: string }
         Returns: string
       }
       admin_reject_signup_request: {

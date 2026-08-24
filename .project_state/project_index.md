@@ -42,11 +42,17 @@ Use this index after the compressed startup files. Document classifications prev
 
 - `supabase/migrations/`: checked-in migration history and current schema contract.
 - `supabase/tests/`: pgTAP authorization coverage.
-- `supabase/migrations/20260820000000_org_admin_portal.sql` and
-  `supabase/tests/org_admin_portal.sql`: local-only org-admin RPC contract and
-  focused authorization coverage; staging rollout is pending.
-- `supabase/migrations/20260824000000_restrict_org_admin_survey_output.sql`:
-  local-only correction making surveys read-only and outputs platform-only.
+- `supabase/migrations/20260820000000_org_admin_portal.sql`, corrective
+  migration `20260824000000_restrict_org_admin_survey_output.sql`, and
+  `supabase/tests/org_admin_portal.sql`: staged org-admin RPC contract and
+  focused authorization coverage.
+- `supabase/verification/inventory_org_admin_portal.sql` and
+  `supabase/rollback/20260820000000_org_admin_portal.sql`: org-admin rollout
+  inventory and guarded non-destructive containment procedure.
+- `supabase/migrations/20260824001000_admin_onboarding_request_review.sql`,
+  `supabase/tests/admin_onboarding_requests.sql`, and matching verification and
+  rollback files: staged and authenticated-smoke-validated platform-admin
+  onboarding review queue contract.
 - `supabase/verification/`: current verification SQL.
 - `supabase/verification/inventory_access_policy_v2.sql`: pre-rollout affected-data and policy inventory.
 - `supabase/rollback/20260818000000_access_policy_v2.sql`: guarded non-destructive containment rollback; full reversal uses the tested backup.
@@ -57,6 +63,9 @@ Use this index after the compressed startup files. Document classifications prev
 - `lib/org-admin/context.ts`, `lib/actions/org-admin.ts`, and
   `app/org-admin/`: strict organization-admin context, narrow RPC application
   actions, and portal routes.
+- `app/admin/onboarding-requests/` and
+  `lib/actions/admin-onboarding-requests.ts`: platform-admin onboarding review
+  queue and RPC-only review actions.
 - `lib/actions/surveys.ts`: survey authorization and current output joins.
 - `app/dashboard/admin/`: transitional admin implementation.
 - `app/asimov-hawks/internal/asset-auth/route.ts`: protected asset authorization endpoint.

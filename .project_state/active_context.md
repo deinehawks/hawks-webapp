@@ -17,19 +17,24 @@ Completed:
    read-only and Outputs are platform-admin-only.
 7. TypeScript, targeted ESLint, full pgTAP (142/142), and whitespace checks
    pass.
+8. Both org-admin migrations passed staging inventory, backup/restore,
+   containment, dry-run, apply, history, contract, type, and automated test
+   gates on `llealjcaqvltrtdwwzrh`.
+9. User-assisted authenticated staging smoke passed for the complete org-admin
+   portal and authorization boundaries.
+10. The platform-admin onboarding review queue is implemented and its
+    single-migration staging gate passed on `llealjcaqvltrtdwwzrh`, including
+    backup/restore, containment replay, remote contract/history verification,
+    linked types, and the full 153/153 pgTAP suite.
+11. User-assisted authenticated staging smoke passed for org-admin onboarding
+    submission and platform-admin review; the org-admin phase is complete.
 
 Next sequence:
 
-1. Manually smoke the portal as platform admin, org admin, ordinary member,
-   suspended/removed member, and cross-organization user, including every
-   permitted mutation and prohibited boundary.
-2. Fix any smoke regression locally and rerun TypeScript, targeted ESLint,
-   full pgTAP, and whitespace checks.
-3. After the smoke gate passes, prepare org-admin migration
-   inventory, backup/recovery rehearsal, rollback/containment notes, and staging
-   smoke gate. Do not change production.
-4. Follow with `feature/survey-contract`, `feature/user-app-preview`, and
-   `fix/output-types` as separate branches.
+1. Prepare `feature/survey-contract` as the next separate branch and execute the
+   staged survey identity/client-field contraction plan.
+2. Follow with `feature/user-app-preview` and `fix/output-types` as separate
+   branches.
 
 Constraints:
 

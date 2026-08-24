@@ -61,6 +61,7 @@ export default async function OrgAdminOnboardingPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Review notes</TableHead>
                 <TableHead>Notes</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
@@ -71,6 +72,7 @@ export default async function OrgAdminOnboardingPage() {
                   <TableCell className="font-medium">{request.requested_email}</TableCell>
                   <TableCell>{request.requested_name ?? "—"}</TableCell>
                   <TableCell><StatusBadge value={request.status} /></TableCell>
+                  <TableCell className="max-w-64 truncate">{request.review_notes ?? "-"}</TableCell>
                   <TableCell className="max-w-64 truncate">{request.notes ?? "—"}</TableCell>
                   <TableCell className="text-right">
                     {request.status === "pending" && request.requested_by === user.id ? (
@@ -91,4 +93,3 @@ export default async function OrgAdminOnboardingPage() {
     </OrgAdminPage>
   );
 }
-

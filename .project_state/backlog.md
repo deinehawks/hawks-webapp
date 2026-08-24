@@ -16,18 +16,23 @@ Last updated: 2026-08-24
   corrective migration `20260824000000`.
 - TypeScript, targeted ESLint, combined 142-test pgTAP, and whitespace checks
   for the org-admin application slice.
+- Non-production org-admin inventory, checksummed backup, isolated restore,
+  exact migration/containment rehearsal, two-migration staging apply, linked
+  history/contract/type verification, and automated post-apply checks.
+- Authenticated org-admin staging smoke for onboarding, membership/grant
+  lifecycles, read-only surveys, absent Outputs, and prohibited boundaries.
+- Platform-admin onboarding review queue, narrow audited approve/reject RPCs,
+  generated contracts, focused/full pgTAP validation (11/11 and 153/153), and
+  the complete single-migration non-production staging rollout gate.
+- Authenticated staging smoke for org-admin onboarding submission and
+  platform-admin review; the org-admin phase is complete.
 
 ## P1
 
-- Manually validate permitted org-admin workflows and prohibited self-admin,
-  cross-organization, platform-exception, relationship, creation, publication,
-  and operational-field mutations.
-- After application validation, prepare and execute the non-production
-  inventory/backup/rollback/staging gate for `20260820000000`.
+- Contract survey identity/client fields on `feature/survey-contract`.
 
 ## P2
 
-- Contract survey identity/client fields on `feature/survey-contract`.
 - Build read-only User App Preview on `feature/user-app-preview`.
 - Restrict output types on `fix/output-types`, including affected-row
   inventory and legacy-value metadata preservation.

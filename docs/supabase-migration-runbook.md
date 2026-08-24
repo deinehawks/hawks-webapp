@@ -184,8 +184,8 @@ passed.
 ## Organization Admin portal migration
 
 `20260820000000_org_admin_portal.sql` and corrective migration
-`20260824000000_restrict_org_admin_survey_output.sql` are currently
-local-only. Together they replace
+`20260824000000_restrict_org_admin_survey_output.sql` were applied to staging
+on 2026-08-24. Together they replace
 broad organization-admin membership/onboarding mutation paths with narrow
 audited RPCs for approved farm, grant, member, organization-profile, and
 onboarding-request operations. Surveys are read-only and Outputs remain
@@ -200,11 +200,77 @@ Local evidence:
 - the protected portal, server actions, TypeScript, targeted ESLint, and
   whitespace checks pass locally.
 
-Before staging, complete authenticated smoke of permitted plus prohibited
-organization-admin workflows, capture an affected-policy/data inventory,
-rehearse a restorable backup, prepare rollback/containment SQL, review the
-schema/policy diff, and rerun the combined pgTAP/type/lint checks. Never apply
-this migration to production as part of validation.
+### 2026-08-24 staging rollout record
+
+- Linked target was confirmed as `llealjcaqvltrtdwwzrh`; the dry-run contained
+  only the two org-admin migrations.
+- Pre-apply inventory found one valid active org admin, no multi-organization
+  org-admin ambiguity, no invalid organization-scoped grants, and the expected
+  legacy onboarding insert/update policies.
+- Fresh application/private schema, Auth schema, and Auth/Public data backups
+  were stored outside Git in the operator's temporary backup directory and
+  SHA-256 checksummed.
+- Recovery rehearsal passed against an isolated local database. The Auth
+  trigger was deferred until Auth and application schemas existed; the local
+  `extensions`, `vault`, `app_private`, and `supabase_realtime` bootstrap
+  objects were created before restore. Restored counts matched staging for all
+  compared Auth and domain tables.
+- Exact migration replay and the guarded non-destructive containment script
+  passed against the restored clone. Inventory and containment artifacts are
+  `supabase/verification/inventory_org_admin_portal.sql` and
+  `supabase/rollback/20260820000000_org_admin_portal.sql`.
+- Both migrations applied successfully. Linked history and a second dry-run
+  show no pending migrations. Post-apply verification found the 11 approved
+  org-admin RPCs, both grant-read policies, and both audit triggers; survey and
+  output mutation RPCs are absent.
+- Linked types were regenerated. TypeScript and targeted ESLint passed, and the
+  full local pgTAP suite passed 142/142. Linked DB lint reports only the known
+  stale `app_private.backfill_legacy_organization_memberships` error.
+- The CLI completed the database push but its optional pg-delta catalog cache
+  step warned about a missing temporary CA file. Independent history,
+  inventory, permissions, and no-pending checks passed afterward.
+
+The authenticated post-rollout org-admin UI smoke passed on 2026-08-24 for
+onboarding submission/cancellation, member and grant lifecycles, read-only
+survey visibility, absent Outputs, and prohibited role/scope boundaries.
+Production remains unchanged and must not receive these migrations as part of
+validation.
+
+### Platform onboarding review corrective migration
+
+`20260824001000_admin_onboarding_request_review.sql` was applied to staging on
+2026-08-24. It adds the
+missing `/admin/onboarding-requests` review contract: platform admins may
+approve or reject pending organization requests through narrow audited RPCs,
+while direct authenticated table mutation is revoked. Approval records intent
+and review metadata only; recipients still use user-first signup and the
+separate Signup Approvals queue.
+
+The single-migration non-production gate passed against
+`llealjcaqvltrtdwwzrh`:
+
+- Inventory found two cancelled requests, no duplicate pending email, no
+  pending request for an inactive organization, and the expected pre-migration
+  broad platform-admin mutation policy.
+- Fresh schema, Auth schema, and Auth/Public data backups were stored outside
+  Git and SHA-256 checksummed. An isolated restore matched staging counts for
+  24 Auth users, 24 profiles, 3 organizations, 5 memberships, 2 onboarding
+  requests, 142 audit rows, 3 farms, 108 surveys, and 1 output.
+- Exact migration and containment replay passed on the restored clone. The
+  linked dry-run contained only `20260824001000` before apply and no migrations
+  afterward.
+- Independent post-apply verification confirmed `review_notes`, both review
+  RPCs, read-only platform/org-admin policies, no direct authenticated table
+  mutations, and preserved request data. Linked types were regenerated.
+- TypeScript, targeted ESLint, whitespace checks, and full local pgTAP (153/153)
+  pass. Linked DB lint reports only the known stale legacy membership-backfill
+  function. The optional pg-delta cache step emitted its known missing temporary
+  CA-file warning after push; independent history and contract checks passed.
+
+User-assisted authenticated staging smoke passed on 2026-08-24 for
+organization-admin onboarding submission and platform-admin queue review. The
+org-admin/onboarding review staging gate is closed. Production remains
+unchanged.
 
 ## Delivery gates
 

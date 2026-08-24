@@ -1,7 +1,7 @@
 # Platform Admin Operator Guide
 
 Last updated: 2026-08-24
-Status: Access Policy v2 staging role smoke passed; org-admin portal implemented locally and awaiting authenticated smoke
+Status: org-admin portal and platform onboarding review queue staged and authenticated-smoke-validated
 
 This guide covers the dedicated `/admin` surface. The permission model is in
 `docs/role-permission-model-and-migration-plan.md`; database rollout and
@@ -34,9 +34,16 @@ organization and initial `member` or `org_admin` role, then approve or reject
 it. Approval atomically activates the profile and creates its membership.
 Rejection leaves the Auth account present but blocks application access.
 
-The org-admin database mutation contract and application portal are implemented
-locally. Do not treat the checked-in migration or routes as evidence of staging
-or production deployment.
+The org-admin database mutation contract and application portal are deployed
+and smoke-validated in staging. Production remains separately gated.
+
+Organization admins submit onboarding intent from `/org-admin/onboarding`.
+Platform admins review it from `/admin/onboarding-requests`. Approval records
+the organization request and reviewer audit fields only; it never creates an
+Auth account or membership. The recipient must still sign up, confirm their
+email, and be activated from `/admin/signup-approvals`. Rejection closes the
+organization request without blocking a separately created account unless its
+signup request is also rejected.
 
 ## Organization administrator portal
 

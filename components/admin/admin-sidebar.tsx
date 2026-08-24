@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Building2Icon, ClipboardListIcon, FileBarChartIcon, LayoutDashboardIcon, MapIcon, ShieldCheckIcon, UserPlusIcon, UsersIcon } from "lucide-react";
+import { Building2Icon, ClipboardCheckIcon, ClipboardListIcon, FileBarChartIcon, LayoutDashboardIcon, MapIcon, ShieldCheckIcon, UserPlusIcon, UsersIcon } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
 import hawksLogo from "@/public/hawks/logo.png";
@@ -110,6 +110,18 @@ export function AdminSidebar({
                 <Link href="/admin/signup-approvals">
                   <UserPlusIcon />
                   <span>Signup Approvals</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="Organization Onboarding"
+                className="transition-colors hover:bg-primary/10"
+                asChild
+              >
+                <Link href="/admin/onboarding-requests">
+                  <ClipboardCheckIcon />
+                  <span>Organization Onboarding</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

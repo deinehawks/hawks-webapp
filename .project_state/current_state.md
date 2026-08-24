@@ -40,7 +40,24 @@ Organization Admin phase status:
 - Corrective migration `20260824000000_restrict_org_admin_survey_output.sql`
   removes the org-admin survey/output mutation RPCs from the database contract.
 
-The org-admin migration has not been inventoried, recovery-rehearsed, or applied
-to staging. Authenticated browser smoke is still required; the existing local
-Next process did not respond to the bounded route check, while a second process
-could not share `.next/trace`. No production mutation was performed.
+Both org-admin migrations are applied to non-production staging after a clean
+inventory, checksummed backup, successful isolated restore, exact migration and
+containment rehearsal, and ordered dry-run. Remote history and no-pending checks
+pass; the 11 approved RPCs are present while survey/output mutation RPCs remain
+absent. Linked types, TypeScript, targeted ESLint, and full pgTAP (142/142)
+pass. The user completed authenticated staging smoke for onboarding,
+membership/grant lifecycles, read-only surveys, absent Outputs, and prohibited
+boundaries; all behaved as expected. Production is unchanged.
+
+Corrective migration `20260824001000_admin_onboarding_request_review.sql`
+adds the platform-admin onboarding queue, narrow approve/reject RPCs,
+review notes, audited review metadata, and RPC-only table mutation. Approval
+does not create an account or membership; user-first Signup Approvals remains
+the activation path. Its single-migration non-production staging gate passed:
+inventory, checksummed backup, isolated restore with matching counts, exact
+migration/containment replay, one-file dry-run, apply, remote history and
+contract verification, linked type regeneration, TypeScript, targeted ESLint,
+and full pgTAP (153/153). The user then passed authenticated staging smoke for
+org-admin request submission and platform-admin onboarding review. The
+org-admin/onboarding review phase is complete in staging. Production is
+unchanged.
