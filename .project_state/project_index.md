@@ -45,6 +45,8 @@ Use this index after the compressed startup files. Document classifications prev
 - `supabase/migrations/20260820000000_org_admin_portal.sql` and
   `supabase/tests/org_admin_portal.sql`: local-only org-admin RPC contract and
   focused authorization coverage; staging rollout is pending.
+- `supabase/migrations/20260824000000_restrict_org_admin_survey_output.sql`:
+  local-only correction making surveys read-only and outputs platform-only.
 - `supabase/verification/`: current verification SQL.
 - `supabase/verification/inventory_access_policy_v2.sql`: pre-rollout affected-data and policy inventory.
 - `supabase/rollback/20260818000000_access_policy_v2.sql`: guarded non-destructive containment rollback; full reversal uses the tested backup.
@@ -52,6 +54,9 @@ Use this index after the compressed startup files. Document classifications prev
 ## Source Hotspots
 
 - `lib/auth/user-context.ts`: authenticated profile and access context.
+- `lib/org-admin/context.ts`, `lib/actions/org-admin.ts`, and
+  `app/org-admin/`: strict organization-admin context, narrow RPC application
+  actions, and portal routes.
 - `lib/actions/surveys.ts`: survey authorization and current output joins.
 - `app/dashboard/admin/`: transitional admin implementation.
 - `app/asimov-hawks/internal/asset-auth/route.ts`: protected asset authorization endpoint.

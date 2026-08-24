@@ -183,23 +183,28 @@ passed.
 
 ## Organization Admin portal migration
 
-`20260820000000_org_admin_portal.sql` is currently local-only. It replaces
+`20260820000000_org_admin_portal.sql` and corrective migration
+`20260824000000_restrict_org_admin_survey_output.sql` are currently
+local-only. Together they replace
 broad organization-admin membership/onboarding mutation paths with narrow
-audited RPCs and adds the approved farm, survey, output-metadata, grant, member,
-organization-profile, and onboarding-request operations.
+audited RPCs for approved farm, grant, member, organization-profile, and
+onboarding-request operations. Surveys are read-only and Outputs remain
+platform-admin-only; the corrective migration removes both org-admin mutation
+RPCs from the public contract.
 
 Local evidence:
 
 - clean database replay passed;
-- the pre-existing 126 pgTAP assertions passed;
-- `supabase/tests/org_admin_portal.sql` passed 16/16 separately;
+- the combined pgTAP suite passed 142/142 across eight files;
 - generated database types include all org-admin RPC contracts.
+- the protected portal, server actions, TypeScript, targeted ESLint, and
+  whitespace checks pass locally.
 
-Before staging, finish and validate the `/org-admin` application slice, capture
-an affected-policy/data inventory, rehearse a restorable backup, prepare
-rollback/containment SQL, review the schema/policy diff, rerun the combined
-pgTAP/type/lint checks, and smoke permitted plus prohibited organization-admin
-workflows. Never apply this migration to production as part of validation.
+Before staging, complete authenticated smoke of permitted plus prohibited
+organization-admin workflows, capture an affected-policy/data inventory,
+rehearse a restorable backup, prepare rollback/containment SQL, review the
+schema/policy diff, and rerun the combined pgTAP/type/lint checks. Never apply
+this migration to production as part of validation.
 
 ## Delivery gates
 

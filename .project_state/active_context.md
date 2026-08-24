@@ -12,20 +12,23 @@ Completed:
 4. Local org-admin database/RPC foundation and 16 focused pgTAP assertions are
    implemented and passing.
 5. Generated database types include the new org-admin RPC contracts.
+6. Protected org-admin context, post-login routing, sidebar/layout, RPC-only
+   actions, and seven portal sections are implemented locally. Surveys are
+   read-only and Outputs are platform-admin-only.
+7. TypeScript, targeted ESLint, full pgTAP (142/142), and whitespace checks
+   pass.
 
 Next sequence:
 
-1. Implement the protected `/org-admin` layout and server-side active
-   org-admin context.
-2. Add server actions that call only the narrow RPCs, then build overview,
-   organization, members, onboarding requests, grants, farms, surveys, and
-   outputs pages.
-3. Run TypeScript, targeted ESLint, full pgTAP, authorization smoke, and
-   whitespace checks.
-4. Only after the application slice passes: prepare org-admin migration
+1. Manually smoke the portal as platform admin, org admin, ordinary member,
+   suspended/removed member, and cross-organization user, including every
+   permitted mutation and prohibited boundary.
+2. Fix any smoke regression locally and rerun TypeScript, targeted ESLint,
+   full pgTAP, and whitespace checks.
+3. After the smoke gate passes, prepare org-admin migration
    inventory, backup/recovery rehearsal, rollback/containment notes, and staging
    smoke gate. Do not change production.
-5. Follow with `feature/survey-contract`, `feature/user-app-preview`, and
+4. Follow with `feature/survey-contract`, `feature/user-app-preview`, and
    `fix/output-types` as separate branches.
 
 Constraints:

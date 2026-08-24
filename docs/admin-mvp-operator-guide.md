@@ -1,7 +1,7 @@
 # Platform Admin Operator Guide
 
 Last updated: 2026-08-24
-Status: Access Policy v2 staging role smoke passed; org-admin portal local implementation in progress
+Status: Access Policy v2 staging role smoke passed; org-admin portal implemented locally and awaiting authenticated smoke
 
 This guide covers the dedicated `/admin` surface. The permission model is in
 `docs/role-permission-model-and-migration-plan.md`; database rollout and
@@ -34,10 +34,29 @@ organization and initial `member` or `org_admin` role, then approve or reject
 it. Approval atomically activates the profile and creates its membership.
 Rejection leaves the Auth account present but blocks application access.
 
-The org-admin database mutation contract is implemented and validated locally,
-but the `/org-admin` application pages and server actions are not yet available.
-Do not treat the checked-in migration as evidence of staging or production
-deployment.
+The org-admin database mutation contract and application portal are implemented
+locally. Do not treat the checked-in migration or routes as evidence of staging
+or production deployment.
+
+## Organization administrator portal
+
+An active `user` profile with exactly one active `org_admin` membership in an
+active organization lands on `/org-admin`. Zero or multiple matching
+memberships fail closed. The portal contains:
+
+- overview and organization profile editing;
+- ordinary-member suspension, reactivation, removal, and promotion;
+- onboarding requests for platform review;
+- organization-scoped farm and survey grants;
+- confirmed farm creation/metadata management;
+- read-only confirmed survey metadata.
+
+The portal cannot create Auth accounts, surveys, or outputs; edit survey
+metadata; view or manage Outputs; alter organization
+status or resource relationships; issue platform exceptions; change existing
+org-admin memberships; or mutate storage, readiness, current-output, or
+publication fields. All writes call the narrow audited RPCs and remain subject
+to RLS and database validation.
 
 Signup confirmation requires the exact application callback to be present under
 Supabase Authentication -> URL Configuration -> Redirect URLs:

@@ -47,8 +47,16 @@ select extensions.lives_ok($$select public.org_admin_create_farm_grant('22000000
 select extensions.throws_ok($$select public.org_admin_create_farm_grant('22000000-0000-0000-0000-000000000003','52000000-0000-0000-0000-000000000001',null)$$,'42501',null,'cross-organization member grant is denied');
 select extensions.lives_ok($$select public.org_admin_create_survey_grant('22000000-0000-0000-0000-000000000002','oa-survey-a','scope')$$,'own-organization survey grant succeeds');
 select extensions.throws_ok($$select public.org_admin_create_survey_grant('22000000-0000-0000-0000-000000000002','oa-survey-b',null)$$,'42501',null,'cross-organization survey grant is denied');
-select extensions.lives_ok($$select public.org_admin_update_output('62000000-0000-0000-0000-000000000001','Updated','Safe','other')$$,'allowed output metadata update succeeds');
-select extensions.is((select storage_path||':'||status::text||':'||is_current::text from public.survey_outputs where id='62000000-0000-0000-0000-000000000001'),'fixed/path:ready:true','output operational fields remain immutable');
+select extensions.is(
+  to_regprocedure('public.org_admin_update_survey(text,text,date,numeric,text,text,text,public.mission_status)') is null,
+  true,
+  'organization-admin survey mutation RPC is absent'
+);
+select extensions.is(
+  to_regprocedure('public.org_admin_update_output(uuid,text,text,text)') is null,
+  true,
+  'organization-admin output mutation RPC is absent'
+);
 
 select * from extensions.finish();
 rollback;

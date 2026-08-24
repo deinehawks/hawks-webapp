@@ -62,6 +62,8 @@ Suspension makes organization-scoped grants ineffective without erasing history.
 - Organization-admin mutations are exposed only through narrow audited
   security-definer RPCs. Broad organization-admin table-update policies are
   prohibited.
+- Organization admins may view confirmed survey metadata but cannot edit it.
+  Output visibility and all survey/output management remain platform-admin-only.
 - Service-role credentials remain prohibited in the Next.js runtime.
 
 ## Platform Admin Architecture

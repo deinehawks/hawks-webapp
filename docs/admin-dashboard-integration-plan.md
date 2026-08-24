@@ -87,7 +87,12 @@ flowchart LR
 6. **Completed locally:** Organization, Farm, Survey, and Output Operations v1, including guarded output storage-reference attachment, readiness checklist visibility, readiness transitions, atomic current-output selection, and clearer admin survey selector labels.
 7. **Completed locally:** Access Policy v2 role contraction, grant-only member access, organization-scoped grants, protected-asset alignment, user-first signup review, and onboarding-request foundation.
 8. **Completed:** Access Policy v2 staging rollout and the full user-assisted authorization matrix.
-9. **In progress locally:** narrow audited org-admin RPC foundation. **Next:** implement the protected `/org-admin` context, server actions, and pages before any org-admin staging rollout. Output publication remains separately gated.
+9. **Completed locally:** narrow audited org-admin RPC foundation, protected
+   context and post-login routing, RPC-only server actions, and overview,
+   organization, members, onboarding, grants, farms, and read-only surveys.
+   Outputs remain platform-admin-only.
+   **Next:** complete authenticated role/mutation smoke before any org-admin
+   staging rollout. Output publication remains separately gated.
 
 Every admin mutation must authenticate the actor, require `platform_admin`, rely on RLS, validate identifiers and transitions, retain history instead of hard deleting access records, and produce an `admin_audit_log` entry. Audit coverage does not make an otherwise unauthorized mutation acceptable.
 

@@ -23,18 +23,26 @@ This session started the Organization Admin phase:
   focused suite passed 16/16 separately.
 - Regenerated `lib/database.types.ts` from the local schema and removed an
   accidental encoding BOM without hand-editing the generated contracts.
+- Added the protected `/org-admin` context, active-organization post-login
+  routing, sidebar/layout, loading/error states, and RPC-only actions.
+- Added overview, organization profile, members, onboarding, grants, farms, and
+  read-only surveys. Outputs remain platform-admin-only.
+- Added local corrective migration `20260824000000`, removed the org-admin
+  survey/output actions and output route, and regenerated types without those
+  RPCs.
+- TypeScript, targeted ESLint, full pgTAP (142/142), and whitespace checks pass.
 
 Not completed:
 
-- No `/org-admin` layout, pages, application context, or server actions exist.
-- TypeScript/lint/full combined pgTAP have not been rerun after the latest
-  generated-type refresh.
+- Authenticated browser smoke of the new portal and its mutations remains
+  pending. The existing port-3000 Next process timed out during the bounded
+  anonymous route check; a second dev process could not share `.next/trace`.
 - The org-admin migration has not received its staging inventory, backup/restore
   rehearsal, rollback package, staging apply, or role smoke.
 
-Next action: implement the protected org-admin context/layout and RPC-only server
-actions, then build the portal pages. Validate locally before preparing any
-staging rollout. Do not mutate production.
+Next action: manually smoke all org-admin routes, permitted mutations, and
+prohibited role/cross-organization boundaries. Fix regressions before preparing
+the non-production staging rollout. Do not mutate production.
 
 Preserve unrelated user-owned scratch/deletion state in `.tmp/`, `issues.txt`,
 `workflow.txt`, and `improve.txt`.

@@ -10,11 +10,16 @@ Last updated: 2026-08-24
 - Full staging access/session smoke matrix.
 - Local org-admin narrow RPC migration, audit/policy changes, clean replay,
   focused 16-test pgTAP suite, and generated type refresh.
+- Protected `/org-admin` context, routing, RPC-only server actions, and
+  overview/organization/members/onboarding/grants/farms/read-only-surveys pages.
+- Removed the org-admin Outputs surface and survey/output mutation RPCs through
+  corrective migration `20260824000000`.
+- TypeScript, targeted ESLint, combined 142-test pgTAP, and whitespace checks
+  for the org-admin application slice.
 
 ## P1
 
-- Build the protected `/org-admin` portal and RPC-backed server actions.
-- Validate permitted org-admin workflows and prohibited self-admin,
+- Manually validate permitted org-admin workflows and prohibited self-admin,
   cross-organization, platform-exception, relationship, creation, publication,
   and operational-field mutations.
 - After application validation, prepare and execute the non-production

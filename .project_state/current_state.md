@@ -15,8 +15,8 @@ Organization Admin phase status:
 
 - Local migration `20260820000000_org_admin_portal.sql` implements narrow
   security-definer RPCs for organization profile edits, onboarding requests,
-  ordinary-member status changes and promotion, farm creation/editing,
-  survey/output metadata edits, and organization-scoped grant lifecycle.
+  ordinary-member status changes and promotion, farm creation/editing, and
+  organization-scoped grant lifecycle.
 - Direct broad membership/onboarding mutation policies are removed.
 - Cross-organization resources, platform exceptions, Auth creation,
   relationships, survey/output creation, publication, and operational asset
@@ -27,7 +27,20 @@ Organization Admin phase status:
 - The migration replays successfully on a clean local database.
 - Existing pgTAP passed 126/126; dedicated org-admin pgTAP passed 16/16.
 - Database types were regenerated from the validated local schema.
+- The protected `/org-admin` route tree includes overview, organization,
+  members, onboarding, grants, farms, and read-only surveys. Outputs are not
+  exposed to organization admins.
+- Post-login routing sends an active org admin in one active organization to
+  `/org-admin`; platform admins remain in `/admin` and members in
+  `/dashboard`.
+- All portal writes authenticate through the strict org-admin context and call
+  only the narrow RPCs.
+- TypeScript, targeted ESLint, full pgTAP (142/142), and whitespace validation
+  pass.
+- Corrective migration `20260824000000_restrict_org_admin_survey_output.sql`
+  removes the org-admin survey/output mutation RPCs from the database contract.
 
-The `/org-admin` layout, pages, and server actions have not been implemented.
 The org-admin migration has not been inventoried, recovery-rehearsed, or applied
-to staging. No production mutation was performed.
+to staging. Authenticated browser smoke is still required; the existing local
+Next process did not respond to the bounded route check, while a second process
+could not share `.next/trace`. No production mutation was performed.
