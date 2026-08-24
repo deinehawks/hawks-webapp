@@ -17,6 +17,9 @@ export default async function AdminLayout({
 }>) {
   const { user, profile } = await getAuthenticatedUserContext();
 
+  if (profile.account_status && profile.account_status !== "active") {
+    redirect("/account/pending");
+  }
   if (profile.role !== "platform_admin") {
     redirect("/dashboard");
   }

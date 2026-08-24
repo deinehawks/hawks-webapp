@@ -1,47 +1,38 @@
 # Backlog
 
-Last updated: 2026-08-17
+Last updated: 2026-08-24
 
-## Completed In Current Admin Wave
+## Completed
 
-- Dedicated `/admin` shell and role-based landing.
-- Existing-account Users & Access list/detail workflow.
-- Viewer/editor membership creation, role changes, and status transitions.
-- Survey-grant creation, revocation, and reactivation with audit coverage.
-- Read-only effective-access preview without session impersonation.
-- Farm-grant creation, revocation, and reactivation with audit coverage.
-- Stale pgTAP fixture repair for removed `organizations.slug` and `profiles.organization_id` fields.
-- Read-only `/admin/[resource]` list route for clients, organizations, people, farms, surveys, memberships, and outputs.
-- Organization Operations v1: organization create/edit/status, membership roster, and existing-user viewer/editor membership creation.
-- Farm Operations v1: farm create/edit/status, confirmed organization links, and read-only survey relationship visibility.
-- Survey Operations v1: survey metadata/status edit, active farm/organization links, and output readiness visibility.
-- Output Operations v1: draft registration, safe metadata edits, storage-reference attachment, readiness checklist visibility, readiness transitions, storage-reference gates, and atomic current-output selection.
+- Output Operations and Access Policy v2 staging rollout.
+- Two-role membership and grant-only member authorization.
+- User-first signup confirmation, review, approval/rejection, and pending state.
+- Full staging access/session smoke matrix.
+- Local org-admin narrow RPC migration, audit/policy changes, clean replay,
+  focused 16-test pgTAP suite, and generated type refresh.
 
 ## P1
 
-- Smoke `/admin/access-preview/[profileId]` and farm-grant controls with a platform-admin session.
-- Confirm normal-user denial remains intact for `/admin`, `/admin/users`, and `/admin/access-preview/*`.
-- Smoke Organization Operations v1 and `/admin/[resource]` list routes.
-- Smoke Farm Operations v1.
-- Smoke Survey Operations v1.
-- Smoke Output Operations v1, including draft creation, metadata edits, storage-reference attachment, readiness transitions, current selection, locked states, and normal-user denial.
-- Continue approved workshop asset migration waves and protected-asset smoke coverage.
+- Build the protected `/org-admin` portal and RPC-backed server actions.
+- Validate permitted org-admin workflows and prohibited self-admin,
+  cross-organization, platform-exception, relationship, creation, publication,
+  and operational-field mutations.
+- After application validation, prepare and execute the non-production
+  inventory/backup/rollback/staging gate for `20260820000000`.
 
 ## P2
 
-- Expand admin navigation for organizations, people, farms, surveys, outputs, and audit views.
-- Define and approve output/report publication and rollback rules before enabling `published` transitions.
-- Rebuild `public.app_role` to remove historical enum labels after isolated dependency and migration validation.
-- Decide whether compatibility stubs such as `app_private.current_organization_id()` can be removed before production.
-- Remove or replace the stale `app_private.backfill_legacy_organization_memberships` helper, which still references removed `profiles.organization_id` and causes local schema lint to fail.
-- Migrate lint from deprecated `next lint` to the ESLint CLI.
-- Investigate build heap exhaustion and document the accepted build command or memory setting.
-- Containerize Next.js with standalone output and an asset-safe `.dockerignore`.
+- Contract survey identity/client fields on `feature/survey-contract`.
+- Build read-only User App Preview on `feature/user-app-preview`.
+- Restrict output types on `fix/output-types`, including affected-row
+  inventory and legacy-value metadata preservation.
+- Continue workshop asset readiness after authorization work.
 
-## P3
+## Stabilization Cleanup
 
-- Auth-user creation and invitation delivery.
-- Platform-admin promotion/demotion and true impersonation.
-- General multi-organization account workflows.
-- Hard deletion, broad bulk mutation, and broad infrastructure administration.
-- Full historical dataset migration, advanced analytics, DAM, and broad automation.
+- Remove the stale `app_private.backfill_legacy_organization_memberships`
+  reference.
+- Rebuild historical `app_role` labels separately.
+- Migrate deprecated `next lint` usage to the ESLint CLI.
+- Investigate build heap exhaustion.
+- Defer unrelated enum/stub/database cleanup until post-workshop stabilization.

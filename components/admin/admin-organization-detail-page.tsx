@@ -67,10 +67,10 @@ function AddMembershipForm({ organization, users }: { organization: Organization
   return <Card className="rounded-lg"><CardHeader><CardTitle className="text-base">Add existing user</CardTitle></CardHeader><CardContent><form action={createOrganizationMembership} className="grid gap-4 md:grid-cols-2">
     <input name="organizationId" type="hidden" value={organization.id} />
     <label className="grid gap-2 text-sm font-medium md:col-span-2">User account<select className="h-9 rounded-md border bg-background px-3 text-sm" disabled={users.length === 0} name="profileId" required><option value="">{users.length === 0 ? "No eligible users" : "Select user"}</option>{users.map((user) => <option key={user.id} value={user.id}>{formatName(user)}</option>)}</select></label>
-    <label className="grid gap-2 text-sm font-medium">Role<select className="h-9 rounded-md border bg-background px-3 text-sm" defaultValue="viewer" name="role" required><option value="viewer">Viewer</option><option value="editor">Editor</option></select></label>
+    <label className="grid gap-2 text-sm font-medium">Role<select className="h-9 rounded-md border bg-background px-3 text-sm" defaultValue="member" name="role" required><option value="member">Member</option><option value="org_admin">Organization admin</option></select></label>
     <label className="grid gap-2 text-sm font-medium">Initial status<select className="h-9 rounded-md border bg-background px-3 text-sm" defaultValue="pending" name="status" required><option value="pending">Pending</option><option value="active">Active</option></select></label>
     <label className="grid gap-2 text-sm font-medium md:col-span-2">Notes<textarea className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm" maxLength={2000} name="membershipNotes" /></label>
-    <div className="flex flex-col gap-3 md:col-span-2 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm text-muted-foreground">Only viewer or editor memberships can be added here. Organization-admin promotion remains deferred.</p><Button disabled={users.length === 0 || organization.status !== "active"} type="submit">Add membership</Button></div>
+    <div className="flex flex-col gap-3 md:col-span-2 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm text-muted-foreground">Members require explicit resource grants. Platform admins may appoint organization admins.</p><Button disabled={users.length === 0 || organization.status !== "active"} type="submit">Add membership</Button></div>
   </form></CardContent></Card>;
 }
 

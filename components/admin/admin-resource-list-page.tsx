@@ -20,7 +20,7 @@ import type { Database, Tables } from "@/lib/database.types";
 import { createClient } from "@/utils/supabase/server";
 
 type ResourceName = "clients" | "surveys" | "organizations" | "people" | "farms" | "memberships" | "outputs" | "profiles";
-type MembershipRole = Database["public"]["Enums"]["membership_role"] | "viewer" | "editor";
+type MembershipRole = Database["public"]["Enums"]["membership_role"];
 
 type ClientRow = Pick<Tables<"clients">, "id" | "code" | "name" | "classification_kind" | "created_at">;
 type SurveyRow = Pick<Tables<"surveys">, "id" | "location" | "status" | "flight_date" | "client_id"> & {

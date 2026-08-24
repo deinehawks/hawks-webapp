@@ -87,11 +87,11 @@ values
   ('40000000-0000-0000-0000-000000000012',
    '20000000-0000-0000-0000-000000000013',
    '30000000-0000-0000-0000-000000000011',
-   'viewer', 'active'),
+   'member', 'active'),
   ('40000000-0000-0000-0000-000000000013',
    '20000000-0000-0000-0000-000000000014',
    '30000000-0000-0000-0000-000000000012',
-   'viewer', 'active');
+   'member', 'active');
 
 update public.organization_memberships
 set approved_by = '20000000-0000-0000-0000-000000000011',
@@ -219,20 +219,20 @@ select extensions.is(
 
 select extensions.is(
   (select count(*) from public.farms),
-  1::bigint,
-  'organization member reads farms linked to their organization'
+  0::bigint,
+  'organization member receives no farm access from membership alone'
 );
 
 select extensions.is(
   (select count(*) from public.surveys),
-  2::bigint,
-  'organization member reads surveys linked to their organization'
+  0::bigint,
+  'organization member receives no survey access from membership alone'
 );
 
 select extensions.is(
   (select count(*) from public.survey_outputs),
-  1::bigint,
-  'organization member reads outputs for accessible surveys'
+  0::bigint,
+  'organization member receives no output access from membership alone'
 );
 
 select extensions.is(
@@ -355,21 +355,21 @@ set local request.jwt.claims =
   '{"sub":"20000000-0000-0000-0000-000000000013","role":"authenticated"}';
 
 update public.organization_memberships
-set role = 'editor'
+set role = 'org_admin'
 where id = '40000000-0000-0000-0000-000000000012';
 
 select extensions.is(
   (select role::text
    from public.organization_memberships
    where id = '40000000-0000-0000-0000-000000000012'),
-  'viewer',
+  'member',
   'ordinary user cannot change their own membership role'
 );
 
 set local request.jwt.claims =
   '{"sub":"20000000-0000-0000-0000-000000000012","role":"authenticated"}';
 
-select extensions.lives_ok(
+select extensions.throws_ok(
   $$insert into public.organization_memberships (
       profile_id,
       organization_id,
@@ -379,18 +379,23 @@ select extensions.lives_ok(
     values (
       '20000000-0000-0000-0000-000000000016',
       '30000000-0000-0000-0000-000000000011',
-      'editor',
+      'member',
       'pending'
     )$$,
-  'organization admin can add a viewer membership in their organization'
+  '42501',
+  null,
+  'organization admin has no broad membership insert policy'
 );
 
-select extensions.throws_ok(
-  $$update public.organizations
-    set type_code = 'association'
-    where id = '30000000-0000-0000-0000-000000000011'$$,
-  'P0001',
-  null,
+update public.organizations
+set type_code = 'association'
+where id = '30000000-0000-0000-0000-000000000011';
+
+select extensions.is(
+  (select type_code
+   from public.organizations
+   where id = '30000000-0000-0000-0000-000000000011'),
+  'cooperative',
   'organization admin cannot change organization classification'
 );
 
@@ -446,7 +451,7 @@ set local request.jwt.claims =
 
 select extensions.lives_ok(
   $$update public.organization_memberships
-    set role = 'editor',
+    set role = 'org_admin',
         updated_at = now()
     where id = '40000000-0000-0000-0000-000000000012'$$,
   'platform admin can change an ordinary membership role'
@@ -616,7 +621,7 @@ select extensions.throws_ok(
     values (
       '20000000-0000-0000-0000-000000000013',
       '30000000-0000-0000-0000-000000000012',
-      'viewer',
+      'member',
       'active'
     )$$,
   '23505',

@@ -1,38 +1,41 @@
 # Active Context
 
-Last updated: 2026-08-17
+Last updated: 2026-08-24
 
-Current epic: dedicated platform-admin architecture and workshop-safe delivery.
+Current epic: Admin and Organization Access Model v2.
 
-Completed foundations:
+Completed:
 
-1. Protected asset manifest/RPC/auth groundwork and staging smoke baseline.
-2. Admin MVP classification, mapping, membership, survey-grant, and audit visibility.
-3. Role-model cleanup through `20260812005500`, including removal of `profiles.account_role` and `profiles.organization_id` locally and in staging.
-4. Documentation synchronization establishing one current admin architecture and permission model.
-5. Dedicated `/admin` shell, legacy redirects, and role-based landing.
-6. Users & Access vertical slice: account list/detail, access diagnosis, viewer/editor membership role/status controls, survey/farm-grant create/revoke/reactivate, read-only effective-access preview, repaired pgTAP coverage, and account-related audit summaries.
-7. Read-only `/admin/[resource]` list route for clients, organizations, people, farms, surveys, memberships, and outputs.
-8. Organization Operations v1: create/edit canonical organizations, active/inactive status transitions, membership roster, and add existing users as viewer/editor members.
-9. Farm Operations v1: create/edit canonical farms, active/inactive status transitions, confirmed organization links, and read-only survey relationship visibility.
-10. Survey Operations v1: edit workshop-safe survey metadata/status, link active farms/organizations, and inspect output readiness.
-11. Output Operations v1: register draft output records, edit safe metadata, attach existing storage references as object keys or package prefixes, show workshop-readiness checklist status, enforce readiness transitions/storage gates, atomically select the current eligible output, and use clearer admin survey selector labels.
+1. Access Policy v2 and user-first signup are implemented in staging.
+2. Full user-assisted staging authorization and signup smoke passed.
+3. Branch `feature/org-admin` is active.
+4. Local org-admin database/RPC foundation and 16 focused pgTAP assertions are
+   implemented and passing.
+5. Generated database types include the new org-admin RPC contracts.
 
-Approved next implementation sequence:
+Next sequence:
 
-1. Smoke `/admin/access-preview/[profileId]` plus farm-grant create/revoke/reactivate in a platform-admin session and confirm normal-user denial remains intact.
-2. Smoke new `/admin/[resource]` list routes and existing detail links.
-3. Smoke Organization Operations v1 in a platform-admin session: create org, edit metadata, toggle status, add existing user membership, and confirm normal-user denial.
-4. Smoke Farm Operations v1 in a platform-admin session: create farm, edit metadata, toggle status, link active organization, and confirm normal-user denial.
-5. Smoke Survey Operations v1 in a platform-admin session: edit survey metadata/status, link active farm, link active organization, and inspect outputs.
-6. Smoke Output Operations v1 as platform admin and confirm normal-user denial.
-7. Continue approved workshop asset migration/readiness work after output smoke passes.
-8. Keep output publication, enum rebuild, Auth invitations, platform-admin promotion, destructive workflows, and true impersonation deferred.
+1. Implement the protected `/org-admin` layout and server-side active
+   org-admin context.
+2. Add server actions that call only the narrow RPCs, then build overview,
+   organization, members, onboarding requests, grants, farms, surveys, and
+   outputs pages.
+3. Run TypeScript, targeted ESLint, full pgTAP, authorization smoke, and
+   whitespace checks.
+4. Only after the application slice passes: prepare org-admin migration
+   inventory, backup/recovery rehearsal, rollback/containment notes, and staging
+   smoke gate. Do not change production.
+5. Follow with `feature/survey-contract`, `feature/user-app-preview`, and
+   `fix/output-types` as separate branches.
 
-Key constraints:
+Constraints:
 
-- `profiles.role` remains `platform_admin | user`; organization authority belongs only in memberships.
-- Keep RLS and authenticated server-side checks fail-closed.
-- Do not reintroduce profile-owned organization authorization or service-role runtime access.
-- Every admin mutation requires transition validation and audit coverage.
-- Production rollout remains a separate approval step.
+- RLS and server-side authorization remain authoritative.
+- Org-admin mutations use narrow audited RPCs; do not restore broad update
+  policies.
+- Org admins may promote an active ordinary member but cannot alter any
+  org-admin membership, including their own.
+- The strict org-admin context assumes the workshop rule of exactly one active
+  org-admin organization membership.
+- Survey identity/client contraction and global output-type migration remain
+  separate slices.

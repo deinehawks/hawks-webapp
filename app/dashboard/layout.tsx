@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getAllUserSurveys } from "@/lib/actions/surveys";
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
+import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({
   children,
@@ -15,6 +16,9 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }>) {
   const { user, profile } = await getAuthenticatedUserContext();
+  if (profile.account_status && profile.account_status !== "active") {
+    redirect("/account/pending");
+  }
   const surveys = await getAllUserSurveys();
 
   return (

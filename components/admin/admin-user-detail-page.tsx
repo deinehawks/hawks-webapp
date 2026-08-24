@@ -148,9 +148,9 @@ function CreateMembershipForm({ profileId, organizations }: { profileId: string;
           </label>
           <label className="grid gap-2 text-sm font-medium">
             Membership role
-            <select className="h-9 rounded-md border bg-background px-3 text-sm" defaultValue="viewer" name="role" required>
-              <option value="viewer">Viewer</option>
-              <option value="editor">Editor</option>
+            <select className="h-9 rounded-md border bg-background px-3 text-sm" defaultValue="member" name="role" required>
+              <option value="member">Member</option>
+              <option value="org_admin">Organization admin</option>
             </select>
           </label>
           <label className="grid gap-2 text-sm font-medium">
@@ -165,7 +165,7 @@ function CreateMembershipForm({ profileId, organizations }: { profileId: string;
             <textarea className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm" maxLength={2000} name="membershipNotes" />
           </label>
           <div className="flex items-center justify-between gap-3 md:col-span-2">
-            <p className="text-sm text-muted-foreground">Only viewer or editor access can be created here.</p>
+            <p className="text-sm text-muted-foreground">Members require explicit farm or survey grants. Organization admins manage confirmed organization resources.</p>
             <Button disabled={organizations.length === 0} type="submit">Create membership</Button>
           </div>
         </form>
@@ -323,12 +323,11 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
       )}
 
       <section className="grid gap-3">
-        <div><h2 className="font-semibold">Organization memberships</h2><p className="text-sm text-muted-foreground">Status and viewer/editor authority are managed independently.</p></div>
+        <div><h2 className="font-semibold">Organization memberships</h2><p className="text-sm text-muted-foreground">Membership opens the organization portal; ordinary members require explicit resource grants.</p></div>
         <div className="overflow-hidden rounded-lg border bg-card">
           {memberships.length === 0 ? <p className="p-6 text-sm text-muted-foreground">No membership history.</p> : (
             <Table><TableHeader><TableRow><TableHead>Organization</TableHead><TableHead>Role</TableHead><TableHead>Status</TableHead><TableHead>Updated</TableHead><TableHead>Controls</TableHead></TableRow></TableHeader>
               <TableBody>{memberships.map((membership) => {
-                const ordinaryRole = membership.role === "viewer" || membership.role === "editor";
                 const nextStatuses = membershipStatusTransitions[membership.status];
                 return <TableRow key={membership.id}>
                   <TableCell className="min-w-48 whitespace-normal"><div className="font-medium">{membership.organization?.name ?? "Unknown organization"}</div><div className="text-xs text-muted-foreground">{formatLabel(membership.organization?.type_code ?? null)}</div></TableCell>
@@ -336,8 +335,8 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                   <TableCell><Badge variant="outline">{formatLabel(membership.status)}</Badge></TableCell>
                   <TableCell>{formatDate(membership.updated_at)}</TableCell>
                   <TableCell className="min-w-72 whitespace-normal">
-                    {ordinaryRole && membership.status !== "removed" ? <div className="grid gap-2">
-                      <form action={updateOrganizationMembershipRole} className="flex gap-2"><input name="membershipId" type="hidden" value={membership.id} /><input name="nextRole" type="hidden" value={membership.role === "viewer" ? "editor" : "viewer"} /><Button size="sm" type="submit" variant="outline">Change to {membership.role === "viewer" ? "editor" : "viewer"}</Button></form>
+                    {membership.status !== "removed" ? <div className="grid gap-2">
+                      {membership.status === "active" ? <form action={updateOrganizationMembershipRole} className="flex gap-2"><input name="membershipId" type="hidden" value={membership.id} /><input name="nextRole" type="hidden" value={membership.role === "member" ? "org_admin" : "member"} /><Button size="sm" type="submit" variant="outline">Change to {membership.role === "member" ? "organization admin" : "member"}</Button></form> : null}
                       {nextStatuses.length > 0 ? <form action={updateOrganizationMembershipStatus} className="flex flex-wrap gap-2"><input name="membershipId" type="hidden" value={membership.id} /><select className="h-8 rounded-md border bg-background px-2 text-xs" name="nextStatus" required>{nextStatuses.map((status) => <option key={status} value={status}>{formatLabel(status)}</option>)}</select><Button size="sm" type="submit">Update status</Button></form> : null}
                     </div> : <span className="text-xs text-muted-foreground">Protected or historical record</span>}
                   </TableCell>
@@ -380,7 +379,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
         </div>
       </section>
 
-      <div className="flex gap-2 rounded-lg border p-4 text-sm text-muted-foreground"><KeyRound className="size-4 shrink-0" /><p>Access remains enforced by membership and grant RLS. These controls do not change account roles, create Auth users, or impersonate this user.</p></div>
+      <div className="flex gap-2 rounded-lg border p-4 text-sm text-muted-foreground"><KeyRound className="size-4 shrink-0" /><p>Membership admits the account to its organization portal. Farm and survey visibility remains enforced through explicit grants; outputs follow survey access.</p></div>
     </main>
   );
 }

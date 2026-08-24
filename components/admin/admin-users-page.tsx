@@ -82,11 +82,14 @@ function accessSummary(
 
   if (activeMembership) {
     const grantDetail = activeSurveyGrants + activeFarmGrants > 0
-      ? `; ${activeSurveyGrants} survey and ${activeFarmGrants} farm exception(s)`
+      ? `; ${activeSurveyGrants} survey and ${activeFarmGrants} farm grant(s)`
       : "";
+    const membershipDetail = activeMembership.role === "org_admin"
+      ? "management access to confirmed organization resources"
+      : "portal access; explicit resource grants required";
     return {
-      label: "Organization access",
-      detail: `${activeMembership.organization?.name ?? "Unknown organization"} as ${formatMembershipRole(activeMembership.role)}${grantDetail}`,
+      label: activeMembership.role === "org_admin" ? "Organization management" : "Organization portal",
+      detail: `${activeMembership.organization?.name ?? "Unknown organization"} as ${formatMembershipRole(activeMembership.role)} (${membershipDetail})${grantDetail}`,
       hasAccess: true,
     };
   }
@@ -120,8 +123,7 @@ function accessSummary(
 
 function formatMembershipRole(role: MembershipRole): string {
   if (role === "org_admin") return "organization admin";
-  if (role === "editor") return "editor";
-  return "viewer";
+  return "member";
 }
 
 export default async function AdminUsersPage() {

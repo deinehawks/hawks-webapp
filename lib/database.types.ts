@@ -9,6 +9,140 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      account_signup_approvals: {
+        Row: {
+          approved_by: string
+          claimed_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          initial_role: Database["public"]["Enums"]["membership_role"]
+          notes: string | null
+          organization_id: string
+          registered_profile_id: string | null
+          revoked_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by: string
+          claimed_at?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          initial_role?: Database["public"]["Enums"]["membership_role"]
+          notes?: string | null
+          organization_id: string
+          registered_profile_id?: string | null
+          revoked_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string
+          claimed_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          initial_role?: Database["public"]["Enums"]["membership_role"]
+          notes?: string | null
+          organization_id?: string
+          registered_profile_id?: string | null
+          revoked_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_signup_approvals_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_signup_approvals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_signup_approvals_registered_profile_id_fkey"
+            columns: ["registered_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      account_signup_requests: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          initial_role: Database["public"]["Enums"]["membership_role"] | null
+          organization_id: string | null
+          profile_id: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          initial_role?: Database["public"]["Enums"]["membership_role"] | null
+          organization_id?: string | null
+          profile_id: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          initial_role?: Database["public"]["Enums"]["membership_role"] | null
+          organization_id?: string | null
+          profile_id?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_signup_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_signup_requests_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_signup_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_audit_log: {
         Row: {
           action: string
@@ -50,6 +184,7 @@ export type Database = {
           {
             foreignKeyName: "admin_audit_log_actor_profile_id_fkey"
             columns: ["actor_profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -90,18 +225,21 @@ export type Database = {
           {
             foreignKeyName: "client_organizations_client_id_fkey"
             columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "client_organizations_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "client_organizations_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -142,18 +280,21 @@ export type Database = {
           {
             foreignKeyName: "client_people_client_id_fkey"
             columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "client_people_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "client_people_person_id_fkey"
             columns: ["person_id"]
+            isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -194,6 +335,7 @@ export type Database = {
           {
             foreignKeyName: "clients_classification_reviewed_by_fkey"
             columns: ["classification_reviewed_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -206,6 +348,7 @@ export type Database = {
           farm_id: string
           granted_by: string | null
           id: string
+          organization_id: string | null
           profile_id: string
           reason: string | null
           revoked_by: string | null
@@ -218,6 +361,7 @@ export type Database = {
           farm_id: string
           granted_by?: string | null
           id?: string
+          organization_id?: string | null
           profile_id: string
           reason?: string | null
           revoked_by?: string | null
@@ -230,6 +374,7 @@ export type Database = {
           farm_id?: string
           granted_by?: string | null
           id?: string
+          organization_id?: string | null
           profile_id?: string
           reason?: string | null
           revoked_by?: string | null
@@ -240,24 +385,35 @@ export type Database = {
           {
             foreignKeyName: "farm_access_grants_farm_id_fkey"
             columns: ["farm_id"]
+            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_access_grants_granted_by_fkey"
             columns: ["granted_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "farm_access_grants_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_access_grants_profile_id_fkey"
             columns: ["profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_access_grants_revoked_by_fkey"
             columns: ["revoked_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -295,18 +451,21 @@ export type Database = {
           {
             foreignKeyName: "farm_organizations_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_organizations_farm_id_fkey"
             columns: ["farm_id"]
+            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_organizations_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -344,18 +503,21 @@ export type Database = {
           {
             foreignKeyName: "farm_people_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_people_farm_id_fkey"
             columns: ["farm_id"]
+            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "farm_people_person_id_fkey"
             columns: ["person_id"]
+            isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -408,6 +570,7 @@ export type Database = {
           {
             foreignKeyName: "farms_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -463,24 +626,28 @@ export type Database = {
           {
             foreignKeyName: "organization_memberships_approved_by_fkey"
             columns: ["approved_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "organization_memberships_invited_by_fkey"
             columns: ["invited_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "organization_memberships_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "organization_memberships_profile_id_fkey"
             columns: ["profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -518,18 +685,21 @@ export type Database = {
           {
             foreignKeyName: "organization_people_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "organization_people_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "organization_people_person_id_fkey"
             columns: ["person_id"]
+            isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -558,6 +728,70 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
+      }
+      organization_user_requests: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          organization_id: string
+          requested_by: string
+          requested_email: string
+          requested_name: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          requested_by: string
+          requested_email: string
+          requested_name?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          requested_by?: string
+          requested_email?: string
+          requested_name?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_user_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_user_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_user_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organizations: {
         Row: {
@@ -630,12 +864,14 @@ export type Database = {
           {
             foreignKeyName: "organizations_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "organizations_type_code_fkey"
             columns: ["type_code"]
+            isOneToOne: false
             referencedRelation: "organization_types"
             referencedColumns: ["code"]
           },
@@ -676,6 +912,7 @@ export type Database = {
           {
             foreignKeyName: "orthos_survey_id_fkey"
             columns: ["survey_id"]
+            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -734,6 +971,7 @@ export type Database = {
           {
             foreignKeyName: "people_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -765,6 +1003,7 @@ export type Database = {
           {
             foreignKeyName: "point_clouds_survey_id_fkey"
             columns: ["survey_id"]
+            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -773,6 +1012,7 @@ export type Database = {
       profiles: {
         Row: {
           access_code: string | null
+          account_status: string
           alt_email: string | null
           barangay: string | null
           city: string | null
@@ -800,6 +1040,7 @@ export type Database = {
         }
         Insert: {
           access_code?: string | null
+          account_status?: string
           alt_email?: string | null
           barangay?: string | null
           city?: string | null
@@ -827,6 +1068,7 @@ export type Database = {
         }
         Update: {
           access_code?: string | null
+          account_status?: string
           alt_email?: string | null
           barangay?: string | null
           city?: string | null
@@ -856,12 +1098,14 @@ export type Database = {
           {
             foreignKeyName: "profiles_organization_fkey"
             columns: ["organization"]
+            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["code"]
           },
           {
             foreignKeyName: "profiles_person_id_fkey"
             columns: ["person_id"]
+            isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -873,6 +1117,7 @@ export type Database = {
           expires_at: string | null
           granted_by: string | null
           id: string
+          organization_id: string | null
           profile_id: string
           reason: string | null
           revoked_by: string | null
@@ -885,6 +1130,7 @@ export type Database = {
           expires_at?: string | null
           granted_by?: string | null
           id?: string
+          organization_id?: string | null
           profile_id: string
           reason?: string | null
           revoked_by?: string | null
@@ -897,6 +1143,7 @@ export type Database = {
           expires_at?: string | null
           granted_by?: string | null
           id?: string
+          organization_id?: string | null
           profile_id?: string
           reason?: string | null
           revoked_by?: string | null
@@ -908,24 +1155,35 @@ export type Database = {
           {
             foreignKeyName: "survey_access_grants_granted_by_fkey"
             columns: ["granted_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_access_grants_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_access_grants_profile_id_fkey"
             columns: ["profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_access_grants_revoked_by_fkey"
             columns: ["revoked_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_access_grants_survey_id_fkey"
             columns: ["survey_id"]
+            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -966,18 +1224,21 @@ export type Database = {
           {
             foreignKeyName: "survey_farms_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_farms_farm_id_fkey"
             columns: ["farm_id"]
+            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_farms_survey_id_fkey"
             columns: ["survey_id"]
+            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -1015,18 +1276,21 @@ export type Database = {
           {
             foreignKeyName: "survey_organizations_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_organizations_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_organizations_survey_id_fkey"
             columns: ["survey_id"]
+            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -1082,12 +1346,14 @@ export type Database = {
           {
             foreignKeyName: "survey_outputs_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "survey_outputs_survey_id_fkey"
             columns: ["survey_id"]
+            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -1185,24 +1451,28 @@ export type Database = {
           {
             foreignKeyName: "surveys_client_id_fkey"
             columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "surveys_organization_code_fkey"
             columns: ["organization_code"]
+            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["code"]
           },
           {
             foreignKeyName: "surveys_ortho_fkey"
             columns: ["ortho"]
+            isOneToOne: false
             referencedRelation: "orthos"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "surveys_point_cloud_fkey"
             columns: ["point_cloud"]
+            isOneToOne: false
             referencedRelation: "point_clouds"
             referencedColumns: ["code"]
           },
@@ -1285,48 +1555,56 @@ export type Database = {
           {
             foreignKeyName: "workshop_manifest_entries_client_id_fkey"
             columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_farm_id_fkey"
             columns: ["farm_id"]
+            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_manifest_id_fkey"
             columns: ["manifest_id"]
+            isOneToOne: false
             referencedRelation: "workshop_manifests"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_output_id_fkey"
             columns: ["output_id"]
+            isOneToOne: false
             referencedRelation: "survey_outputs"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_profile_id_fkey"
             columns: ["profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifest_entries_survey_id_fkey"
             columns: ["survey_id"]
+            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -1400,24 +1678,28 @@ export type Database = {
           {
             foreignKeyName: "workshop_manifests_approved_by_fkey"
             columns: ["approved_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifests_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifests_superseded_by_manifest_id_fkey"
             columns: ["superseded_by_manifest_id"]
+            isOneToOne: false
             referencedRelation: "workshop_manifests"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "workshop_manifests_supersedes_manifest_id_fkey"
             columns: ["supersedes_manifest_id"]
+            isOneToOne: false
             referencedRelation: "workshop_manifests"
             referencedColumns: ["id"]
           },
@@ -1428,6 +1710,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_approve_signup_request: {
+        Args: {
+          target_initial_role: Database["public"]["Enums"]["membership_role"]
+          target_organization_id: string
+          target_request_id: string
+          target_review_notes?: string
+        }
+        Returns: string
+      }
       admin_confirm_client_organization_mapping: {
         Args: {
           mapping_notes?: string
@@ -1467,6 +1758,10 @@ export type Database = {
         }
         Returns: string
       }
+      admin_reject_signup_request: {
+        Args: { target_request_id: string; target_review_notes?: string }
+        Returns: undefined
+      }
       admin_set_current_survey_output: {
         Args: { target_output_id: string }
         Returns: undefined
@@ -1492,6 +1787,126 @@ export type Database = {
           survey_id: string
         }[]
       }
+      claim_approved_signup: { Args: never; Returns: string }
+      org_admin_cancel_user_request: {
+        Args: { request_id: string }
+        Returns: string
+      }
+      org_admin_create_farm: {
+        Args: {
+          farm_area_hectares?: number
+          farm_code?: string
+          farm_crop?: string
+          farm_location_name?: string
+          farm_name: string
+          farm_notes?: string
+        }
+        Returns: string
+      }
+      org_admin_create_farm_grant: {
+        Args: {
+          grant_reason?: string
+          target_farm_id: string
+          target_profile_id: string
+        }
+        Returns: string
+      }
+      org_admin_create_survey_grant: {
+        Args: {
+          grant_reason?: string
+          target_profile_id: string
+          target_survey_id: string
+        }
+        Returns: string
+      }
+      org_admin_create_user_request: {
+        Args: { email: string; name?: string; request_notes?: string }
+        Returns: string
+      }
+      org_admin_promote_member: {
+        Args: { membership_id: string }
+        Returns: string
+      }
+      org_admin_set_farm_grant_status: {
+        Args: {
+          grant_id: string
+          grant_reason?: string
+          next_status: Database["public"]["Enums"]["access_grant_status"]
+        }
+        Returns: string
+      }
+      org_admin_set_survey_grant_status: {
+        Args: {
+          grant_id: string
+          grant_reason?: string
+          next_status: Database["public"]["Enums"]["access_grant_status"]
+        }
+        Returns: string
+      }
+      org_admin_update_farm: {
+        Args: {
+          farm_area_hectares?: number
+          farm_code?: string
+          farm_crop?: string
+          farm_id: string
+          farm_location_name?: string
+          farm_name: string
+          farm_notes?: string
+          farm_status?: string
+        }
+        Returns: string
+      }
+      org_admin_update_member_status: {
+        Args: {
+          membership_id: string
+          membership_notes?: string
+          next_status: Database["public"]["Enums"]["membership_status"]
+        }
+        Returns: string
+      }
+      org_admin_update_organization: {
+        Args: {
+          organization_barangay?: string
+          organization_city?: string
+          organization_code: string
+          organization_country?: string
+          organization_email?: string
+          organization_mobile?: string
+          organization_name: string
+          organization_notes?: string
+          organization_province?: string
+          organization_region?: string
+          organization_street?: string
+          organization_telephone?: string
+          organization_type_code: string
+          organization_village?: string
+          organization_zip_code?: string
+          target_organization_id: string
+        }
+        Returns: string
+      }
+      org_admin_update_output: {
+        Args: {
+          output_description?: string
+          output_id: string
+          output_title?: string
+          output_type?: string
+        }
+        Returns: string
+      }
+      org_admin_update_survey: {
+        Args: {
+          survey_area?: number
+          survey_area_code?: string
+          survey_category?: string
+          survey_flight_date?: string
+          survey_id: string
+          survey_location?: string
+          survey_status?: Database["public"]["Enums"]["mission_status"]
+          survey_type?: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       access_grant_status: "active" | "revoked" | "expired"
@@ -1511,7 +1926,7 @@ export type Database = {
         | "participant"
         | "legacy_client"
         | "other"
-      membership_role: "org_admin" | "member" | "viewer" | "editor"
+      membership_role: "org_admin" | "member"
       membership_status:
         | "invited"
         | "pending"
@@ -1667,7 +2082,7 @@ export const Constants = {
         "legacy_client",
         "other",
       ],
-      membership_role: ["org_admin", "member", "viewer", "editor"],
+      membership_role: ["org_admin", "member"],
       membership_status: [
         "invited",
         "pending",

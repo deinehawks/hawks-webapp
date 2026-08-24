@@ -6,6 +6,7 @@ import type { Tables } from "@/lib/database.types";
 import { createClient } from "@/utils/supabase/server";
 
 type AccountRole = "platform_admin" | "user";
+type AccountStatus = "pending" | "active" | "rejected";
 
 const DASHBOARD_PATH = "/dashboard";
 const ADMIN_PATH = "/admin";
@@ -80,11 +81,16 @@ export async function resolveAuthenticatedRole(): Promise<AccountRole | null> {
 
 export function resolvePostAuthRedirectPath({
   role,
+  accountStatus,
   next,
 }: {
   role: AccountRole | null | undefined;
+  accountStatus?: AccountStatus | null;
   next?: string | null;
 }): string {
+  if (accountStatus && accountStatus !== "active") {
+    return "/account/pending";
+  }
   if (!next || isBaseDashboardPath(next)) {
     return getHomePathForRole(role);
   }
@@ -95,6 +101,36 @@ export function resolvePostAuthRedirectPath({
 export async function resolveAuthenticatedHomePath(
   fallback = DASHBOARD_PATH,
 ): Promise<string> {
-  const role = await resolveAuthenticatedRole();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return fallback;
+  const { data, error } = await supabase.from("profiles")
+    .select("role, account_status").eq("id", user.id).maybeSingle();
+  if (error?.code === "42703") {
+    const { data: legacyProfile, error: legacyError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (legacyError) {
+      throw new Error("Failed to resolve authenticated account.", {
+        cause: legacyError,
+      });
+    }
+    const legacyRole = legacyProfile?.role === "platform_admin"
+      || legacyProfile?.role === "user"
+      ? legacyProfile.role
+      : null;
+    return legacyRole ? getHomePathForRole(legacyRole) : fallback;
+  }
+  if (error) {
+    throw new Error("Failed to resolve authenticated account.", { cause: error });
+  }
+  if (data?.account_status && data.account_status !== "active") {
+    return "/account/pending";
+  }
+  const role = data?.role === "platform_admin" || data?.role === "user"
+    ? data.role
+    : null;
   return role ? getHomePathForRole(role) : fallback;
 }

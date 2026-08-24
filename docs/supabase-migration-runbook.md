@@ -1,6 +1,6 @@
 ﻿# Supabase UUID Tenant and Domain Migration Runbook
 
-Last updated: 2026-08-13
+Last updated: 2026-08-24
 Status: Authoritative database rollout runbook
 
 Target staging project: `llealjcaqvltrtdwwzrh`
@@ -12,7 +12,15 @@ current staging or production state.
 Contract cleanup, storage finalization, and deletion of legacy objects require
 separate approval.
 
-The additive Phase 3F-3I work and the 2026-08-12 role cleanup are completed in local and staging environments. `profiles.account_role` and `profiles.organization_id` are removed; `profiles.role` is constrained to `platform_admin | user`; organization authority comes from `organization_memberships.role`; resource exceptions come from explicit grants. The original sequence remains documented as rollout history. Current admin architecture and delivery order are owned by `docs/admin-dashboard-integration-plan.md`.
+The additive Phase 3F-3I work, the 2026-08-12 role cleanup, Output Operations
+(`20260817000000`), and Access Policy v2 (`20260818000000`) are completed in
+local and staging environments. Production has not received Access Policy v2.
+`profiles.account_role` and `profiles.organization_id` are removed;
+`profiles.role` is constrained to `platform_admin | user`; organization
+membership uses `org_admin | member`; ordinary members require explicit grants
+for resources. The original sequence remains documented as rollout history.
+Current admin architecture and delivery order are owned by
+`docs/admin-dashboard-integration-plan.md`.
 
 ## Required inputs
 
@@ -44,15 +52,15 @@ Before drafting domain SQL, confirm and record:
    organization-level accounts; future people may have no login.
 3. Account-level role belongs in `profiles.role` only, with target values
    `platform_admin` and `user`; organization-level role belongs in
-   `organization_memberships.role`, with target values `org_admin`, `editor`, and
-   `viewer`.
+   `organization_memberships.role`, with target values `org_admin` and `member`.
 4. Normal accounts have at most one live organization membership in v1.
 5. Farms/plantation areas are separate from people and organizations, and their
    owner/operator/contact metadata does not grant access.
 6. Surveys remain the mission records and relate to multiple farms through
    `survey_farms`, not one canonical `surveys.farm_id`.
-7. A farm grant exposes only the farm record; a separate survey grant is
-   required for shared survey data and outputs.
+7. Membership alone grants no farm/survey/output access to ordinary members. A
+   farm grant exposes only the farm record; a separate survey grant exposes its
+   survey and outputs.
 8. Every new output/report record traces to a survey; existing `orthos` and
    `point_clouds` continue using `survey_id`.
 
@@ -78,6 +86,120 @@ Current contract work must preserve these post-removal invariants:
 - `surveys.client_id` and legacy asset paths remain compatibility relationships,
   not profile-owned authorization;
 - the deferred `app_role` enum rebuild remains a separate reviewed migration.
+
+## Access Policy v2 local validation and staging gate
+
+`20260818000000_access_policy_v2.sql` is a targeted authorization cleanup. It:
+
+- contracts `membership_role` to `org_admin | member`, mapping legacy
+  `viewer`/`editor` rows to `member`;
+- adds nullable `organization_id` to farm/survey grants;
+- requires active membership, active organization, and confirmed resource
+  relationship for organization-scoped grants;
+- revokes scoped grants when membership becomes `removed`;
+- removes legacy permissive survey/ortho/point-cloud policies;
+- adds approved-signup and organization-onboarding-request tables/functions;
+- keeps direct Auth-account creation out of the Next.js runtime.
+
+Before staging apply:
+
+1. Run `supabase/verification/inventory_access_policy_v2.sql` read-only and save
+   its output outside Git when it contains account emails or operational data.
+2. Capture and test a restorable staging backup.
+3. Review the schema/policy diff and confirm the target project.
+4. Confirm all legacy `viewer`/`editor` memberships are intended to become
+   `member`.
+5. Confirm organization-scoped grants have confirmed matching relationships.
+6. Rehearse clean apply and `supabase/tests/access_policy_v2.sql` locally.
+7. Keep `supabase/rollback/20260818000000_access_policy_v2.sql` with the operator
+   package. It is a containment rollback for an unused/non-production rollout;
+   after accounts claim approvals or scoped grants are used, restore the tested
+   backup instead of guessing historical roles.
+
+After staging apply, regenerate types through the approved generator, run the
+full pgTAP suite, and smoke platform admin, org admin, member, suspended member,
+removed member, platform exception, approved signup, rejected signup, and
+anonymous/cross-organization sessions. Production remains separately approved.
+
+### 2026-08-18 staging rollout record
+
+- Linked target confirmed as `llealjcaqvltrtdwwzrh`.
+- The ordered dry-run contained only Output Operations
+  (`20260817000000`) and Access Policy v2 (`20260818000000`).
+- Pre-change schema, public/auth data, and Auth schema snapshots were stored
+  outside Git under the operator's local temporary backup directory. SHA-256
+  checks completed successfully.
+- Restore rehearsal passed in an isolated local database. Restore Auth schema
+  first while deferring `on_auth_user_created`, restore Public schema (which
+  recreates that trigger), restore the separate Auth data once, then stream only
+  `public.*` statements from the combined data snapshot with triggers disabled
+  for the dump's documented circular foreign keys.
+- Affected inventory: four memberships (`1 org_admin`, `1 editor`, `2 viewer`),
+  two active survey grants, no farm grants, and one archived orthomosaic output.
+- Post-apply inventory: `1 org_admin`, `3 member`, zero viewer/editor rows, and
+  both survey grants organization-scoped. Required signup, onboarding,
+  authorization, protected-asset, and output-readiness objects are present.
+- Linked migration history and a second dry-run confirm staging is current.
+- Linked database types were regenerated and TypeScript passed.
+- Database lint retains only the pre-existing stale
+  `app_private.backfill_legacy_organization_memberships` error.
+- The full user-assisted authenticated role/session matrix passed on
+  2026-08-20. Production rollout remains prohibited pending separate approval.
+
+### User-first signup corrective migration
+
+`20260818001000_user_first_signup_requests.sql` supersedes the pre-approved
+email workflow after product clarification. It was applied to staging on
+2026-08-19 after inventory and tested backup gates. Production is unchanged.
+
+- Existing profiles become `active`; new non-seed Auth users become `pending`.
+- New users create and confirm their own account before review.
+- `account_signup_requests` is self-readable and platform-admin-readable only.
+- Approval atomically selects organization/role, creates membership, activates
+  the profile, and closes the request. Rejection blocks application access.
+- Existing open pre-approvals are revoked and the legacy claim RPC is no longer
+  executable by authenticated users.
+- Before applying, run
+  `supabase/verification/inventory_user_first_signup_requests.sql`, capture and
+  restore-test a fresh staging backup, review open legacy approvals, and verify
+  the dry-run contains only `20260818001000`.
+- After applying, smoke unconfirmed signup, confirmed pending access, admin
+  queue visibility, member/org-admin approval, rejection, repeated review denial,
+  anonymous denial, and cross-organization/resource denial.
+- Before interactive signup smoke, allowlist the exact callback URL in Supabase
+  Authentication URL Configuration. Local development uses
+  http://localhost:3000/asimov-hawks/auth/confirm; deployments use the same
+  base-path callback on their HTTPS origin. The application explicitly supplies
+  this redirect and supports both PKCE code and token-hash callbacks.
+
+The 2026-08-19 staging inventory found 23 Auth users, 23 profiles, and one
+already-revoked legacy approval. A full schema plus Auth/Public data recovery
+rehearsal restored matching counts. Migration history and a no-pending dry-run
+passed; post-migration types contain the request table, account status, and both
+review RPCs. Interactive signup smoke found and corrected a missing base-path
+callback plus PKCE-code handling on 2026-08-20. A fresh single-use confirmation
+link, pending review, approval, membership assignment, and activated login smoke
+passed.
+
+## Organization Admin portal migration
+
+`20260820000000_org_admin_portal.sql` is currently local-only. It replaces
+broad organization-admin membership/onboarding mutation paths with narrow
+audited RPCs and adds the approved farm, survey, output-metadata, grant, member,
+organization-profile, and onboarding-request operations.
+
+Local evidence:
+
+- clean database replay passed;
+- the pre-existing 126 pgTAP assertions passed;
+- `supabase/tests/org_admin_portal.sql` passed 16/16 separately;
+- generated database types include all org-admin RPC contracts.
+
+Before staging, finish and validate the `/org-admin` application slice, capture
+an affected-policy/data inventory, rehearse a restorable backup, prepare
+rollback/containment SQL, review the schema/policy diff, rerun the combined
+pgTAP/type/lint checks, and smoke permitted plus prohibited organization-admin
+workflows. Never apply this migration to production as part of validation.
 
 ## Delivery gates
 
@@ -288,8 +410,8 @@ created by treating a `clients` row as a farmer, no canonical record or farm was
 inferred without an approved mapping, and each survey has at most one primary
 `survey_farms` row.
 
-Extend `supabase/tests/authorization.sql` to cover anonymous, unassigned user,
-individual, organization member, legacy viewer/editor compatibility,
+Authorization coverage must include anonymous, unassigned user,
+individual, organization member, legacy-role conversion,
 organization admin, platform admin, farm-grant, and survey-grant cases. Test
 permitted and denied
 select/insert/update/delete operations through direct SQL/REST-equivalent calls,

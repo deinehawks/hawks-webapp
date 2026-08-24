@@ -1,14 +1,15 @@
 ﻿# Architecture Summary
 
-Last updated: 2026-08-13
+Last updated: 2026-08-18
 
 ASIMOV-HAWKS is a Next.js 15 App Router application for authenticated agricultural drone-survey users and platform operators. It uses React 19, TypeScript, Tailwind CSS 4, shadcn/Radix, Supabase Auth/Postgres/Storage, MapLibre, and Three.js/React Three Fiber.
 
 Current major boundaries:
 
 - `app/dashboard/`: user survey, orthomap, and geospatial experience.
-- `app/dashboard/admin/`: transitional Admin MVP sharing the user shell.
-- planned `app/admin/`: dedicated platform-admin route tree and layout.
+- `app/dashboard/admin/`: legacy redirects retained during admin cutover.
+- `app/admin/`: dedicated platform-admin route tree and layout.
+- planned `app/org-admin/`: narrow organization-admin portal.
 - `lib/actions/`: authenticated server-side reads and mutations.
 - `utils/supabase/`: browser, server, and middleware Supabase clients.
 - `supabase/`: migrations, RLS/RPC contracts, verification SQL, and pgTAP tests.
@@ -16,8 +17,11 @@ Current major boundaries:
 Authorization model:
 
 - `profiles.role` supplies account authority: `platform_admin | user`.
-- active `organization_memberships` supply organization authority: `org_admin | editor | viewer`.
-- explicit survey/farm grants supply narrow resource exceptions.
+- active `organization_memberships` supply portal/management authority:
+  `org_admin | member`.
+- ordinary members require explicit survey/farm grants for resources; scoped
+  grants require active membership and confirmed organization relationships.
+- null-organization grants supply narrow platform exceptions.
 - `profiles.account_role` and `profiles.organization_id` are removed.
 - `surveys.client_id`, client mappings, and legacy asset paths remain dataset compatibility relationships, not profile authorization.
 

@@ -13,7 +13,7 @@ import type {
 import { createClient } from "@/utils/supabase/server";
 
 type MembershipStatus = Database["public"]["Enums"]["membership_status"];
-type MembershipRole = Database["public"]["Enums"]["membership_role"] | "viewer" | "editor";
+type MembershipRole = Database["public"]["Enums"]["membership_role"];
 type TargetProfile = Pick<Tables<"profiles">, "id" | "role">;
 type StoredMembership = Pick<
   Tables<"organization_memberships">,
@@ -37,7 +37,7 @@ type MembershipUpdateTable = {
 };
 
 const allowedInitialStatuses = ["pending", "active"] as const satisfies readonly MembershipStatus[];
-const ordinaryMembershipRoles = ["viewer", "editor"] as const satisfies readonly MembershipRole[];
+const membershipRoles = ["member", "org_admin"] as const satisfies readonly MembershipRole[];
 const allowedStatusTransitions = {
   invited: ["pending", "removed"],
   pending: ["active", "removed"],
@@ -73,7 +73,7 @@ function parseInitialStatus(value: string): MembershipStatus {
 }
 
 function parseMembershipRole(value: string): MembershipRole {
-  if ((ordinaryMembershipRoles as readonly string[]).includes(value)) {
+  if ((membershipRoles as readonly string[]).includes(value)) {
     return value as MembershipRole;
   }
 
@@ -86,10 +86,6 @@ function parseMembershipStatus(value: string): MembershipStatus {
   }
 
   throw new Error("Invalid membership status.");
-}
-
-function isOrdinaryMembershipRole(value: string): value is MembershipRole {
-  return (ordinaryMembershipRoles as readonly string[]).includes(value);
 }
 
 export async function createOrganizationMembership(formData: FormData) {
@@ -220,16 +216,16 @@ export async function updateOrganizationMembershipRole(formData: FormData) {
     throw new Error("Organization membership not found.");
   }
 
-  if (!isOrdinaryMembershipRole(membership.role)) {
-    throw new Error("Organization-admin membership roles cannot be changed here.");
-  }
-
   if (membership.status === "removed") {
     throw new Error("Removed memberships are retained as history and cannot be changed.");
   }
 
   if (membership.role === nextRole) {
     throw new Error("The membership already has this role.");
+  }
+
+  if (membership.status !== "active") {
+    throw new Error("Membership roles can change only while the membership is active.");
   }
 
   const membershipsTable = supabase
@@ -285,14 +281,6 @@ export async function updateOrganizationMembershipStatus(formData: FormData) {
 
   if (!membership) {
     throw new Error("Organization membership not found.");
-  }
-
-  if (membership.role === "org_admin") {
-    throw new Error("Organization-admin membership status changes are not enabled yet.");
-  }
-
-  if (!isOrdinaryMembershipRole(membership.role)) {
-    throw new Error("This membership role is not supported in the current workflow.");
   }
 
   const allowedNextStatuses = allowedStatusTransitions[membership.status];

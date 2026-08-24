@@ -124,11 +124,14 @@ export default async function AdminAccessPreviewPage({ params }: { params: Promi
   const activeOrganizationIds = memberships
     .filter((membership) => membership.status === "active")
     .map((membership) => membership.organization_id);
+  const managedOrganizationIds = memberships
+    .filter((membership) => membership.status === "active" && membership.role === "org_admin")
+    .map((membership) => membership.organization_id);
 
-  const [surveyOrganizationsResponse, farmOrganizationsResponse] = activeOrganizationIds.length > 0
+  const [surveyOrganizationsResponse, farmOrganizationsResponse] = managedOrganizationIds.length > 0
     ? await Promise.all([
-      supabase.from("survey_organizations").select("survey_id, organization_id, review_status, survey:surveys!survey_organizations_survey_id_fkey(id, location, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name))").in("organization_id", activeOrganizationIds).eq("review_status", "confirmed"),
-      supabase.from("farm_organizations").select("farm_id, organization_id, review_status, farm:farms!farm_organizations_farm_id_fkey(id, name, code, status)").in("organization_id", activeOrganizationIds).eq("review_status", "confirmed"),
+      supabase.from("survey_organizations").select("survey_id, organization_id, review_status, survey:surveys!survey_organizations_survey_id_fkey(id, location, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name))").in("organization_id", managedOrganizationIds).eq("review_status", "confirmed"),
+      supabase.from("farm_organizations").select("farm_id, organization_id, review_status, farm:farms!farm_organizations_farm_id_fkey(id, name, code, status)").in("organization_id", managedOrganizationIds).eq("review_status", "confirmed"),
     ])
     : [{ data: [], error: null }, { data: [], error: null }];
 
@@ -147,7 +150,7 @@ export default async function AdminAccessPreviewPage({ params }: { params: Promi
     surveyItems.set(row.survey_id, {
       id: row.survey_id,
       label: formatSurvey(row.survey),
-      source: "Active organization membership",
+      source: "Organization-admin management",
       status: "effective",
       detail: `Organization ${row.organization_id}`,
     });
@@ -171,7 +174,7 @@ export default async function AdminAccessPreviewPage({ params }: { params: Promi
     farmItems.set(row.farm_id, {
       id: row.farm_id,
       label: formatFarm(row.farm),
-      source: "Active organization membership",
+      source: "Organization-admin management",
       status: "effective",
       detail: `Organization ${row.organization_id}`,
     });

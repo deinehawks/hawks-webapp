@@ -86,10 +86,7 @@ type MembershipOrganizationDetail = Pick<
 >;
 
 type MembershipStatus = Database["public"]["Enums"]["membership_status"];
-type MembershipRoleValue =
-  | Database["public"]["Enums"]["membership_role"]
-  | "viewer"
-  | "editor";
+type MembershipRoleValue = Database["public"]["Enums"]["membership_role"];
 
 type MembershipDetailRow = Omit<Tables<"organization_memberships">, "role"> & {
   role: MembershipRoleValue;
@@ -1093,28 +1090,11 @@ function MembershipStatusForm({
 }) {
   const nextStatuses = membershipStatusTransitions[membership.status];
 
-  if (membership.role === "org_admin") {
-    return (
-      <Card className="rounded-lg">
-        <CardHeader>
-          <CardDescription>Membership Controls</CardDescription>
-          <CardTitle>Membership status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Organization-admin membership status changes are deferred. This
-            workflow only manages viewer and editor access.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card className="rounded-lg">
       <CardHeader>
         <CardDescription>Membership Controls</CardDescription>
-        <CardTitle>Update non-admin membership status</CardTitle>
+        <CardTitle>Update membership status</CardTitle>
       </CardHeader>
       <CardContent>
         {nextStatuses.length === 0 ? (
@@ -1163,9 +1143,9 @@ function MembershipStatusForm({
 
             <div className="flex flex-col gap-3 lg:col-span-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="max-w-2xl text-sm text-muted-foreground">
-                This changes only viewer or editor membership status. It does
-                not create auth users, promote org admins, move users across
-                organizations, or delete records.
+                This changes organization membership status. It does not
+                create auth users, move users across organizations, or delete
+                records.
               </p>
               <Button className="w-fit" type="submit">
                 Update status

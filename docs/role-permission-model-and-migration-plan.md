@@ -1,6 +1,6 @@
 ﻿# Role And Permission Model
 
-Last updated: 2026-08-13
+Last updated: 2026-08-24
 Status: Authoritative current permission model and completed migration history
 
 ## Purpose
@@ -22,13 +22,12 @@ The deployed `profiles_role_account_scope_check` permits only these values. Post
 
 ### Organization level
 
-`organization_memberships.role` is the organization-authority source.
+`organization_memberships.role` is the organization-authority source and contains only:
 
-- `org_admin`: organization-scoped administration allowed by policy and approved workflows.
-- `editor`: organization-scoped write authority allowed by policy.
-- `viewer`: organization-scoped read authority.
+- `org_admin`: management visibility over confirmed organization resources and authority only through approved narrow workflows.
+- `member`: organization-portal membership with no farm, survey, output, or protected-asset access by itself.
 
-Membership status is evaluated separately. Only an allowed live state grants access; suspended, removed, expired, pending, or invited records must not silently acquire active authority.
+Membership status is evaluated separately. Only `active` membership opens the organization portal or supports organization-scoped grants. Suspended, removed, pending, or invited records fail closed. An inactive organization blocks member access and organization-admin mutations.
 
 The workshop release continues to limit ordinary accounts to at most one live organization membership. General multi-organization account workflows remain deferred.
 
@@ -36,21 +35,43 @@ The workshop release continues to limit ordinary accounts to at most one live or
 
 - `survey_access_grants` grant access to one survey and its authorized outputs.
 - `farm_access_grants` grant access to one farm record; they do not automatically grant survey/output access.
+- Grants with `organization_id` require an active membership in that organization plus a confirmed organization-resource relationship.
+- Grants with `organization_id = null` are platform-issued individual exceptions and do not require membership.
 
-Grants must be explicit, status-aware, expiry-aware, revocable, and auditable where sensitive. Individual farmers should be represented through `people` and `client_people`, with explicit grants when they do not belong to an organization. Do not create fabricated one-person organizations.
+Suspension makes organization-scoped grants ineffective without erasing history. Membership removal atomically revokes active organization-scoped grants and retains audit records. Grants remain explicit, status-aware, expiry-aware, revocable, and audited. Individual farmers should be represented through `people` and `client_people`, with platform exceptions when they do not belong to an organization. Do not create fabricated one-person organizations.
 
 ### Compatibility relationships
 
 `surveys.client_id`, canonical client mappings, and legacy asset paths remain dataset and routing relationships where still used. They are not profile-owned authorization state and must not replace membership/grant checks.
 
+## Signup Review And Onboarding
+
+- Users create and confirm their own Supabase Auth account before platform review.
+- The Auth-user trigger creates a `pending` application profile and one signup
+  request; it does not create membership or resource access.
+- Pending and rejected profiles are routed to the account-status page and remain
+  outside the protected dashboard/admin surfaces.
+- Platform admins review the queue, select an active organization and initial
+  `member` or `org_admin` role, then approve or reject.
+- Approval atomically activates the profile and creates its active membership.
+  Rejection retains the Auth/profile/request audit trail while blocking access.
+- Organization admins submit onboarding requests; they do not create Auth accounts. They may create and cancel their own pending requests, while platform admins review the queue.
+- Organization admins may promote an active ordinary member in their own active
+  organization, but cannot mutate their own or another org-admin membership.
+  Existing org-admin demotion, suspension, and removal remain platform-admin-only.
+- Organization-admin mutations are exposed only through narrow audited
+  security-definer RPCs. Broad organization-admin table-update policies are
+  prohibited.
+- Service-role credentials remain prohibited in the Next.js runtime.
+
 ## Platform Admin Architecture
 
 The approved dedicated admin architecture is described in `docs/admin-dashboard-integration-plan.md`.
 
-- `platform_admin` accounts will land on `/admin`.
-- `user` accounts will land on `/dashboard`.
-- Admin and user route trees will have separate layouts and independent server-side guards.
-- The current `/dashboard/admin/*` UI is transitional until route cutover.
+- `platform_admin` accounts land on `/admin`.
+- `user` accounts land on `/dashboard`.
+- Admin and user route trees have separate layouts and independent server-side guards.
+- Legacy `/dashboard/admin/*` routes redirect to `/admin/*`.
 - Effective-access preview is read-only. The authenticated actor remains the platform admin; no selected-user session, token, cookie, or mutation authority is created.
 
 Every admin mutation must authenticate the actor, require platform-admin authority, rely on RLS, validate identifiers and state transitions, and produce the required audit record. UI filtering is never authorization.
@@ -100,8 +121,13 @@ Current verification should assert:
 - No live application, current policy/helper, verification SQL, pgTAP fixture, or generated type references either removed profile column.
 - Platform admins can reach authorized admin operations; normal users cannot.
 - Active memberships grant only their organization-scoped authority.
+- Ordinary `member` memberships do not grant farms, surveys, outputs, or protected assets.
+- Active `org_admin` memberships see confirmed organization resources for management.
 - Suspended, removed, pending, or expired access records fail closed.
 - Survey and farm grants authorize only their intended resource scope.
+- Organization-scoped grants require active membership and confirmed resource relationships.
+- Removal revokes organization-scoped grants while preserving history and audit records.
+- Inactive organizations block organization-scoped access and management.
 - Individual users without membership or grants see no protected data.
 - Protected assets use the same membership/grant authorization model as application reads.
 - Admin mutations retain history and produce expected `admin_audit_log` records.
@@ -137,7 +163,7 @@ A later migration may rebuild `public.app_role` with only `platform_admin` and `
 ## Deferred Permission Features
 
 - true user-session impersonation
-- Auth-user creation and invitation delivery
+- platform-created Auth accounts and automated invitation delivery
 - platform-admin promotion or demotion
 - general multi-organization account workflows
 - destructive access-record deletion

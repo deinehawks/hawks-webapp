@@ -176,7 +176,9 @@ type ReadinessMetric = {
   variant?: "default" | "warning";
 };
 
-async function getTableCount(table: string): Promise<number> {
+async function getTableCount(
+  table: keyof AppDatabase["public"]["Tables"],
+): Promise<number> {
   const supabase = await createClient();
   const { count, error } = await supabase
     .from(table)
@@ -1127,4 +1129,3 @@ export default async function AdminPage() {
     </main>
   );
 }
-

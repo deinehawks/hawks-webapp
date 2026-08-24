@@ -80,9 +80,9 @@ insert into public.organization_memberships (
 )
 values
   ('30000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002', 'org_admin', 'active', '20000000-0000-0000-0000-000000000001', now(), now(), '20000000-0000-0000-0000-000000000001', 'org admin'),
-  ('30000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000003', 'editor', 'active', '20000000-0000-0000-0000-000000000001', now(), now(), '20000000-0000-0000-0000-000000000001', 'editor'),
-  ('30000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000004', 'viewer', 'active', '20000000-0000-0000-0000-000000000001', now(), now(), '20000000-0000-0000-0000-000000000001', 'viewer'),
-  ('30000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000005', 'viewer', 'active', '20000000-0000-0000-0000-000000000001', now(), now(), '20000000-0000-0000-0000-000000000001', 'other viewer');
+  ('30000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000003', 'member', 'active', '20000000-0000-0000-0000-000000000001', now(), now(), '20000000-0000-0000-0000-000000000001', 'member'),
+  ('30000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000004', 'member', 'active', '20000000-0000-0000-0000-000000000001', now(), now(), '20000000-0000-0000-0000-000000000001', 'member'),
+  ('30000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000005', 'member', 'active', '20000000-0000-0000-0000-000000000001', now(), now(), '20000000-0000-0000-0000-000000000001', 'other member');
 
 insert into public.surveys (
   id,
@@ -108,17 +108,17 @@ set local request.jwt.claims =
 select extensions.is(
   (select count(*) from public.clients),
   1::bigint,
-  'viewer reads only one client through membership access'
+  'member reads only the client shell linked to their organization'
 );
 select extensions.is(
   (select count(*) from public.surveys),
-  1::bigint,
-  'viewer reads only surveys in their accessible client'
+  0::bigint,
+  'member receives no survey access from membership alone'
 );
 select extensions.is(
   (select count(*) from public.profiles),
   1::bigint,
-  'viewer reads only their own profile'
+  'member reads only their own profile'
 );
 select extensions.throws_ok(
   $$update public.profiles
@@ -128,21 +128,23 @@ select extensions.throws_ok(
 );
 select extensions.is(
   (select count(*) from public.surveys where id = 'survey-a'),
-  1::bigint,
-  'viewer cannot delete a survey'
+  0::bigint,
+  'member cannot read an ungranted survey'
 );
 
 set local request.jwt.claims =
   '{"sub":"20000000-0000-0000-0000-000000000003","role":"authenticated"}';
 
-select extensions.lives_ok(
+select extensions.throws_ok(
   $$insert into public.surveys
     (id, code, access_code, organization_code, client_id)
     values (
       'editor-survey', 'ORG-A', 'ORG-A', 'ORG-A',
       '10000000-0000-0000-0000-000000000001'
     )$$,
-  'editor can insert a survey in an accessible client'
+  '42501',
+  null,
+  'member cannot create a survey'
 );
 select extensions.throws_ok(
   $$insert into public.surveys
@@ -189,7 +191,7 @@ set local request.jwt.claims =
 
 select extensions.is(
   (select count(*) from public.surveys),
-  3::bigint,
+  2::bigint,
   'platform administrator reads every survey'
 );
 

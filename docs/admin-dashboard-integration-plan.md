@@ -1,6 +1,6 @@
 # Admin Dashboard Integration and Production Rollout Plan
 
-Last updated: 2026-08-17
+Last updated: 2026-08-18
 Status: Authoritative current admin architecture and delivery plan
 
 This is the primary source of truth for platform-admin routes, navigation, delivery order, and deferred admin scope. The permission model is owned by `docs/role-permission-model-and-migration-plan.md`; database rollout procedures are owned by `docs/supabase-migration-runbook.md`.
@@ -18,7 +18,7 @@ Build a dedicated platform-admin application surface at `/admin` inside the exis
 - Platform admins may open the normal application only through an explicit operator navigation path. Admin authorization must never be inferred from UI visibility.
 - User access inspection is a read-only effective-access preview. The actor remains the authenticated platform admin; no user session, token, cookie, or mutation authority is impersonated.
 
-The first delivery wave is Users & Access for existing accounts: profiles, memberships, survey grants, farm grants where required, status/role transitions, effective-access diagnosis, and audit visibility. Auth-user creation or invitation, platform-admin promotion/demotion, true impersonation, hard deletion, and broad infrastructure administration remain deferred.
+Users & Access now covers existing-account attachment and platform-approved self-signup: profiles, `org_admin | member` memberships, survey/farm grants, status/role transitions, effective-access diagnosis, signup approvals, and audit visibility. Platform-created Auth accounts, automated invitation delivery, platform-admin promotion/demotion, true impersonation, hard deletion, and broad infrastructure administration remain deferred.
 
 ## 2. Current Baseline And Sources Of Authority
 
@@ -28,10 +28,12 @@ The first delivery wave is Users & Access for existing accounts: profiles, membe
 - Dedicated `/admin/users`, `/admin/users/[id]`, and `/admin/access-preview/[profileId]` workflows are implemented locally for existing accounts. They show membership/grant access state, read-only effective-access calculation, related audit activity, and account-scoped controls.
 - Dedicated read-only resource list routes are implemented locally through `/admin/[resource]` for clients, organizations, people, farms, surveys, memberships, and outputs, with links to existing detail pages.
 - Organization, farm, survey, and output operations now have dedicated audited workflows. Output Operations v1 registers draft catalog records, edits safe metadata, attaches existing storage references as object keys or package prefixes, shows a workshop-readiness checklist, manages readiness through approved transitions, and selects the current eligible output atomically without publishing, uploading, relocating, or deleting assets. Admin survey selectors identify records by short survey ID plus survey code, client context, and date when available to avoid duplicate client-code labels.
-- Existing controlled mutations include legacy-client classification and canonical mapping, viewer/editor membership creation, status and role management, and survey/farm-grant creation, revocation, and reactivation. Audit visibility remains read-only while the underlying mutations are audited.
+- Existing controlled mutations include legacy-client classification and canonical mapping, `member`/`org_admin` membership creation and platform-admin lifecycle management, user-first signup-request review, and survey/farm-grant creation, revocation, and reactivation. Audit visibility remains read-only while the underlying mutations are audited.
 - `profiles.role` is the account-level source and is constrained to `platform_admin | user`.
-- `organization_memberships.role` is the organization-level source and uses `org_admin | editor | viewer`; membership status is evaluated separately.
-- Explicit `survey_access_grants` and `farm_access_grants` are resource-level exceptions.
+- `organization_memberships.role` is the organization-level source and uses only `org_admin | member`; membership status is evaluated separately.
+- Active membership opens the organization portal. Ordinary members need explicit grants for resources; organization admins receive management visibility over confirmed organization resources.
+- Explicit survey/farm grants can be organization-scoped or platform exceptions. Organization-scoped grants require active membership and a confirmed organization-resource relationship.
+- Suspension makes organization-scoped grants ineffective; removal revokes them atomically; inactive organizations block scoped access and management.
 - `profiles.account_role` and `profiles.organization_id` have been removed from the local and staging schema. Historical PostgreSQL `app_role` enum labels are blocked by a check constraint and await a separate enum-rebuild cleanup.
 - `surveys.client_id`, client mappings, and legacy asset paths remain compatible dataset relationships. They are not profile-owned authorization state.
 - Server-side authentication checks and Supabase RLS remain the authorization boundary. Service-role credentials remain prohibited in app/runtime code.
@@ -79,17 +81,19 @@ flowchart LR
 
 1. **Completed locally:** dedicated `/admin` layout, navigation, overview, loading/error states, and server-side platform-admin guard.
 2. **Completed locally:** role-based post-login landing, cross-role redirects, and temporary `/dashboard/admin/*` redirects.
-3. **Completed locally:** `/admin/users` and `/admin/users/[id]` for existing profiles, membership/grant diagnosis, viewer/editor membership controls, survey/farm-grant lifecycle controls, and related audit visibility.
+3. **Completed locally:** `/admin/users` and `/admin/users/[id]` for existing profiles, membership/grant diagnosis, two-role membership controls, survey/farm-grant lifecycle controls, and related audit visibility.
 4. **Completed locally:** read-only `/admin/access-preview/[profileId]` using membership/grant rules without impersonation or session switching.
 5. **Completed locally:** read-only `/admin/[resource]` list routes for clients, organizations, people, farms, surveys, memberships, and outputs.
 6. **Completed locally:** Organization, Farm, Survey, and Output Operations v1, including guarded output storage-reference attachment, readiness checklist visibility, readiness transitions, atomic current-output selection, and clearer admin survey selector labels.
-7. **Next:** smoke Output Operations v1, then continue approved workshop asset migration/readiness work. Output publication remains separately gated.
+7. **Completed locally:** Access Policy v2 role contraction, grant-only member access, organization-scoped grants, protected-asset alignment, user-first signup review, and onboarding-request foundation.
+8. **Completed:** Access Policy v2 staging rollout and the full user-assisted authorization matrix.
+9. **In progress locally:** narrow audited org-admin RPC foundation. **Next:** implement the protected `/org-admin` context, server actions, and pages before any org-admin staging rollout. Output publication remains separately gated.
 
 Every admin mutation must authenticate the actor, require `platform_admin`, rely on RLS, validate identifiers and transitions, retain history instead of hard deleting access records, and produce an `admin_audit_log` entry. Audit coverage does not make an otherwise unauthorized mutation acceptable.
 
 ### Deferred scope
 
-- Auth-user creation and invitation delivery
+- platform-created Auth accounts and automated invitation delivery
 - platform-admin promotion or demotion
 - true impersonation or user-equivalent session issuance
 - destructive deletion and broad bulk mutation
@@ -182,7 +186,7 @@ Deadline protection requires scope reduction before security, backward compatibi
 
 - **Approved fact:** existing `clients` are mixed historical tenants and surveys may span multiple farms. Do not force them into a single canonical entity type or farm foreign key.
 - **Approved access rule:** normal users have at most one live organization membership in v1. Farm domain relationships do not grant access; shared surveys require explicit survey grants.
-- **Approved privilege rule:** only platform admins may promote organization admins. Organization admins manage ordinary membership only inside their organization.
+- **Approved privilege rule:** an active organization admin may promote an active ordinary member in the same organization, but may not alter their own or another org-admin membership. Platform admins retain demotion, suspension, and removal authority over org admins.
 - **Confirmed risk:** applying `supabase/deferred/contract_uuid_tenant_keys.sql` now would encode the old single-client authorization model before canonical mappings and grants exist.
 - **Confirmed risk:** organization-level detection JSON contains multiple survey areas, and local `public/tiles`/`public/3d` assets are not protected by database RLS. Do not promise narrow asset isolation through a farm or survey grant until protected delivery is approved.
 - **Human approval required:** Auth-user provisioning, output/report publication and retention, audit retention, invitation delivery, and protected survey-scoped asset delivery.
@@ -194,10 +198,10 @@ No Admin Dashboard business mutation, domain migration, deferred contract operat
 The first-release authorization direction is approved:
 
 1. Account-level roles are held in `profiles.role` only, with target values `platform_admin` and `user`.
-2. Organization membership roles are held in `organization_memberships.role`, with target values `org_admin`, `editor`, and `viewer`.
+2. Organization membership roles are held in `organization_memberships.role`, with only `org_admin` and `member`.
 3. Normal accounts have at most one live organization membership.
-4. Organization admins may invite, approve, suspend, and remove ordinary members only in their organization.
-5. Only platform admins may promote or manage organization admins, classify legacy clients, or issue exceptional access grants.
+4. Organization admins may submit onboarding requests and suspend, reactivate, remove, or promote eligible ordinary members only in their organization.
+5. Only platform admins may manage existing organization-admin memberships, classify legacy clients, or issue exceptional access grants.
 6. Farm owner/operator/representative/contact metadata never grants application access automatically.
 7. A farm grant exposes the farm record only; a separate survey grant is required for shared survey data and outputs.
 

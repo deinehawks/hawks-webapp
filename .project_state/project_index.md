@@ -1,6 +1,6 @@
 ﻿# Project Index
 
-Last updated: 2026-08-13
+Last updated: 2026-08-24
 
 Use this index after the compressed startup files. Document classifications prevent historical plans from being mistaken for current instructions.
 
@@ -9,6 +9,7 @@ Use this index after the compressed startup files. Document classifications prev
 - `docs/admin-dashboard-integration-plan.md`: primary admin architecture, route split, delivery order, mutation boundaries, and deferred scope.
 - `docs/role-permission-model-and-migration-plan.md`: current account/membership/grant authority model and completed legacy-column migration history.
 - `docs/supabase-migration-runbook.md`: current database rollout, verification, recovery, and post-removal invariants.
+- `docs/admin-mvp-operator-guide.md`: current platform-admin operations for memberships, grants, and user-first signup review.
 - `.project_state/decisions.md`: concise approved decisions and explicit supersessions.
 
 ## Supporting Current References
@@ -41,7 +42,12 @@ Use this index after the compressed startup files. Document classifications prev
 
 - `supabase/migrations/`: checked-in migration history and current schema contract.
 - `supabase/tests/`: pgTAP authorization coverage.
+- `supabase/migrations/20260820000000_org_admin_portal.sql` and
+  `supabase/tests/org_admin_portal.sql`: local-only org-admin RPC contract and
+  focused authorization coverage; staging rollout is pending.
 - `supabase/verification/`: current verification SQL.
+- `supabase/verification/inventory_access_policy_v2.sql`: pre-rollout affected-data and policy inventory.
+- `supabase/rollback/20260818000000_access_policy_v2.sql`: guarded non-destructive containment rollback; full reversal uses the tested backup.
 
 ## Source Hotspots
 

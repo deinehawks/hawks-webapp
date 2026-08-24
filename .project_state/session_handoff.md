@@ -1,22 +1,40 @@
 # Session Handoff
 
-Last updated: 2026-08-17
+Last updated: 2026-08-24
 
-The dedicated admin wave now includes account list/detail, read-only effective-access preview, survey/farm grant controls, membership controls, resource lists, Organization Operations v1, Farm Operations v1, Survey Operations v1, and Output Operations v1. `/admin/outputs/new` registers draft catalog records; `/admin/outputs/[id]` edits safe metadata, manages `draft -> ready -> approved -> archived` readiness transitions, and atomically selects one current ready/approved output per survey/type. Storage references can be attached to unlocked outputs as object keys or package prefixes, and output detail pages show workshop-readiness checklist status. Upload, publishing, asset relocation, metadata JSON editing, and deletion remain deferred. Output and access-grant survey selectors now show short survey ID plus available code/client/date context to avoid duplicate labels.
+Branch: `feature/org-admin`.
 
-Controlled mutations now also include draft output registration, safe output metadata edits, storage-reference attachment, readiness transitions, and atomic current-output selection. The database rejects skipped transitions, readiness without storage references, non-eligible current outputs, and all mutations to published/archived outputs. Actions re-authenticate the actor, require `platform_admin`, rely on RLS, and use existing output audit triggers. No code path changes `profiles.role`; account roles remain only `platform_admin | user`, while `org_admin | editor | viewer` belong to memberships.
+Access Policy v2 is fully smoke-validated in staging. The user confirmed all
+member, org-admin, membership-transition, platform-exception, rejected-signup,
+anonymous, and cross-organization cases passed. Production is unchanged.
 
-Validation:
+This session started the Organization Admin phase:
 
-- TypeScript passes.
-- Targeted lint passes with no findings; repository-wide lint still fails on the pre-existing `components/maplibre.tsx` ban-ts-comment error.
-- Focused domain pgTAP passes 43/43.
-- Full pgTAP suite passes 91 tests across 5 files.
-- Focused output pgTAP passes 20/20 after adding storage-reference attachment coverage.
-- User smoke confirmed platform-admin access and normal-user denial for `/admin` before this slice.
-- Local schema lint still reports the pre-existing stale `app_private.backfill_legacy_organization_memberships` reference to removed `profiles.organization_id`; the output migration itself passes reset and pgTAP.
-- Authenticated visual smoke for `/admin/access-preview/[profileId]`, farm-grant controls, and `/admin/[resource]` list routes remains manual.
+- Added `supabase/migrations/20260820000000_org_admin_portal.sql`.
+- Added strict active-org resolution and narrow audited RPCs for the approved
+  organization-admin workflows.
+- Removed broad direct membership/onboarding mutation policies.
+- Preserved platform-only boundaries for Auth accounts, organization status,
+  resource relationships, survey/output creation, publication, platform
+  exceptions, and operational asset/readiness fields.
+- Added `supabase/tests/org_admin_portal.sql` with 16 passing assertions.
+- Clean local migration replay passed.
+- Existing pgTAP passed 126/126 before the focused org-admin suite; the new
+  focused suite passed 16/16 separately.
+- Regenerated `lib/database.types.ts` from the local schema and removed an
+  accidental encoding BOM without hand-editing the generated contracts.
 
-Next task: smoke Output Operations v1, then continue the approved workshop asset migration/readiness work. Output publication remains separately gated.
+Not completed:
 
-Do not touch unrelated scratch work in `.tmp/`, `issues.txt`, `workflow.txt`, or the user-owned deletion of `improve.txt`.
+- No `/org-admin` layout, pages, application context, or server actions exist.
+- TypeScript/lint/full combined pgTAP have not been rerun after the latest
+  generated-type refresh.
+- The org-admin migration has not received its staging inventory, backup/restore
+  rehearsal, rollback package, staging apply, or role smoke.
+
+Next action: implement the protected org-admin context/layout and RPC-only server
+actions, then build the portal pages. Validate locally before preparing any
+staging rollout. Do not mutate production.
+
+Preserve unrelated user-owned scratch/deletion state in `.tmp/`, `issues.txt`,
+`workflow.txt`, and `improve.txt`.
