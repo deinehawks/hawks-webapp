@@ -10,7 +10,6 @@ type AccountStatus = "pending" | "active" | "rejected";
 
 const DASHBOARD_PATH = "/dashboard";
 const ADMIN_PATH = "/admin";
-const ORG_ADMIN_PATH = "/org-admin";
 const LEGACY_ADMIN_PATH = "/dashboard/admin";
 const BASE_PATH = "/asimov-hawks";
 
@@ -133,35 +132,5 @@ export async function resolveAuthenticatedHomePath(
   const role = data?.role === "platform_admin" || data?.role === "user"
     ? data.role
     : null;
-  if (role === "user") {
-    const { data: memberships, error: membershipError } = await supabase
-      .from("organization_memberships")
-      .select("id, organization_id")
-      .eq("profile_id", user.id)
-      .eq("role", "org_admin")
-      .eq("status", "active")
-      .limit(2);
-    if (membershipError) {
-      throw new Error("Failed to resolve organization administrator access.", {
-        cause: membershipError,
-      });
-    }
-    if (memberships?.length === 1) {
-      const { data: organization, error: organizationError } = await supabase
-        .from("organizations")
-        .select("id")
-        .eq("id", memberships[0].organization_id)
-        .eq("status", "active")
-        .maybeSingle();
-      if (organizationError) {
-        throw new Error("Failed to resolve organization administrator access.", {
-          cause: organizationError,
-        });
-      }
-      if (organization) {
-        return ORG_ADMIN_PATH;
-      }
-    }
-  }
   return role ? getHomePathForRole(role) : fallback;
 }

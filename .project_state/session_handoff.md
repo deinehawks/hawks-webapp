@@ -2,7 +2,8 @@
 
 Last updated: 2026-08-25
 
-Branch after handoff: `development`.
+Current branch: `feature/org-admin-navigation`, based on `development` at
+`dcad51f2`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -103,12 +104,16 @@ unchanged, existing routes/assets worked, organization-admin and ordinary-user
 editing remained denied, anonymous access failed closed, and no new browser
 errors appeared. The survey-contract staging gate is closed.
 
-The next P1 is `feature/org-admin-navigation`. Active organization admins should
-land on the normal `/dashboard` experience and use a role-aware Organization
-Admin dropdown for the seven existing `/org-admin` pages. The dropdown is
-presentation only; the strict context, server guards, RLS, read-only Surveys,
-and absent Outputs surface remain unchanged. User App Preview follows this
-navigation correction. Production remains unchanged.
+The P1 org-admin navigation correction is implemented locally. Active
+organization admins now land on `/dashboard`; a shared server-side resolver
+shows the reusable Organization Admin dropdown only for exactly one active
+org-admin membership in an active organization. The dropdown contains the seven
+existing protected portal routes, and the portal sidebar includes a Dashboard
+return path. Zero, inactive, and ambiguous access do not receive navigation;
+the strict portal context still redirects or errors fail-closed. RLS, read-only
+Surveys, and absent Outputs remain unchanged. TypeScript, targeted ESLint, and
+whitespace checks pass. Next action: staging deployment and authenticated
+desktop/mobile smoke, then User App Preview. Production remains unchanged.
 
 Preserve unrelated user-owned scratch/deletion state in `.tmp/`, `issues.txt`,
 `workflow.txt`, and `improve.txt`.

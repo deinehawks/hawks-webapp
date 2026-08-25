@@ -32,12 +32,15 @@ Last updated: 2026-08-25
 - Survey-contract application deployment and signed-in staging smoke against
   `dcad51f2`, including restored metadata, compatibility checks, and denied-role
   coverage.
+- Local org-admin dashboard landing, shared access resolver, reusable
+  Organization Admin dropdown, dashboard return path, and focused TypeScript,
+  ESLint, and whitespace validation.
 
 ## P1
 
-- Add the role-aware Organization Admin sidebar dropdown and make `/dashboard`
-  the landing experience for active organization admins. Preserve the seven
-  existing protected portal destinations and all current authorization limits.
+- Deploy and smoke the org-admin dashboard navigation on staging. Verify
+  desktop/mobile dropdown behavior, the seven existing protected destinations,
+  normal-member denial, read-only Surveys, and absent Outputs.
 
 ## P2
 

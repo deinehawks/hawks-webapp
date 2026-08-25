@@ -102,10 +102,11 @@ flowchart LR
     handoff to user-first Signup Approvals. The single-migration staging gate
     and authenticated organization-admin submission/platform-admin review smoke
     passed on 2026-08-24.
-11. **Current P1:** make `/dashboard` the organization-admin landing experience
-    and add a reusable Organization Admin sidebar dropdown for the seven
-    existing protected portal destinations. This is navigation only and does
-    not expand survey, output, mutation, or organization scope.
+11. **Implemented locally; staging smoke pending:** `/dashboard` is the
+    organization-admin landing experience and a reusable Organization Admin
+    sidebar dropdown exposes the seven existing protected portal destinations.
+    This is navigation only and does not expand survey, output, mutation, or
+    organization scope.
 
 Every admin mutation must authenticate the actor, require `platform_admin`, rely on RLS, validate identifiers and transitions, retain history instead of hard deleting access records, and produce an `admin_audit_log` entry. Audit coverage does not make an otherwise unauthorized mutation acceptable.
 

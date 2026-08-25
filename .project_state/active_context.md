@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-25
 
-Current epic: Survey identity and client-field contract.
+Current epic: Organization Admin dashboard navigation.
 
 Completed:
 
@@ -38,12 +38,17 @@ Completed:
 15. Signed-in survey-contract staging smoke passed against deployment
     `dcad51f2`; the update was restored and all access and compatibility checks
     held.
+16. The org-admin navigation documentation/priority update is committed
+    separately, and the dashboard landing, shared access resolver, reusable
+    dropdown, and dashboard return path are implemented locally.
+17. TypeScript, targeted ESLint, and whitespace checks pass for the navigation
+    slice.
 
 Next sequence:
 
-1. Complete `feature/org-admin-navigation`: active organization admins land on
-   `/dashboard` and receive a role-aware dropdown for the seven existing
-   protected `/org-admin` pages.
+1. Deploy `feature/org-admin-navigation` to staging and complete authenticated
+   desktop/mobile smoke for landing, dropdown navigation, normal-member denial,
+   strict org-admin routes, read-only Surveys, and absent Outputs.
 2. Follow with `feature/user-app-preview` and `fix/output-types` as separate
    branches.
 

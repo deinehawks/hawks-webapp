@@ -10,6 +10,7 @@ import type { Survey, UserProfile } from "@/lib/types";
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
+import { OrgAdminNav } from "@/components/org-admin/org-admin-nav";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -26,10 +27,12 @@ export function AppSidebar({
   surveys,
   user,
   userProfile,
+  orgAdminOrganizationName,
 }: {
   surveys: Survey[];
   user: User;
   userProfile: UserProfile;
+  orgAdminOrganizationName?: string;
 }) {
   return (
     <Sidebar collapsible="offcanvas" variant="inset">
@@ -91,6 +94,9 @@ export function AppSidebar({
           </SidebarMenu>
         </SidebarGroup>
         <NavMain surveys={surveys} userProfile={userProfile} />
+        {orgAdminOrganizationName ? (
+          <OrgAdminNav organizationName={orgAdminOrganizationName} />
+        ) : null}
         {userProfile.role === "platform_admin" && (
           <SidebarGroup>
             <SidebarMenu>
