@@ -29,12 +29,15 @@ Last updated: 2026-08-25
 - Org-admin branch handoff and integration into `development`.
 - Local survey identity/client-field contract, narrow platform-admin RPC,
   locked admin UI, generated types, and focused/full validation.
+- Survey-contract application deployment and signed-in staging smoke against
+  `dcad51f2`, including restored metadata, compatibility checks, and denied-role
+  coverage.
 
 ## P1
 
-- Confirm the integrated survey-contract application deployment and complete
-  the signed-in platform-admin save plus denied/read-only role click-through.
-  The staging database rollout and database-role smoke are complete.
+- Add the role-aware Organization Admin sidebar dropdown and make `/dashboard`
+  the landing experience for active organization admins. Preserve the seven
+  existing protected portal destinations and all current authorization limits.
 
 ## P2
 

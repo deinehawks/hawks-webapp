@@ -1,6 +1,6 @@
 ﻿# Project Index
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
 Use this index after the compressed startup files. Document classifications prevent historical plans from being mistaken for current instructions.
 

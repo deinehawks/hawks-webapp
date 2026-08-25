@@ -35,12 +35,15 @@ Completed:
 14. The checksummed backup/restore, migration/containment, one-file staging
     apply, remote contract/history, linked types, automated suite, and
     rolled-back database-role authorization smoke gates pass.
+15. Signed-in survey-contract staging smoke passed against deployment
+    `dcad51f2`; the update was restored and all access and compatibility checks
+    held.
 
 Next sequence:
 
-1. Confirm deployment from `development` and complete a signed-in
-   platform-admin survey metadata save plus denied/read-only role click-through
-   in staging.
+1. Complete `feature/org-admin-navigation`: active organization admins land on
+   `/dashboard` and receive a role-aware dropdown for the seven existing
+   protected `/org-admin` pages.
 2. Follow with `feature/user-app-preview` and `fix/output-types` as separate
    branches.
 
@@ -53,5 +56,7 @@ Constraints:
   org-admin membership, including their own.
 - The strict org-admin context assumes the workshop rule of exactly one active
   org-admin organization membership.
+- Navigation visibility never replaces the strict org-admin context, server
+  checks, or RLS, and does not expose Outputs or survey mutations.
 - Survey identity/client contraction and global output-type migration remain
   separate slices.

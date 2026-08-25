@@ -97,10 +97,18 @@ updates and exposes the narrow RPC. Survey and audit counts remain 108 and 144.
 Linked DB lint reports only the known stale backfill function.
 
 The completed `feature/survey-contract` application and database slice is
-integrated into `development`. Next action: confirm the staging application
-deployment, then complete a signed-in platform-admin no-op metadata save and
-denied/read-only ordinary/org-admin UI click-through. Browser testing was
-unavailable in this session. Production remains unchanged.
+integrated into `development`. Signed-in staging smoke passed on deployment
+`dcad51f2`: the approved edit persisted and was restored, locked fields were
+unchanged, existing routes/assets worked, organization-admin and ordinary-user
+editing remained denied, anonymous access failed closed, and no new browser
+errors appeared. The survey-contract staging gate is closed.
+
+The next P1 is `feature/org-admin-navigation`. Active organization admins should
+land on the normal `/dashboard` experience and use a role-aware Organization
+Admin dropdown for the seven existing `/org-admin` pages. The dropdown is
+presentation only; the strict context, server guards, RLS, read-only Surveys,
+and absent Outputs surface remain unchanged. User App Preview follows this
+navigation correction. Production remains unchanged.
 
 Preserve unrelated user-owned scratch/deletion state in `.tmp/`, `issues.txt`,
 `workflow.txt`, and `improve.txt`.

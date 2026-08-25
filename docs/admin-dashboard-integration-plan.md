@@ -12,7 +12,8 @@ Earlier Phase 3A-3I milestones remain below as historical implementation evidenc
 Build a dedicated platform-admin application surface at `/admin` inside the existing Next.js application. It is a separate route tree and layout, not a separately deployed frontend.
 
 - Authenticated `platform_admin` accounts land on `/admin`.
-- Authenticated `user` accounts land on `/dashboard`.
+- Authenticated `user` accounts, including active organization admins, land on
+  `/dashboard`.
 - `/admin` and `/dashboard` independently enforce their role boundary on the server and render separate navigation and layouts.
 - The current `/dashboard/admin/*` Admin MVP is transitional. During cutover, its URLs redirect to equivalent `/admin/*` routes.
 - Platform admins may open the normal application only through an explicit operator navigation path. Admin authorization must never be inferred from UI visibility.
@@ -32,6 +33,10 @@ Users & Access now covers existing-account attachment and platform-approved self
 - `profiles.role` is the account-level source and is constrained to `platform_admin | user`.
 - `organization_memberships.role` is the organization-level source and uses only `org_admin | member`; membership status is evaluated separately.
 - Active membership opens the organization portal. Ordinary members need explicit grants for resources; organization admins receive management visibility over confirmed organization resources.
+- Active organization admins retain the normal survey dashboard and reach the
+  protected `/org-admin` routes through a role-aware Organization Admin sidebar
+  dropdown. Sidebar visibility is presentation only; strict server guards and
+  RLS remain authoritative.
 - Explicit survey/farm grants can be organization-scoped or platform exceptions. Organization-scoped grants require active membership and a confirmed organization-resource relationship.
 - Suspension makes organization-scoped grants ineffective; removal revokes them atomically; inactive organizations block scoped access and management.
 - `profiles.account_role` and `profiles.organization_id` have been removed from the local and staging schema. Historical PostgreSQL `app_role` enum labels are blocked by a check constraint and await a separate enum-rebuild cleanup.
@@ -97,6 +102,10 @@ flowchart LR
     handoff to user-first Signup Approvals. The single-migration staging gate
     and authenticated organization-admin submission/platform-admin review smoke
     passed on 2026-08-24.
+11. **Current P1:** make `/dashboard` the organization-admin landing experience
+    and add a reusable Organization Admin sidebar dropdown for the seven
+    existing protected portal destinations. This is navigation only and does
+    not expand survey, output, mutation, or organization scope.
 
 Every admin mutation must authenticate the actor, require `platform_admin`, rely on RLS, validate identifiers and transitions, retain history instead of hard deleting access records, and produce an `admin_audit_log` entry. Audit coverage does not make an otherwise unauthorized mutation acceptable.
 

@@ -96,5 +96,15 @@ ESLint, and rolled-back database-role authorization smoke passed. Direct
 authenticated survey updates are now denied in staging and the narrow RPC is
 live. The 108 survey rows and 144 audit rows remained unchanged after smoke.
 Linked DB lint reports only the known stale backfill function. The application
-code is integrated into `development`; staging deployment confirmation and a
-signed-in UI click-through remain pending. Production is unchanged.
+code is integrated into `development`. The signed-in staging application smoke
+passed on deployment `dcad51f2`: the approved update persisted and was restored,
+identity/client fields stayed locked, routes/assets remained operational, and
+organization-admin, ordinary-user, and anonymous denial boundaries held without
+new console/network errors. The survey-contract staging gate is closed.
+Production is unchanged.
+
+The next P1 is the org-admin dashboard navigation correction on
+`feature/org-admin-navigation`: active organization admins should land on the
+normal `/dashboard` experience and access the seven existing protected
+`/org-admin` destinations through a role-aware dropdown. This does not change
+RLS, server guards, survey read-only scope, or the prohibition on Outputs.
