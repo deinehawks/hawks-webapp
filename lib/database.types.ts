@@ -1901,6 +1901,19 @@ export type Database = {
         }
         Returns: string
       }
+      platform_admin_update_survey: {
+        Args: {
+          survey_area?: number
+          survey_area_code?: string
+          survey_category?: string
+          survey_flight_date?: string
+          survey_id: string
+          survey_location?: string
+          survey_status?: Database["public"]["Enums"]["mission_status"]
+          survey_type?: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       access_grant_status: "active" | "revoked" | "expired"

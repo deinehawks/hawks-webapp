@@ -4,17 +4,11 @@ import { revalidatePath } from "next/cache";
 import type { PostgrestError } from "@supabase/supabase-js";
 
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
-import type { Database, Tables, TablesInsert, TablesUpdate } from "@/lib/database.types";
+import type { Database, Tables, TablesInsert } from "@/lib/database.types";
 import { createClient } from "@/utils/supabase/server";
 
 type MissionStatus = Database["public"]["Enums"]["mission_status"];
 type RelationshipType = Database["public"]["Enums"]["domain_relationship_type"];
-
-type SurveyUpdateTable = {
-  update(values: TablesUpdate<"surveys">): {
-    eq(column: "id", value: string): PromiseLike<{ error: PostgrestError | null }>;
-  };
-};
 
 type SurveyFarmInsertTable = {
   insert(values: TablesInsert<"survey_farms">): PromiseLike<{ error: PostgrestError | null }>;
@@ -66,17 +60,15 @@ async function assertPlatformAdmin() {
   return profile;
 }
 
-function readSurveyPayload(formData: FormData): TablesUpdate<"surveys"> {
+function readSurveyPayload(formData: FormData) {
   return {
-    status: parseMissionStatus(readRequiredString(formData, "status")),
-    code: readOptionalString(formData, "code", 80),
-    location: readOptionalString(formData, "location", 200),
-    area_code: readOptionalString(formData, "areaCode", 80),
-    area: readOptionalNumber(formData, "area"),
-    type: readOptionalString(formData, "type", 80),
-    category: readOptionalString(formData, "category", 80),
-    access_code: readOptionalString(formData, "accessCode", 120),
-    flight_date: readOptionalString(formData, "flightDate", 40),
+    survey_status: parseMissionStatus(readRequiredString(formData, "status")),
+    survey_location: readOptionalString(formData, "location", 200) ?? undefined,
+    survey_area_code: readOptionalString(formData, "areaCode", 80) ?? undefined,
+    survey_area: readOptionalNumber(formData, "area") ?? undefined,
+    survey_type: readOptionalString(formData, "type", 80) ?? undefined,
+    survey_category: readOptionalString(formData, "category", 80) ?? undefined,
+    survey_flight_date: readOptionalString(formData, "flightDate", 40) ?? undefined,
   };
 }
 
@@ -86,12 +78,10 @@ export async function updateSurvey(formData: FormData) {
   const payload = readSurveyPayload(formData);
   const supabase = await createClient();
 
-  const { data: survey, error: loadError } = await supabase.from("surveys").select("id").eq("id", surveyId).maybeSingle();
-  if (loadError) throw new Error("Failed to verify survey.", { cause: loadError });
-  if (!survey) throw new Error("Survey not found.");
-
-  const surveysTable = supabase.from("surveys") as unknown as SurveyUpdateTable;
-  const { error } = await surveysTable.update(payload).eq("id", surveyId);
+  const { error } = await supabase.rpc("platform_admin_update_survey", {
+    survey_id: surveyId,
+    ...payload,
+  });
   if (error) throw new Error("Failed to update survey.", { cause: error });
 
   revalidatePath("/admin");

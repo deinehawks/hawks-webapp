@@ -10,6 +10,12 @@ Use this index after the compressed startup files. Document classifications prev
 - `docs/role-permission-model-and-migration-plan.md`: current account/membership/grant authority model and completed legacy-column migration history.
 - `docs/supabase-migration-runbook.md`: current database rollout, verification, recovery, and post-removal invariants.
 - `docs/admin-mvp-operator-guide.md`: current platform-admin operations for memberships, grants, and user-first signup review.
+- `docs/survey-identity-client-contract.md`: current immutable survey identity,
+  retained client compatibility, editable metadata, and first-stage mutation
+  contract.
+- `docs/survey-contract-staging-validation-2026-08-25.md`: checksummed backup,
+  isolated restore, migration/containment, staging apply, and verification
+  evidence for the first survey contract stage.
 - `.project_state/decisions.md`: concise approved decisions and explicit supersessions.
 
 ## Supporting Current References

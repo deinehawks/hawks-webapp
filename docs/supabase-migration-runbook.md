@@ -272,6 +272,51 @@ organization-admin onboarding submission and platform-admin queue review. The
 org-admin/onboarding review staging gate is closed. Production remains
 unchanged.
 
+### Survey update contract
+
+`20260825000000_contract_survey_updates.sql` is implemented and validated
+locally. It preserves survey identity, client compatibility, canonical
+relationships, and every asset path while restricting platform-admin metadata
+updates to `platform_admin_update_survey`. Direct `authenticated` updates to
+`public.surveys` are revoked; operational service-role workflows remain
+separate.
+
+Before staging:
+
+1. Run `supabase/verification/inventory_survey_contract.sql` in a read-only
+   transaction and retain only its aggregate output.
+2. Capture checksummed schema/Auth/Public backups outside Git and prove an
+   isolated restore.
+3. Replay the migration and
+   `supabase/rollback/20260825000000_contract_survey_updates.sql` containment
+   script against the restored clone.
+4. Confirm the linked dry-run contains only `20260825000000`, then apply to
+   non-production staging.
+5. Verify table privileges, RPC permissions, audit records, linked types, full
+   pgTAP, TypeScript, targeted ESLint, and authenticated platform-admin and
+   denied ordinary-user behavior.
+
+The local gate passes clean replay, focused pgTAP 8/8, full pgTAP 161/161,
+TypeScript, targeted ESLint, and whitespace validation. Local DB lint reports
+only the known stale legacy membership-backfill function.
+
+The aggregate read-only staging inventory passed on 2026-08-25: 108 surveys,
+complete client references, aligned legacy codes, no output-pointer mismatches,
+107 null organization codes, and nine duplicated non-null survey-code groups.
+The latter two findings confirm those compatibility fields must remain
+nullable/non-unique and immutable in this stage.
+
+The staging database gate completed on 2026-08-25: checksummed schema/Auth/
+Public backups, exact-count isolated restore, migration/containment/reapply,
+one-file dry-run, apply, history/no-pending verification, linked types, full
+161/161 pgTAP, TypeScript, targeted ESLint, and rolled-back database-role
+authorization smoke all passed. Linked DB lint reports only the known stale
+legacy backfill function. The matching application code is integrated into
+`development`; deployment confirmation and a signed-in UI click-through
+remain. Detailed evidence is in
+`docs/survey-contract-staging-validation-2026-08-25.md`. Production is
+unchanged.
+
 ## Delivery gates
 
 - Limited public-internet workshop deployment target: September 28-30, 2026.

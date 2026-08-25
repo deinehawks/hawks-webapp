@@ -1,6 +1,6 @@
 ﻿# Decisions
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
 ## Current Decisions
 
@@ -32,6 +32,11 @@ Last updated: 2026-08-24
 - Keep service-role credentials local/admin-only and outside browser/runtime/deployment code.
 - Keep workshop deployment limited to approved invited datasets and protected public-internet delivery through Cloudflare, NGINX, Supabase, and the approved asset origin.
 - Preserve legacy survey/client and asset-path compatibility where required, but never treat those relationships as profile authorization.
+- Treat survey `id` and `code` as immutable dataset identity, and retain
+  `client_id`, `access_code`, and `organization_code` as read-only
+  compatibility fields. Platform-admin metadata edits use the narrow audited
+  survey RPC; geospatial, output, and asset-routing fields remain outside that
+  workflow.
 - Defer platform-created Auth accounts, automated invitation delivery, platform-admin role changes, true impersonation, hard deletion, broad asset/infrastructure administration, and full-history migration.
 
 ## Superseded Decisions

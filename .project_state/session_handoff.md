@@ -1,8 +1,8 @@
 # Session Handoff
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
-Branch: `feature/org-admin`.
+Branch after handoff: `development`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -66,10 +66,41 @@ The user completed authenticated staging smoke for organization-admin
 onboarding submission and the platform-admin review queue; both worked as
 expected. The org-admin/onboarding review phase is complete in staging.
 
-Next action: finish the normal branch handoff for `feature/org-admin`, then
-create `feature/survey-contract` from the appropriate updated integration base
-and begin the staged survey identity/client-field contraction. Do not mix that
-contract work into the org-admin branch.
+The completed org-admin branch is pushed and merged into `development` at
+`d3f6f32a`. `feature/survey-contract` was created from that updated tip.
+
+The first survey contract stage is implemented locally. Stable identity and
+client compatibility fields are locked in the platform-admin UI and omitted
+from its mutation payload. A narrow platform-admin RPC updates only approved
+metadata, direct authenticated table updates are revoked, and the existing
+survey audit trigger remains authoritative. No legacy columns or asset paths
+were removed. The contract is documented in
+`docs/survey-identity-client-contract.md`.
+
+Clean local replay, generated types, focused pgTAP 8/8, full pgTAP 161/161,
+TypeScript, targeted ESLint, and whitespace checks pass. Local DB lint reports
+only the known stale legacy backfill function.
+
+The aggregate-only staging inventory completed read-only on 2026-08-25. All 108
+surveys have valid client references and aligned legacy codes, with no
+output-pointer mismatches. There are 107 null organization codes and nine
+duplicated non-null survey-code groups; both fields therefore remain
+nullable/non-unique and locked.
+
+The staging database rollout is complete. Four checksummed backups are retained
+under `backups/staging-survey-contract-20260825/`; an isolated restore matched
+all compared counts. Exact migration/containment/reapply, one-file dry-run,
+apply, remote history/no-pending checks, contract/permission verification,
+linked types, full pgTAP 161/161, TypeScript, targeted ESLint, and rolled-back
+database-role smoke passed. Staging now denies direct authenticated survey
+updates and exposes the narrow RPC. Survey and audit counts remain 108 and 144.
+Linked DB lint reports only the known stale backfill function.
+
+The completed `feature/survey-contract` application and database slice is
+integrated into `development`. Next action: confirm the staging application
+deployment, then complete a signed-in platform-admin no-op metadata save and
+denied/read-only ordinary/org-admin UI click-through. Browser testing was
+unavailable in this session. Production remains unchanged.
 
 Preserve unrelated user-owned scratch/deletion state in `.tmp/`, `issues.txt`,
 `workflow.txt`, and `improve.txt`.
