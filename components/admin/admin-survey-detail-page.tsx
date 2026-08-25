@@ -52,15 +52,22 @@ function SurveyFields({ survey }: { survey: SurveyRow }) {
   return <>
     <input name="surveyId" type="hidden" value={survey.id} />
     <label className="grid gap-2 text-sm font-medium">Status<select className="h-9 rounded-md border bg-background px-3 text-sm" defaultValue={survey.status} name="status" required>{statuses.map((status) => <option key={status} value={status}>{formatLabel(status)}</option>)}</select></label>
-    <TextInput defaultValue={survey.code} label="Code" maxLength={80} name="code" />
     <TextInput defaultValue={survey.location} label="Location" maxLength={200} name="location" />
     <TextInput defaultValue={survey.area_code} label="Area code" maxLength={80} name="areaCode" />
     <TextInput defaultValue={survey.area} label="Area" name="area" type="number" />
     <TextInput defaultValue={survey.type} label="Type" maxLength={80} name="type" />
     <TextInput defaultValue={survey.category} label="Category" maxLength={80} name="category" />
-    <TextInput defaultValue={survey.access_code} label="Access code" maxLength={120} name="accessCode" />
     <label className="grid gap-2 text-sm font-medium">Flight date<input className="h-9 rounded-md border bg-background px-3 text-sm" defaultValue={survey.flight_date ? survey.flight_date.slice(0, 10) : ""} name="flightDate" type="date" /></label>
   </>;
+}
+
+function LockedField({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="grid gap-1">
+      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="break-all text-sm">{value ?? "Not set"}</span>
+    </div>
+  );
 }
 
 function LinkFarmForm({ farms, survey }: { farms: FarmOption[]; survey: SurveyRow }) {
@@ -106,7 +113,21 @@ export default async function AdminSurveyDetailPage({ params }: { params: Promis
 
     <section className="grid gap-4 md:grid-cols-4"><Card className="rounded-lg"><CardHeader><CardTitle className="text-sm font-medium">Flight date</CardTitle></CardHeader><CardContent className="text-sm">{formatDate(survey.flight_date)}</CardContent></Card><Card className="rounded-lg"><CardHeader><CardTitle className="text-sm font-medium">Area</CardTitle></CardHeader><CardContent className="text-sm">{formatArea(survey.area)}</CardContent></Card><Card className="rounded-lg"><CardHeader><CardTitle className="text-sm font-medium">Farm links</CardTitle></CardHeader><CardContent className="text-3xl font-semibold tabular-nums">{surveyFarms.length}</CardContent></Card><Card className="rounded-lg"><CardHeader><CardTitle className="text-sm font-medium">Ready outputs</CardTitle></CardHeader><CardContent className="text-3xl font-semibold tabular-nums">{readyOutputs}</CardContent></Card></section>
 
-    <Card className="rounded-lg"><CardHeader><CardTitle className="text-base">Edit survey</CardTitle></CardHeader><CardContent><form action={updateSurvey} className="grid gap-4 lg:grid-cols-2"><SurveyFields survey={survey} /><div className="flex justify-end lg:col-span-2"><Button type="submit">Save changes</Button></div></form></CardContent></Card>
+    <Card className="rounded-lg">
+      <CardHeader>
+        <CardTitle className="text-base">Locked identity and compatibility</CardTitle>
+        <p className="text-sm text-muted-foreground">These values anchor routes, client mappings, legacy datasets, and asset paths. They are read-only in this workflow.</p>
+      </CardHeader>
+      <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <LockedField label="Survey ID" value={survey.id} />
+        <LockedField label="Survey code" value={survey.code} />
+        <LockedField label="Legacy access code" value={survey.access_code} />
+        <LockedField label="Legacy organization code" value={survey.organization_code} />
+        <LockedField label="Client" value={survey.client?.code ?? survey.client?.name ?? survey.client_id} />
+      </CardContent>
+    </Card>
+
+    <Card className="rounded-lg"><CardHeader><CardTitle className="text-base">Edit survey metadata</CardTitle></CardHeader><CardContent><form action={updateSurvey} className="grid gap-4 lg:grid-cols-2"><SurveyFields survey={survey} /><div className="flex justify-end lg:col-span-2"><Button type="submit">Save changes</Button></div></form></CardContent></Card>
 
     <section className="grid gap-4 xl:grid-cols-2"><LinkFarmForm farms={farms} survey={survey} /><LinkOrganizationForm organizations={organizations} survey={survey} /></section>
 

@@ -1,8 +1,8 @@
 # Active Context
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
-Current epic: Admin and Organization Access Model v2.
+Current epic: Survey identity and client-field contract.
 
 Completed:
 
@@ -28,11 +28,19 @@ Completed:
     linked types, and the full 153/153 pgTAP suite.
 11. User-assisted authenticated staging smoke passed for org-admin onboarding
     submission and platform-admin review; the org-admin phase is complete.
+12. `feature/org-admin` is pushed and merged into `development`; the new
+    `feature/survey-contract` branch starts from that integration tip.
+13. The first compatibility-safe survey update contract is implemented locally,
+    with generated contracts and focused/full validation passing.
+14. The checksummed backup/restore, migration/containment, one-file staging
+    apply, remote contract/history, linked types, automated suite, and
+    rolled-back database-role authorization smoke gates pass.
 
 Next sequence:
 
-1. Prepare `feature/survey-contract` as the next separate branch and execute the
-   staged survey identity/client-field contraction plan.
+1. Confirm deployment from `development` and complete a signed-in
+   platform-admin survey metadata save plus denied/read-only role click-through
+   in staging.
 2. Follow with `feature/user-app-preview` and `fix/output-types` as separate
    branches.
 

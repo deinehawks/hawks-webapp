@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
 ## Completed
 
@@ -26,10 +26,15 @@ Last updated: 2026-08-24
   the complete single-migration non-production staging rollout gate.
 - Authenticated staging smoke for org-admin onboarding submission and
   platform-admin review; the org-admin phase is complete.
+- Org-admin branch handoff and integration into `development`.
+- Local survey identity/client-field contract, narrow platform-admin RPC,
+  locked admin UI, generated types, and focused/full validation.
 
 ## P1
 
-- Contract survey identity/client fields on `feature/survey-contract`.
+- Confirm the integrated survey-contract application deployment and complete
+  the signed-in platform-admin save plus denied/read-only role click-through.
+  The staging database rollout and database-role smoke are complete.
 
 ## P2
 

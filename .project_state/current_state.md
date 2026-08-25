@@ -1,8 +1,8 @@
 # Current State
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
-Current branch: `feature/org-admin`.
+Current branch after handoff: `development`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -61,3 +61,40 @@ and full pgTAP (153/153). The user then passed authenticated staging smoke for
 org-admin request submission and platform-admin onboarding review. The
 org-admin/onboarding review phase is complete in staging. Production is
 unchanged.
+
+The completed org-admin branch is pushed and merged into `development` at
+`d3f6f32a`. The first survey identity/client-field contract stage is
+implemented locally on `feature/survey-contract`:
+
+- `id`, `code`, `client_id`, `access_code`, and
+  `organization_code` remain stored compatibility fields and are read-only in
+  the platform-admin survey workflow.
+- Editable metadata is limited to status, location, flight date, area, area
+  code, type, and category through narrow audited RPC
+  `platform_admin_update_survey`.
+- Direct authenticated survey updates are revoked; operational service-role
+  scripts remain separate.
+- No survey columns, routes, relationships, storage keys, or asset paths are
+  removed.
+- Clean local replay, generated types, focused pgTAP 8/8, full pgTAP 161/161,
+  TypeScript, targeted ESLint, and whitespace checks pass. Local DB lint reports
+  only the known stale legacy backfill function.
+
+The aggregate read-only staging inventory completed on 2026-08-25: all 108
+surveys have codes, access codes, valid client references, and aligned legacy
+values; output pointers have no mismatches. There are 107 null organization
+codes and nine duplicated non-null survey-code groups, so those compatibility
+fields remain nullable/non-unique and immutable. The pre-migration inventory
+showed the expected broad update privilege and no contract RPC.
+
+The survey-contract staging database gate then completed: four checksummed
+schema/Auth/Public backups are retained under the ignored recovery directory;
+the isolated restore matched all compared counts; exact
+migration/containment/reapply, one-file dry-run, apply, remote history,
+no-pending verification, linked types, full pgTAP 161/161, TypeScript, targeted
+ESLint, and rolled-back database-role authorization smoke passed. Direct
+authenticated survey updates are now denied in staging and the narrow RPC is
+live. The 108 survey rows and 144 audit rows remained unchanged after smoke.
+Linked DB lint reports only the known stale backfill function. The application
+code is integrated into `development`; staging deployment confirmation and a
+signed-in UI click-through remain pending. Production is unchanged.
