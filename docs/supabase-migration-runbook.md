@@ -1,4 +1,7 @@
-# Supabase UUID Tenant and Domain Migration Runbook
+﻿# Supabase UUID Tenant and Domain Migration Runbook
+
+Last updated: 2026-08-24
+Status: Authoritative database rollout runbook
 
 Target staging project: `llealjcaqvltrtdwwzrh`
 
@@ -9,20 +12,15 @@ current staging or production state.
 Contract cleanup, storage finalization, and deletion of legacy objects require
 separate approval.
 
-Phase 3F authorizes only the application-level `clients` classification-field
-update path for platform admins. Phase 3G-A adds audit infrastructure for
-`client_people` and `client_organizations`. Phase 3G-B authorizes checked RPCs
-that map a legacy client to an existing canonical person or organization.
-Phase 3G-C authorizes checked RPCs that create minimal canonical people or
-organizations and immediately map them to a legacy client. Phase 3H-A adds
-read-only membership review views. Phase 3H-B adds a platform-admin-only
-server action for creating ordinary member memberships for existing profiles and
-existing organizations. Phase 3H-C adds platform-admin-only status changes for
-ordinary member memberships without deleting records or changing roles. Future SQL
-or server actions for org-admin promotion, Auth-user creation, farm, grant,
-output, storage, or destructive mutations
-must be created, reviewed, and rehearsed only after the blocking human decisions
-below are approved.
+The additive Phase 3F-3I work, the 2026-08-12 role cleanup, Output Operations
+(`20260817000000`), and Access Policy v2 (`20260818000000`) are completed in
+local and staging environments. Production has not received Access Policy v2.
+`profiles.account_role` and `profiles.organization_id` are removed;
+`profiles.role` is constrained to `platform_admin | user`; organization
+membership uses `org_admin | member`; ordinary members require explicit grants
+for resources. The original sequence remains documented as rollout history.
+Current admin architecture and delivery order are owned by
+`docs/admin-dashboard-integration-plan.md`.
 
 ## Required inputs
 
@@ -35,6 +33,7 @@ below are approved.
   as organization, individual, or unclassified without changing the row.
 - Approved single-organization membership, multi-farm survey, explicit farm and
   survey grant, and platform-only organization-admin promotion rules.
+- Current role-source-of-truth model from `docs/role-permission-model-and-migration-plan.md` for every authorization or admin change.
 - Separate approval for Auth provisioning, output/report lifecycle, audit
   retention, invitation delivery, and protected asset delivery before those
   capabilities are implemented.
@@ -51,21 +50,227 @@ Before drafting domain SQL, confirm and record:
    records remain `unclassified`.
 2. `profiles` remains the application-account table. Existing rows may be
    organization-level accounts; future people may have no login.
-3. Global account role (`platform_admin` or `individual`) is separate from
-   organization membership role (`org_admin` or `member`).
+3. Account-level role belongs in `profiles.role` only, with target values
+   `platform_admin` and `user`; organization-level role belongs in
+   `organization_memberships.role`, with target values `org_admin` and `member`.
 4. Normal accounts have at most one live organization membership in v1.
 5. Farms/plantation areas are separate from people and organizations, and their
    owner/operator/contact metadata does not grant access.
 6. Surveys remain the mission records and relate to multiple farms through
    `survey_farms`, not one canonical `surveys.farm_id`.
-7. A farm grant exposes only the farm record; a separate survey grant is
-   required for shared survey data and outputs.
+7. Membership alone grants no farm/survey/output access to ordinary members. A
+   farm grant exposes only the farm record; a separate survey grant exposes its
+   survey and outputs.
 8. Every new output/report record traces to a survey; existing `orthos` and
    `point_clouds` continue using `survey_id`.
 
 Do not apply `supabase/deferred/contract_uuid_tenant_keys.sql` or
 `supabase/deferred/secure_detected_objects_storage.sql` while any blocking
 domain or authorization decision remains unresolved.
+
+## Completed role cleanup and current pre-contract gate
+
+The role cleanup was applied through migrations `20260812000000` to
+`20260812005500`. Its historical order was: remove active `account_role`
+dependence; expand and backfill membership roles; normalize profile roles; cut
+authorization to memberships/grants; remove the legacy profile-organization
+fallback; drop both legacy profile columns; regenerate types; and constrain
+`profiles.role` to `platform_admin | user`.
+
+Current contract work must preserve these post-removal invariants:
+
+- no live policy, helper, action, test, verification query, or generated type
+  depends on either removed profile column;
+- organization access comes from active memberships and explicit grants;
+- protected asset and application reads use the same access model;
+- `surveys.client_id` and legacy asset paths remain compatibility relationships,
+  not profile-owned authorization;
+- the deferred `app_role` enum rebuild remains a separate reviewed migration.
+
+## Access Policy v2 local validation and staging gate
+
+`20260818000000_access_policy_v2.sql` is a targeted authorization cleanup. It:
+
+- contracts `membership_role` to `org_admin | member`, mapping legacy
+  `viewer`/`editor` rows to `member`;
+- adds nullable `organization_id` to farm/survey grants;
+- requires active membership, active organization, and confirmed resource
+  relationship for organization-scoped grants;
+- revokes scoped grants when membership becomes `removed`;
+- removes legacy permissive survey/ortho/point-cloud policies;
+- adds approved-signup and organization-onboarding-request tables/functions;
+- keeps direct Auth-account creation out of the Next.js runtime.
+
+Before staging apply:
+
+1. Run `supabase/verification/inventory_access_policy_v2.sql` read-only and save
+   its output outside Git when it contains account emails or operational data.
+2. Capture and test a restorable staging backup.
+3. Review the schema/policy diff and confirm the target project.
+4. Confirm all legacy `viewer`/`editor` memberships are intended to become
+   `member`.
+5. Confirm organization-scoped grants have confirmed matching relationships.
+6. Rehearse clean apply and `supabase/tests/access_policy_v2.sql` locally.
+7. Keep `supabase/rollback/20260818000000_access_policy_v2.sql` with the operator
+   package. It is a containment rollback for an unused/non-production rollout;
+   after accounts claim approvals or scoped grants are used, restore the tested
+   backup instead of guessing historical roles.
+
+After staging apply, regenerate types through the approved generator, run the
+full pgTAP suite, and smoke platform admin, org admin, member, suspended member,
+removed member, platform exception, approved signup, rejected signup, and
+anonymous/cross-organization sessions. Production remains separately approved.
+
+### 2026-08-18 staging rollout record
+
+- Linked target confirmed as `llealjcaqvltrtdwwzrh`.
+- The ordered dry-run contained only Output Operations
+  (`20260817000000`) and Access Policy v2 (`20260818000000`).
+- Pre-change schema, public/auth data, and Auth schema snapshots were stored
+  outside Git under the operator's local temporary backup directory. SHA-256
+  checks completed successfully.
+- Restore rehearsal passed in an isolated local database. Restore Auth schema
+  first while deferring `on_auth_user_created`, restore Public schema (which
+  recreates that trigger), restore the separate Auth data once, then stream only
+  `public.*` statements from the combined data snapshot with triggers disabled
+  for the dump's documented circular foreign keys.
+- Affected inventory: four memberships (`1 org_admin`, `1 editor`, `2 viewer`),
+  two active survey grants, no farm grants, and one archived orthomosaic output.
+- Post-apply inventory: `1 org_admin`, `3 member`, zero viewer/editor rows, and
+  both survey grants organization-scoped. Required signup, onboarding,
+  authorization, protected-asset, and output-readiness objects are present.
+- Linked migration history and a second dry-run confirm staging is current.
+- Linked database types were regenerated and TypeScript passed.
+- Database lint retains only the pre-existing stale
+  `app_private.backfill_legacy_organization_memberships` error.
+- The full user-assisted authenticated role/session matrix passed on
+  2026-08-20. Production rollout remains prohibited pending separate approval.
+
+### User-first signup corrective migration
+
+`20260818001000_user_first_signup_requests.sql` supersedes the pre-approved
+email workflow after product clarification. It was applied to staging on
+2026-08-19 after inventory and tested backup gates. Production is unchanged.
+
+- Existing profiles become `active`; new non-seed Auth users become `pending`.
+- New users create and confirm their own account before review.
+- `account_signup_requests` is self-readable and platform-admin-readable only.
+- Approval atomically selects organization/role, creates membership, activates
+  the profile, and closes the request. Rejection blocks application access.
+- Existing open pre-approvals are revoked and the legacy claim RPC is no longer
+  executable by authenticated users.
+- Before applying, run
+  `supabase/verification/inventory_user_first_signup_requests.sql`, capture and
+  restore-test a fresh staging backup, review open legacy approvals, and verify
+  the dry-run contains only `20260818001000`.
+- After applying, smoke unconfirmed signup, confirmed pending access, admin
+  queue visibility, member/org-admin approval, rejection, repeated review denial,
+  anonymous denial, and cross-organization/resource denial.
+- Before interactive signup smoke, allowlist the exact callback URL in Supabase
+  Authentication URL Configuration. Local development uses
+  http://localhost:3000/asimov-hawks/auth/confirm; deployments use the same
+  base-path callback on their HTTPS origin. The application explicitly supplies
+  this redirect and supports both PKCE code and token-hash callbacks.
+
+The 2026-08-19 staging inventory found 23 Auth users, 23 profiles, and one
+already-revoked legacy approval. A full schema plus Auth/Public data recovery
+rehearsal restored matching counts. Migration history and a no-pending dry-run
+passed; post-migration types contain the request table, account status, and both
+review RPCs. Interactive signup smoke found and corrected a missing base-path
+callback plus PKCE-code handling on 2026-08-20. A fresh single-use confirmation
+link, pending review, approval, membership assignment, and activated login smoke
+passed.
+
+## Organization Admin portal migration
+
+`20260820000000_org_admin_portal.sql` and corrective migration
+`20260824000000_restrict_org_admin_survey_output.sql` were applied to staging
+on 2026-08-24. Together they replace
+broad organization-admin membership/onboarding mutation paths with narrow
+audited RPCs for approved farm, grant, member, organization-profile, and
+onboarding-request operations. Surveys are read-only and Outputs remain
+platform-admin-only; the corrective migration removes both org-admin mutation
+RPCs from the public contract.
+
+Local evidence:
+
+- clean database replay passed;
+- the combined pgTAP suite passed 142/142 across eight files;
+- generated database types include all org-admin RPC contracts.
+- the protected portal, server actions, TypeScript, targeted ESLint, and
+  whitespace checks pass locally.
+
+### 2026-08-24 staging rollout record
+
+- Linked target was confirmed as `llealjcaqvltrtdwwzrh`; the dry-run contained
+  only the two org-admin migrations.
+- Pre-apply inventory found one valid active org admin, no multi-organization
+  org-admin ambiguity, no invalid organization-scoped grants, and the expected
+  legacy onboarding insert/update policies.
+- Fresh application/private schema, Auth schema, and Auth/Public data backups
+  were stored outside Git in the operator's temporary backup directory and
+  SHA-256 checksummed.
+- Recovery rehearsal passed against an isolated local database. The Auth
+  trigger was deferred until Auth and application schemas existed; the local
+  `extensions`, `vault`, `app_private`, and `supabase_realtime` bootstrap
+  objects were created before restore. Restored counts matched staging for all
+  compared Auth and domain tables.
+- Exact migration replay and the guarded non-destructive containment script
+  passed against the restored clone. Inventory and containment artifacts are
+  `supabase/verification/inventory_org_admin_portal.sql` and
+  `supabase/rollback/20260820000000_org_admin_portal.sql`.
+- Both migrations applied successfully. Linked history and a second dry-run
+  show no pending migrations. Post-apply verification found the 11 approved
+  org-admin RPCs, both grant-read policies, and both audit triggers; survey and
+  output mutation RPCs are absent.
+- Linked types were regenerated. TypeScript and targeted ESLint passed, and the
+  full local pgTAP suite passed 142/142. Linked DB lint reports only the known
+  stale `app_private.backfill_legacy_organization_memberships` error.
+- The CLI completed the database push but its optional pg-delta catalog cache
+  step warned about a missing temporary CA file. Independent history,
+  inventory, permissions, and no-pending checks passed afterward.
+
+The authenticated post-rollout org-admin UI smoke passed on 2026-08-24 for
+onboarding submission/cancellation, member and grant lifecycles, read-only
+survey visibility, absent Outputs, and prohibited role/scope boundaries.
+Production remains unchanged and must not receive these migrations as part of
+validation.
+
+### Platform onboarding review corrective migration
+
+`20260824001000_admin_onboarding_request_review.sql` was applied to staging on
+2026-08-24. It adds the
+missing `/admin/onboarding-requests` review contract: platform admins may
+approve or reject pending organization requests through narrow audited RPCs,
+while direct authenticated table mutation is revoked. Approval records intent
+and review metadata only; recipients still use user-first signup and the
+separate Signup Approvals queue.
+
+The single-migration non-production gate passed against
+`llealjcaqvltrtdwwzrh`:
+
+- Inventory found two cancelled requests, no duplicate pending email, no
+  pending request for an inactive organization, and the expected pre-migration
+  broad platform-admin mutation policy.
+- Fresh schema, Auth schema, and Auth/Public data backups were stored outside
+  Git and SHA-256 checksummed. An isolated restore matched staging counts for
+  24 Auth users, 24 profiles, 3 organizations, 5 memberships, 2 onboarding
+  requests, 142 audit rows, 3 farms, 108 surveys, and 1 output.
+- Exact migration and containment replay passed on the restored clone. The
+  linked dry-run contained only `20260824001000` before apply and no migrations
+  afterward.
+- Independent post-apply verification confirmed `review_notes`, both review
+  RPCs, read-only platform/org-admin policies, no direct authenticated table
+  mutations, and preserved request data. Linked types were regenerated.
+- TypeScript, targeted ESLint, whitespace checks, and full local pgTAP (153/153)
+  pass. Linked DB lint reports only the known stale legacy membership-backfill
+  function. The optional pg-delta cache step emitted its known missing temporary
+  CA-file warning after push; independent history and contract checks passed.
+
+User-assisted authenticated staging smoke passed on 2026-08-24 for
+organization-admin onboarding submission and platform-admin queue review. The
+org-admin/onboarding review staging gate is closed. Production remains
+unchanged.
 
 ## Delivery gates
 
@@ -116,8 +321,7 @@ codes or names alone.
 ```sql
 select id, code, name from public.clients order by code;
 
-select role, count(*) as profiles,
-  count(*) filter (where organization_id is null) as unassigned
+select role, count(*) as profiles
 from public.profiles group by role order by role;
 
 select client_id, count(*) as surveys,
@@ -190,8 +394,9 @@ non-destructive and do not rename or remove existing columns in the first releas
   canonical organizations rather than being forced onto mixed clients.
 - Optional profile-to-person links; organization-level profiles may remain
   unlinked.
-- Separate global account role and profile-based organization membership with
-  one live organization per normal account.
+- profiles.role as the account-level source of truth and profile-based
+  organization membership roles with one live organization per normal account in
+  v1.
 - Separate organization/person and farm/person/organization domain metadata
   that grants no access automatically.
 - `survey_farms` for many-to-many survey coverage and `survey_organizations`
@@ -276,8 +481,8 @@ created by treating a `clients` row as a farmer, no canonical record or farm was
 inferred without an approved mapping, and each survey has at most one primary
 `survey_farms` row.
 
-Extend `supabase/tests/authorization.sql` to cover anonymous, unassigned user,
-individual, organization member, legacy viewer/editor compatibility,
+Authorization coverage must include anonymous, unassigned user,
+individual, organization member, legacy-role conversion,
 organization admin, platform admin, farm-grant, and survey-grant cases. Test
 permitted and denied
 select/insert/update/delete operations through direct SQL/REST-equivalent calls,
@@ -338,8 +543,9 @@ After the observation window:
 
 1. Confirm every legacy client is classified or intentionally retained as
    `unclassified`, and no farmer/contact has been forced into `clients`.
-2. Confirm pending profiles are intentionally individual, have at most one live
-   organization membership, or are explicitly promoted platform administrators.
+2. Confirm pending profiles are intentionally unassigned user accounts, have at
+   most one live organization membership, or are explicitly promoted platform
+   administrators.
 3. Confirm required farms have reviewed metadata, required surveys have complete
    `survey_farms` mappings, and every output/report resolves to a survey.
 4. Confirm legacy routes, UUID/code lookups, maps, tiles, point clouds,
@@ -353,9 +559,7 @@ After the observation window:
    sequence again.
 8. Delete legacy storage objects only through a separately reviewed operation.
 
-The contract must not require every non-platform profile to have an
-`organization_id`, because an `individual` account may be unassigned. It must
-enforce at most one live organization membership for normal accounts and must
+The contract must allow a `user` account to have no active membership. It must enforce at most one live organization membership for normal accounts and must
 not make `surveys.client_id` the sole permanent relationship when surveys span
 multiple farms.
 
@@ -363,11 +567,8 @@ multiple farms.
 
 - Keep `clients.code` for `/dashboard/orthomap/[plantation]`, labels, local tile
   directories, and point-cloud asset paths.
-- Keep `profiles.organization_id`, `profiles.role`, `surveys.client_id`, and
-  legacy code columns until compatible reads and RLS pass the observation gate.
-- Add canonical people/organization mappings, memberships, `survey_farms`, and
-  explicit grants alongside legacy relationships; unresolved clients continue
-  through the current tenant path.
+- Keep `surveys.client_id`, reviewed client mappings, and required legacy code columns while routes and datasets still depend on them. They do not grant profile access by themselves.
+- Preserve canonical people/organization mappings, memberships, `survey_farms`, and explicit grants. Unresolved clients may retain compatibility metadata but must not regain a profile-owned authorization fallback.
 - Keep `orthos.survey_id`, `point_clouds.survey_id`, current-output uniqueness,
   and existing survey normalization in `lib/actions/surveys.ts`.
 - Add farm and output/report relationships as nullable metadata first. Existing

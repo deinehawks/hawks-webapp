@@ -1,4 +1,4 @@
-# AGENTS.override.md
+﻿# AGENTS.override.md
 
 This compact override is the active project guidance. It intentionally replaces the longer root `AGENTS.md` during Codex instruction discovery.
 
@@ -35,7 +35,7 @@ Keep project-state files concise. Move detailed investigation, decisions, logs, 
 
 ASIMOV-HAWKS is a Next.js dashboard for authenticated users to inspect agricultural drone surveys. It lists survey areas, summarizes banana-plant detections, renders survey and organization-wide orthomosaics, and displays ODM/LiDAR point clouds.
 
-The compatible application uses UUID tenant relationships through `profiles.organization_id` and `surveys.client_id` while retaining legacy code columns during the expand phase. Additive domain work separates profiles, people, organizations, farms, surveys, outputs, memberships, grants, and audit records.
+The application authorizes account scope through `profiles.role`, organization scope through active `organization_memberships`, and resource exceptions through explicit grants. `profiles.account_role` and `profiles.organization_id` are removed; `surveys.client_id`, client mappings, and legacy code/asset paths remain dataset compatibility relationships where still required.
 
 Workshop delivery is a limited public-internet deployment for invited users on September 28-30, 2026, followed by stabilization, documentation, and handoff on October 1-9, 2026. Protect the deadline by migrating only approved invited-client datasets and deferring full-history migration, broad automation, destructive workflows, DAM, advanced analytics, and general multi-organization access.
 
@@ -90,7 +90,7 @@ npm run start
 
 - Middleware refreshes sessions and redirects unauthenticated non-auth routes. Preserve the cookie-copying sequence and `auth.getUser()` call in `utils/supabase/middleware.ts`.
 - Server layouts/pages and protected actions must independently call `auth.getUser()`.
-- Current compatibility uses `profiles.organization_id` and `surveys.client_id` as the UUID tenant boundary.
+- Current authorization uses `profiles.role`, active organization memberships, and explicit grants. `surveys.client_id` remains a dataset compatibility relationship, not profile-owned authorization.
 - UI filtering is not authorization. Preserve or strengthen RLS and server-side checks.
 - Do not weaken signup, redirect, OTP, tenant, role, RLS, storage, or session-cookie behavior.
 - Profiles are application accounts, not a general farmer/contact directory.
@@ -100,7 +100,7 @@ npm run start
 
 - Checked-in migrations and SQL are repository contract evidence, not proof of remote staging or production state.
 - Inspect the target Supabase project read-only before future database work.
-- Prefer additive, nullable relationships first. Keep legacy UUID tenant and asset-path behavior operational until mappings and gates are reviewed.
+- Prefer additive, nullable relationships first. Keep required survey/client and asset-path compatibility operational until mappings and gates are reviewed; do not reintroduce removed profile authorization fields.
 - Do not apply `supabase/deferred/contract_uuid_tenant_keys.sql` or `supabase/deferred/secure_detected_objects_storage.sql` until documented gates pass.
 - Do not manually invent generated database types. Regenerate only through an approved generator and review the diff.
 - `SUPABASE_SERVICE_ROLE_KEY` is local/admin-only. Never expose it through browser code, `NEXT_PUBLIC_*`, deployment jobs, logs, or generated artifacts.

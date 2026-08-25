@@ -85,7 +85,25 @@ where membership.role = 'org_admin'
   and membership.status = 'active'
   and (
     membership.approved_by is null
-    or approver.account_role <> 'platform_admin'
+    or approver.role <> 'platform_admin'
+  );
+
+-- EXPECT ZERO: non-platform profiles still using legacy organization-scoped account roles.
+select count(*) as non_platform_profiles_not_normalized_to_user
+from public.profiles
+where role <> 'platform_admin'
+  and role <> 'user';
+
+-- EXPECT ZERO: active organization memberships must line up with at least one
+-- confirmed client mapping so membership-driven client access stays connected.
+select count(*) as active_memberships_without_confirmed_client_mapping
+from public.organization_memberships as membership
+where membership.status = 'active'
+  and not exists (
+    select 1
+    from public.client_organizations as mapping
+    where mapping.organization_id = membership.organization_id
+      and mapping.review_status = 'confirmed'
   );
 
 -- EXPECT ZERO: survey/farm mappings pointing to missing records.
@@ -164,7 +182,7 @@ select
     from public.profiles
     where coalesce(organization, access_code) is not null
       and organization_id is null
-  ) as assigned_profiles_without_uuid,
+  ) as legacy_assigned_profiles_without_uuid,
   (
     select count(*)
     from public.surveys
@@ -237,7 +255,6 @@ where not exists (
     and procedure.proname = 'domain_audit_client_mapping_row'
 );
 
-
 -- EXPECT ZERO: anonymous callers cannot execute public admin mapping RPCs.
 select count(*) as anon_executable_admin_mapping_functions
 from pg_proc as procedure
@@ -249,7 +266,6 @@ where namespace.nspname = 'public'
     'admin_confirm_client_person_mapping'
   )
   and has_function_privilege('anon', procedure.oid, 'EXECUTE');
-
 
 -- EXPECT ZERO: anonymous callers cannot execute public admin create-and-map RPCs.
 select count(*) as anon_executable_admin_create_mapping_functions

@@ -1,23 +1,19 @@
-# Manifest Gate State
+﻿# Manifest Gate State
 
-Last updated: 2026-08-04
+Last updated: 2026-08-13
 
-Phase 3I-A decisions are now recorded in `docs/workshop-manifest-gate-decisions.md`.
+Phase 3I-A decisions are recorded in `docs/workshop-manifest-gate-decisions.md`; schema and implementation status are indexed in `.project_state/project_index.md`.
 
 Approved direction:
 
-- Project lead is final approver.
-- Invited cohort list already exists.
-- Manifest includes all account, organization, legacy client, farm, survey, tile, point-cloud, detection, output, and report scope for invited users' 2026 datasets.
-- Unnecessary personal data is excluded from checked-in files.
-- Checksums are not required for this workshop approval.
-- Verbal approval by the project lead is sufficient and should be recorded.
-- Real manifest should live in private Supabase tables.
-- Approved manifest snapshots should be backed up to a private MinIO bucket.
-- Codex may read the manifest when explicitly authorized.
-- Protected asset delivery should use NGINX proxy with MinIO internal offloading.
-- All workshop assets share the same protection level.
-- Asset authorization is organization-scoped for this release.
-- Cloudflare caches protected assets only after auth.
-- Temporary access lifetime target is 30 minutes.
+- The project lead is final approver.
+- The manifest is the allowlist for invited accounts, organizations, clients, farms, surveys, assets, outputs, and required 2026 workshop metadata.
+- Unnecessary personal data is excluded from checked-in files; the real manifest remains private.
+- Approved manifests are immutable and changes use a superseding version.
+- Manifest changes and approvals are audited.
+- Protected delivery uses NGINX with MinIO kept internal.
+- Asset authorization is fail-closed through platform-admin authority, active memberships, or applicable explicit grants plus the active manifest.
+- `profiles.organization_id` is removed and must not be used as an asset authorization shortcut.
+- Cloudflare bypasses public caching for protected GIS paths in v1.
 - Anonymous access is never allowed.
+- Approved manifest snapshots are backed up to the private operational location.

@@ -7,11 +7,11 @@ select
   count(*) filter (
     where coalesce(organization, access_code) is not null
       and organization_id is null
-  ) as assigned_profiles_without_uuid,
+  ) as legacy_assigned_profiles_without_uuid,
   count(*) filter (
     where coalesce(organization, access_code) is null
       and organization_id is null
-  ) as pending_profiles
+  ) as legacy_unassigned_profiles_without_uuid
 from public.profiles;
 
 select
@@ -43,4 +43,3 @@ select routine_schema, routine_name, security_type
 from information_schema.routines
 where routine_schema in ('public', 'app_private')
 order by routine_schema, routine_name;
-

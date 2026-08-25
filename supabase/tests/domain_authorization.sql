@@ -43,8 +43,7 @@ values
    'authenticated', 'domain-escalation@example.test', '', now(), now(), now());
 
 update public.profiles
-set role = 'platform_admin',
-    account_role = 'platform_admin'
+set role = 'platform_admin'
 where id = '20000000-0000-0000-0000-000000000011';
 
 insert into public.organizations (id, type_code, code, name)
@@ -205,7 +204,7 @@ values (
   true
 );
 
-select extensions.plan(34);
+select extensions.plan(43);
 
 set local role authenticated;
 
@@ -220,20 +219,20 @@ select extensions.is(
 
 select extensions.is(
   (select count(*) from public.farms),
-  1::bigint,
-  'organization member reads farms linked to their organization'
+  0::bigint,
+  'organization member receives no farm access from membership alone'
 );
 
 select extensions.is(
   (select count(*) from public.surveys),
-  2::bigint,
-  'organization member reads surveys linked to their organization'
+  0::bigint,
+  'organization member receives no survey access from membership alone'
 );
 
 select extensions.is(
   (select count(*) from public.survey_outputs),
-  1::bigint,
-  'organization member reads outputs for accessible surveys'
+  0::bigint,
+  'organization member receives no output access from membership alone'
 );
 
 select extensions.is(
@@ -244,11 +243,11 @@ select extensions.is(
 
 select extensions.throws_ok(
   $$update public.profiles
-    set account_role = 'platform_admin'
+    set role = 'platform_admin'
     where id = '20000000-0000-0000-0000-000000000013'$$,
   'P0001',
   null,
-  'normal account cannot promote its global account role'
+  'normal account cannot promote its platform role'
 );
 
 set local request.jwt.claims =
@@ -293,6 +292,20 @@ select extensions.is(
   'farm grant does not imply survey access'
 );
 
+update public.farm_access_grants
+set status = 'revoked'
+where farm_id = '50000000-0000-0000-0000-000000000011'
+  and profile_id = '20000000-0000-0000-0000-000000000015';
+
+select extensions.is(
+  (select status::text
+   from public.farm_access_grants
+   where farm_id = '50000000-0000-0000-0000-000000000011'
+     and profile_id = '20000000-0000-0000-0000-000000000015'),
+  'active',
+  'ordinary user cannot revoke their own farm grant'
+);
+
 reset role;
 
 insert into public.survey_access_grants (
@@ -324,10 +337,39 @@ select extensions.is(
   'explicit survey grant reads that survey output'
 );
 
+update public.survey_access_grants
+set status = 'revoked'
+where survey_id = 'domain-survey-a'
+  and profile_id = '20000000-0000-0000-0000-000000000015';
+
+select extensions.is(
+  (select status::text
+   from public.survey_access_grants
+   where survey_id = 'domain-survey-a'
+     and profile_id = '20000000-0000-0000-0000-000000000015'),
+  'active',
+  'ordinary user cannot revoke their own survey grant'
+);
+
+set local request.jwt.claims =
+  '{"sub":"20000000-0000-0000-0000-000000000013","role":"authenticated"}';
+
+update public.organization_memberships
+set role = 'org_admin'
+where id = '40000000-0000-0000-0000-000000000012';
+
+select extensions.is(
+  (select role::text
+   from public.organization_memberships
+   where id = '40000000-0000-0000-0000-000000000012'),
+  'member',
+  'ordinary user cannot change their own membership role'
+);
+
 set local request.jwt.claims =
   '{"sub":"20000000-0000-0000-0000-000000000012","role":"authenticated"}';
 
-select extensions.lives_ok(
+select extensions.throws_ok(
   $$insert into public.organization_memberships (
       profile_id,
       organization_id,
@@ -340,15 +382,20 @@ select extensions.lives_ok(
       'member',
       'pending'
     )$$,
-  'organization admin can add an ordinary member in their organization'
+  '42501',
+  null,
+  'organization admin has no broad membership insert policy'
 );
 
-select extensions.throws_ok(
-  $$update public.organizations
-    set type_code = 'association'
-    where id = '30000000-0000-0000-0000-000000000011'$$,
-  'P0001',
-  null,
+update public.organizations
+set type_code = 'association'
+where id = '30000000-0000-0000-0000-000000000011';
+
+select extensions.is(
+  (select type_code
+   from public.organizations
+   where id = '30000000-0000-0000-0000-000000000011'),
+  'cooperative',
   'organization admin cannot change organization classification'
 );
 
@@ -401,6 +448,61 @@ select extensions.is(
 
 set local request.jwt.claims =
   '{"sub":"20000000-0000-0000-0000-000000000011","role":"authenticated"}';
+
+select extensions.lives_ok(
+  $$update public.organization_memberships
+    set role = 'org_admin',
+        updated_at = now()
+    where id = '40000000-0000-0000-0000-000000000012'$$,
+  'platform admin can change an ordinary membership role'
+);
+
+select extensions.is(
+  (select count(*) from public.admin_audit_log
+   where table_name = 'organization_memberships'
+     and action = 'UPDATE'
+     and record_pk @> jsonb_build_object(
+       'id', '40000000-0000-0000-0000-000000000012'
+     )),
+  1::bigint,
+  'membership role update is audited'
+);
+
+select extensions.lives_ok(
+  $$update public.survey_access_grants
+    set status = 'revoked',
+        revoked_by = '20000000-0000-0000-0000-000000000011',
+        updated_at = now()
+    where survey_id = 'domain-survey-a'
+      and profile_id = '20000000-0000-0000-0000-000000000015'$$,
+  'platform admin can revoke a survey grant'
+);
+
+select extensions.is(
+  (select count(*) from public.admin_audit_log
+   where table_name = 'survey_access_grants'
+     and action = 'UPDATE'),
+  1::bigint,
+  'survey grant status update is audited'
+);
+
+select extensions.lives_ok(
+  $$update public.farm_access_grants
+    set status = 'revoked',
+        revoked_by = '20000000-0000-0000-0000-000000000011',
+        updated_at = now()
+    where farm_id = '50000000-0000-0000-0000-000000000011'
+      and profile_id = '20000000-0000-0000-0000-000000000015'$$,
+  'platform admin can revoke a farm grant'
+);
+
+select extensions.is(
+  (select count(*) from public.admin_audit_log
+   where table_name = 'farm_access_grants'
+     and action = 'UPDATE'),
+  1::bigint,
+  'farm grant status update is audited'
+);
 
 select extensions.lives_ok(
   $$update public.clients

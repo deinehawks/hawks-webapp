@@ -13,7 +13,14 @@ import type {
 import { createClient } from "@/utils/supabase/server";
 
 type MembershipStatus = Database["public"]["Enums"]["membership_status"];
-type TargetProfile = Pick<Tables<"profiles">, "id" | "role" | "account_role">;
+type MembershipRole = Database["public"]["Enums"]["membership_role"];
+type TargetProfile = Pick<Tables<"profiles">, "id" | "role">;
+type StoredMembership = Pick<
+  Tables<"organization_memberships">,
+  "id" | "profile_id" | "status"
+> & {
+  role: MembershipRole;
+};
 
 type MembershipInsertTable = {
   insert(values: TablesInsert<"organization_memberships">): PromiseLike<{
@@ -30,6 +37,7 @@ type MembershipUpdateTable = {
 };
 
 const allowedInitialStatuses = ["pending", "active"] as const satisfies readonly MembershipStatus[];
+const membershipRoles = ["member", "org_admin"] as const satisfies readonly MembershipRole[];
 const allowedStatusTransitions = {
   invited: ["pending", "removed"],
   pending: ["active", "removed"],
@@ -64,6 +72,14 @@ function parseInitialStatus(value: string): MembershipStatus {
   throw new Error("Invalid initial membership status.");
 }
 
+function parseMembershipRole(value: string): MembershipRole {
+  if ((membershipRoles as readonly string[]).includes(value)) {
+    return value as MembershipRole;
+  }
+
+  throw new Error("Invalid membership role.");
+}
+
 function parseMembershipStatus(value: string): MembershipStatus {
   if (value in allowedStatusTransitions) {
     return value as MembershipStatus;
@@ -81,13 +97,14 @@ export async function createOrganizationMembership(formData: FormData) {
 
   const profileId = readRequiredString(formData, "profileId");
   const organizationId = readRequiredString(formData, "organizationId");
+  const role = parseMembershipRole(readRequiredString(formData, "role"));
   const status = parseInitialStatus(readRequiredString(formData, "status"));
   const notes = readOptionalNotes(formData, "membershipNotes");
   const supabase = await createClient();
 
   const { data: targetProfile, error: profileError } = (await supabase
     .from("profiles")
-    .select("id, role, account_role")
+    .select("id, role")
     .eq("id", profileId)
     .maybeSingle()) as {
     data: TargetProfile | null;
@@ -104,10 +121,7 @@ export async function createOrganizationMembership(formData: FormData) {
     throw new Error("Target user account not found.");
   }
 
-  if (
-    targetProfile.role === "platform_admin" ||
-    targetProfile.account_role === "platform_admin"
-  ) {
+  if (targetProfile.role === "platform_admin") {
     throw new Error("Platform administrators do not need organization memberships.");
   }
 
@@ -147,7 +161,7 @@ export async function createOrganizationMembership(formData: FormData) {
   const insertPayload: TablesInsert<"organization_memberships"> = {
     profile_id: profileId,
     organization_id: organizationId,
-    role: "member",
+    role: role as TablesInsert<"organization_memberships">["role"],
     status,
     notes,
     invited_by: profile.id,
@@ -166,7 +180,74 @@ export async function createOrganizationMembership(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin");
+  revalidatePath("/admin");
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${profileId}`);
+  revalidatePath(`/admin/access-preview/${profileId}`);
+}
+
+export async function updateOrganizationMembershipRole(formData: FormData) {
+  const { profile } = await getAuthenticatedUserContext();
+
+  if (profile.role !== "platform_admin") {
+    throw new Error("Only platform admins can update membership roles.");
+  }
+
+  const membershipId = readRequiredString(formData, "membershipId");
+  const nextRole = parseMembershipRole(readRequiredString(formData, "nextRole"));
+  const supabase = await createClient();
+
+  const { data: membership, error: membershipError } = (await supabase
+    .from("organization_memberships")
+    .select("id, profile_id, role, status")
+    .eq("id", membershipId)
+    .maybeSingle()) as {
+    data: StoredMembership | null;
+    error: PostgrestError | null;
+  };
+
+  if (membershipError) {
+    throw new Error("Failed to verify organization membership.", {
+      cause: membershipError,
+    });
+  }
+
+  if (!membership) {
+    throw new Error("Organization membership not found.");
+  }
+
+  if (membership.status === "removed") {
+    throw new Error("Removed memberships are retained as history and cannot be changed.");
+  }
+
+  if (membership.role === nextRole) {
+    throw new Error("The membership already has this role.");
+  }
+
+  if (membership.status !== "active") {
+    throw new Error("Membership roles can change only while the membership is active.");
+  }
+
+  const membershipsTable = supabase
+    .from("organization_memberships") as unknown as MembershipUpdateTable;
+  const { error: updateError } = await membershipsTable
+    .update({
+      role: nextRole as TablesUpdate<"organization_memberships">["role"],
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", membershipId);
+
+  if (updateError) {
+    throw new Error("Failed to update organization membership role.", {
+      cause: updateError,
+    });
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${membership.profile_id}`);
+  revalidatePath(`/admin/access-preview/${membership.profile_id}`);
+  revalidatePath(`/admin/memberships/${membershipId}`);
 }
 
 export async function updateOrganizationMembershipStatus(formData: FormData) {
@@ -185,13 +266,10 @@ export async function updateOrganizationMembershipStatus(formData: FormData) {
 
   const { data: membership, error: membershipError } = (await supabase
     .from("organization_memberships")
-    .select("id, role, status")
+    .select("id, profile_id, role, status")
     .eq("id", membershipId)
     .maybeSingle()) as {
-    data: Pick<
-      Tables<"organization_memberships">,
-      "id" | "role" | "status"
-    > | null;
+    data: StoredMembership | null;
     error: PostgrestError | null;
   };
 
@@ -203,10 +281,6 @@ export async function updateOrganizationMembershipStatus(formData: FormData) {
 
   if (!membership) {
     throw new Error("Organization membership not found.");
-  }
-
-  if (membership.role !== "member") {
-    throw new Error("Org-admin membership role changes are not enabled yet.");
   }
 
   const allowedNextStatuses = allowedStatusTransitions[membership.status];
@@ -247,6 +321,9 @@ export async function updateOrganizationMembershipStatus(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin");
-  revalidatePath(`/dashboard/admin/memberships/${membershipId}`);
+  revalidatePath("/admin");
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${membership.profile_id}`);
+  revalidatePath(`/admin/access-preview/${membership.profile_id}`);
+  revalidatePath(`/admin/memberships/${membershipId}`);
 }

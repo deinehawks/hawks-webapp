@@ -100,7 +100,7 @@ export function AppSidebar({
                   className="transition-colors hover:bg-primary/10"
                   asChild
                 >
-                  <Link href="/dashboard/admin">
+                  <Link href="/admin">
                     <ShieldCheckIcon />
                     <span>Admin</span>
                   </Link>

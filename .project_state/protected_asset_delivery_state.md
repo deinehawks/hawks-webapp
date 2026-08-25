@@ -1,27 +1,18 @@
-# Protected Asset Delivery State
+﻿# Protected Asset Delivery State
 
-Last updated: 2026-08-04
+Last updated: 2026-08-13
 
-Chosen direction: NGINX proxy with MinIO internal offloading.
+Chosen direction: NGINX `auth_request` with MinIO as the internal protected asset origin.
 
-Workshop protection model:
+Current workshop protection model:
 
-- All users authenticate before using the application.
-- Anonymous users must never load workshop GIS assets.
-- Tiles, point clouds, detections, and outputs share the same protection level.
-- Authorization is organization-scoped for the workshop release.
-- Survey-specific grants are deferred unless separately required.
-- Cloudflare may cache protected assets only after authentication/authorization.
-- Temporary access lifetime target is 30 minutes.
-- Delayed expiration after access removal is acceptable.
-- Direct large point-cloud downloads are acceptable for the workshop.
+- All users authenticate before using protected application or GIS routes.
+- Anonymous and cross-scope requests fail closed.
+- Authorization is evaluated through platform-admin authority, active organization memberships, and applicable explicit resource grants against the active workshop manifest.
+- Suspended/removed memberships and inactive/expired/revoked grants do not authorize access.
+- Tiles and point clouds use the protected NGINX/MinIO flow; detections remain server-side through the approved storage path.
+- Cloudflare bypasses public caching for protected GIS paths in v1.
+- Direct large point-cloud downloads remain acceptable within the recorded workshop limits.
+- `profiles.organization_id` is removed and is not an authorization fallback.
 
-Open implementation choices:
-
-- Exact NGINX authorization mechanism.
-- Exact MinIO bucket/prefix layout.
-- Signed URL, signed cookie, or internal `auth_request` pattern.
-- Cloudflare cache rules for protected paths.
-- Supabase manifest table schema and audit fields.
-
-Primary reference: `docs/workshop-manifest-gate-decisions.md`.
+Implemented details, external handoff, validation, and rollback references are indexed in `.project_state/project_index.md` under supporting current protected-asset documents.

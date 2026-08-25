@@ -2,20 +2,13 @@
 -- Move this file into supabase/migrations with a new timestamp only after the
 -- compatible application and private UUID storage paths pass acceptance tests.
 
+-- This contract only removes legacy text compatibility columns. It must not
+-- reintroduce `profiles.organization_id` as a required authorization source.
+
 do $$
 begin
   if exists (select 1 from public.surveys where client_id is null) then
     raise exception 'cannot contract: surveys.client_id contains null values';
-  end if;
-
-  if exists (
-    select 1
-    from public.profiles
-    where role <> 'platform_admin'
-      and organization_id is null
-  ) then
-    raise exception
-      'cannot contract: non-platform profiles require organization assignment';
   end if;
 
   if exists (
@@ -67,11 +60,3 @@ drop index if exists public.surveys_id_key;
 
 alter table public.surveys
   alter column client_id set not null;
-
-alter table public.profiles
-  add constraint profiles_role_requires_organization
-  check (
-    role = 'platform_admin'
-    or organization_id is not null
-  );
-

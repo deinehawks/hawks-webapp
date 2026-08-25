@@ -2,7 +2,7 @@
 
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
 import type { Tables } from "@/lib/database.types";
-import type { Client, UserProfile } from "@/lib/types";
+import type { UserProfile } from "@/lib/types";
 import { createClient } from "@/utils/supabase/server";
 
 function isTransientNetworkError(error: unknown) {
@@ -24,7 +24,7 @@ export async function getUserProfile(id: string) {
   try {
     const { data: profile, error } = await supabase
       .from("profiles")
-      .select("*, client:clients!profiles_organization_id_fkey(*)")
+      .select("*")
       .eq("id", id)
       .maybeSingle();
 
@@ -49,12 +49,9 @@ export async function getUserProfile(id: string) {
       throw new Error("User profile not found.");
     }
 
-    const typedProfile = profile as unknown as Tables<"profiles"> & {
-      client: Client | null;
-    };
-    const normalized = { ...typedProfile } as Partial<typeof typedProfile> & {
-      client: Client | null;
-    };
+    const normalized = { ...(profile as Tables<"profiles">) } as Partial<
+      Tables<"profiles">
+    >;
     delete normalized.access_code;
     delete normalized.organization;
 

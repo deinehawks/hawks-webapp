@@ -52,21 +52,15 @@ values
    '40000000-0000-0000-0000-000000000202', 'member', 'active', now());
 
 update public.profiles
-set role = 'platform_admin',
-    account_role = 'platform_admin'
+set role = 'platform_admin'
 where id = '20000000-0000-0000-0000-000000000201';
 
 update public.profiles
-set role = 'viewer',
-    account_role = 'individual',
-    organization_id = '30000000-0000-0000-0000-000000000201'
-where id = '20000000-0000-0000-0000-000000000202';
-
-update public.profiles
-set role = 'viewer',
-    account_role = 'individual',
-    organization_id = '30000000-0000-0000-0000-000000000202'
-where id = '20000000-0000-0000-0000-000000000203';
+set role = 'user'
+where id in (
+  '20000000-0000-0000-0000-000000000202',
+  '20000000-0000-0000-0000-000000000203'
+);
 
 insert into public.surveys (
   id,
@@ -81,6 +75,34 @@ values (
   'asset-org-a',
   'asset-org-a',
   'completed'
+);
+
+insert into public.survey_organizations (
+  survey_id,
+  organization_id,
+  relationship_type,
+  review_status
+)
+values (
+  'asset-survey-2026',
+  '40000000-0000-0000-0000-000000000201',
+  'participant',
+  'confirmed'
+);
+
+insert into public.survey_access_grants (
+  survey_id,
+  profile_id,
+  organization_id,
+  status,
+  granted_by
+)
+values (
+  'asset-survey-2026',
+  '20000000-0000-0000-0000-000000000202',
+  '40000000-0000-0000-0000-000000000201',
+  'active',
+  '20000000-0000-0000-0000-000000000201'
 );
 
 insert into public.workshop_manifests (
@@ -155,7 +177,7 @@ select extensions.results_eq(
       '/asimov-hawks/tiles/asset-org-a/2026/asset-survey-2026/ortho/ortho-a/10/1/1.png'
     )$$,
   $$values (1::bigint)$$,
-  'active organization member can authorize a manifest tile asset'
+  'organization-scoped survey grant authorizes a manifest tile asset'
 );
 
 select extensions.results_eq(
@@ -166,7 +188,7 @@ select extensions.results_eq(
       '/asimov-hawks/3d/asset-org-a/2026/asset-survey-2026/odm.pcd'
     )$$,
   $$values (1::bigint)$$,
-  'active organization member can authorize a manifest point cloud asset'
+  'organization-scoped survey grant authorizes a manifest point cloud asset'
 );
 
 select extensions.results_eq(

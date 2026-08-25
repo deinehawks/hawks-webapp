@@ -25,16 +25,14 @@ values
    'authenticated', 'manifest-viewer@example.test', '', now(), now(), now());
 
 update public.profiles
-set role = 'platform_admin',
-    account_role = 'platform_admin'
+set role = 'platform_admin'
 where id in (
   '20000000-0000-0000-0000-000000000101',
   '20000000-0000-0000-0000-000000000102'
 );
 
 update public.profiles
-set role = 'viewer',
-    account_role = 'individual'
+set role = 'user'
 where id = '20000000-0000-0000-0000-000000000103';
 
 select extensions.plan(12);
@@ -45,7 +43,7 @@ set local request.jwt.claims =
 
 select extensions.throws_ok(
   $$insert into public.workshop_manifests (manifest_key, title)
-    values ('manifest-2026-09-15', 'viewer denied')$$,
+    values ('manifest-2026-09-15', 'user denied')$$,
   'P0001',
   'workshop manifest changes require platform admin access',
   'non-platform user cannot insert workshop manifest'

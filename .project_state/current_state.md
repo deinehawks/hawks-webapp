@@ -1,29 +1,63 @@
 # Current State
 
-Last updated: 2026-08-11
+Last updated: 2026-08-24
 
-Current branch observed by Codex: `feature/workshop-manifest-gate`.
+Current branch: `feature/org-admin`.
 
-The compressed-state workflow is active through `AGENTS.override.md` and `.project_state/`. Use these files first, then retrieve targeted docs from `.project_state/project_index.md`.
+Access Policy v2 is complete in staging and unchanged in production. The user
+manually passed the full staging authorization matrix: grant-only member,
+farm-only, survey/output, org-admin visibility, suspension/reactivation,
+removal, platform exception, rejected signup, anonymous, and cross-organization
+denial. User-first signup confirmation, pending review, approval, membership
+assignment, and activated login also passed.
 
-Phase 3I-A workshop manifest decisions are closed for v1. Real populated manifests stay outside Git in private Supabase tables, use short keys such as `manifest-2026-09-15`, allow `platform_admin` edits only before approval, make approved versions immutable, and back up approved exports to private MinIO.
+Organization Admin phase status:
 
-Manifest schema/RLS/audit migrations have been applied locally and to linked staging Supabase project `llealjcaqvltrtdwwzrh` after target confirmation. Local structural verification and pgTAP tests pass; full local DB suite passes 4 files / 66 tests. Remote migration list shows migrations through `20260804004000` applied, and remote schema lint reports no errors.
+- Local migration `20260820000000_org_admin_portal.sql` implements narrow
+  security-definer RPCs for organization profile edits, onboarding requests,
+  ordinary-member status changes and promotion, farm creation/editing, and
+  organization-scoped grant lifecycle.
+- Direct broad membership/onboarding mutation policies are removed.
+- Cross-organization resources, platform exceptions, Auth creation,
+  relationships, survey/output creation, publication, and operational asset
+  fields remain prohibited.
+- Survey and farm-organization audit triggers were added; organization code/type
+  edits are allowed only for the actor's active organization while organization
+  status remains platform-admin-only.
+- The migration replays successfully on a clean local database.
+- Existing pgTAP passed 126/126; dedicated org-admin pgTAP passed 16/16.
+- Database types were regenerated from the validated local schema.
+- The protected `/org-admin` route tree includes overview, organization,
+  members, onboarding, grants, farms, and read-only surveys. Outputs are not
+  exposed to organization admins.
+- Post-login routing sends an active org admin in one active organization to
+  `/org-admin`; platform admins remain in `/admin` and members in
+  `/dashboard`.
+- All portal writes authenticate through the strict org-admin context and call
+  only the narrow RPCs.
+- TypeScript, targeted ESLint, full pgTAP (142/142), and whitespace validation
+  pass.
+- Corrective migration `20260824000000_restrict_org_admin_survey_output.sql`
+  removes the org-admin survey/output mutation RPCs from the database contract.
 
-Protected asset delivery is an NGINX + MinIO design with app-side auth at `/asimov-hawks/internal/asset-auth`. Recent committed slices: `5e0e4dea` app auth/RPC/tests, `284751de` point-cloud fallback, `e30d8d96` asset URL helper plus NGINX handoff and smoke-test docs, `d3daf0cd` refreshed protected-asset docs/state, `57b6b378` protected-asset pilot smoke follow-up, and `e291f0ac` publisher workflow improvements.
+Both org-admin migrations are applied to non-production staging after a clean
+inventory, checksummed backup, successful isolated restore, exact migration and
+containment rehearsal, and ordered dry-run. Remote history and no-pending checks
+pass; the 11 approved RPCs are present while survey/output mutation RPCs remain
+absent. Linked types, TypeScript, targeted ESLint, and full pgTAP (142/142)
+pass. The user completed authenticated staging smoke for onboarding,
+membership/grant lifecycles, read-only surveys, absent Outputs, and prohibited
+boundaries; all behaved as expected. Production is unchanged.
 
-Active protected asset pilot: staging manifest `manifest-2026-08-11` is approved/active. It includes `AH-026005` DNG protected tiles/point cloud and `barbco2026` protected survey assets. `manifest-2026-08-10` is superseded/inactive. User confirmed `AH-026005`, including zoom `24`, and the current Barbco protected datasets display tiles and 3D assets correctly.
-
-Local NGINX app access works after first-compile warmup. User confirmed login at `/asimov-hawks/auth/login`, authenticated direct z11/z23 pilot tile URLs, orthomap tile rendering through `http://localhost:8080`, and the survey 3D tab loading the protected ODM point cloud through NGINX.
-
-Workshop smoke baseline is documented in `docs/validation-baseline-2026-08-10.md`: login flow, orthomap flow, protected point-cloud flow, anonymous fail-closed behavior, and malformed double-slash rejection are all recorded for 2026-08-10.
-
-Validation baseline update: `npm run lint` now completes successfully with warnings only, and `npx tsc --noEmit` now passes after typing cleanup across caller wrappers, survey/ortho map flows, shared helpers, and dashboard map components.
-
-Protected asset publisher automation exists locally in `scripts/publish-protected-assets.js` with example config `scripts/minio-publish-jobs.example.json`. Reports include manifest entry drafts, SQL-editor insert SQL, live upload progress, and `orthos.tile_folder` audit/update SQL so the app metadata matches protected tile manifest routes.
-
-Manifest lessons from `barbco2026` smoke tests: tile `nginx_route_pattern` values must use `{z}/{x}/{y}.png`, direct MinIO prefixes/object keys belong in `metadata.object_path` with `destination_prefix_alias = null`, and `public.orthos.tile_folder` must match the approved tile route folder. Browser-side guessing between `round-corners` and `sharp-corners` is not allowed for protected assets. See `docs/workshop-asset-migration-wave-plan.md` and `docs/workshop-wave1-staging-prep-2026-08-10.md`.
-
-Build-baseline constraint: the workshop target keeps heavy GIS assets behind NGINX + MinIO, not inside the Next.js runtime image. `public/tiles` and `public/3d` should be treated as local operational datasets, so `npm run build` should be evaluated against a dataset-light build context rather than this heavy local checkout.
-
-Known validation baseline remains partially non-green outside DB checks: `npm run lint` passes with warnings, `npx tsc --noEmit` now passes, and `npm run build` still reaches the Node heap limit in the current heavy-asset checkout. User previously validated a dataset-light build on a laptop, so the next project focus is app/Supabase admin-panel workflow clarity rather than local heavy-asset build investigation.
+Corrective migration `20260824001000_admin_onboarding_request_review.sql`
+adds the platform-admin onboarding queue, narrow approve/reject RPCs,
+review notes, audited review metadata, and RPC-only table mutation. Approval
+does not create an account or membership; user-first Signup Approvals remains
+the activation path. Its single-migration non-production staging gate passed:
+inventory, checksummed backup, isolated restore with matching counts, exact
+migration/containment replay, one-file dry-run, apply, remote history and
+contract verification, linked type regeneration, TypeScript, targeted ESLint,
+and full pgTAP (153/153). The user then passed authenticated staging smoke for
+org-admin request submission and platform-admin onboarding review. The
+org-admin/onboarding review phase is complete in staging. Production is
+unchanged.

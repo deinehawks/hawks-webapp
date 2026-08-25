@@ -75,6 +75,7 @@ import { createPinLayout } from "@/lib/constants/map-layers";
 
 type SurveyLike = {
   id: string | number;
+  client?: { id?: string; code?: string | null; name?: string | null } | null;
   code?: string | null;
   flight_date?: string | Date | null;
   ortho?: { tile_folder?: string | null } | null;
@@ -1008,6 +1009,8 @@ export default function OrthoMap({
     [detectedObjects],
   );
 
+  const mapClient = normalizedSurveys[0]?.client ?? null;
+
   const [showBoundaries, setShowBoundaries] = useState(false);
   const { selectedFoi, setPopupInfo } = useOrthoMapStore((state) => state);
 
@@ -1240,10 +1243,10 @@ export default function OrthoMap({
           <Card className="@container/card flex flex-1 flex-col h-full relative">
             <CardHeader>
               <CardTitle>
-                {userProfile?.client?.code || "Organization"}
+                {mapClient?.code || "Organization"}
               </CardTitle>
               <CardDescription>
-                {userProfile?.client?.name || "Loading..."}
+                {mapClient?.name || "Loading..."}
               </CardDescription>
             </CardHeader>
 
