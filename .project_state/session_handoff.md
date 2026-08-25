@@ -2,8 +2,8 @@
 
 Last updated: 2026-08-25
 
-Current branch: `feature/org-admin-navigation`, based on `development` at
-`dcad51f2`.
+Current branch: `feature/workshop-asset-batches`, based on `development` at
+`0739e44c`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -104,18 +104,18 @@ unchanged, existing routes/assets worked, organization-admin and ordinary-user
 editing remained denied, anonymous access failed closed, and no new browser
 errors appeared. The survey-contract staging gate is closed.
 
-The P1 org-admin navigation correction is implemented locally. Active
-organization admins now land on `/dashboard`; a shared server-side resolver
-shows the reusable Organization Admin dropdown only for exactly one active
-org-admin membership in an active organization. The dropdown contains the seven
-existing protected portal routes. Both `/dashboard` and `/org-admin` reuse the
-normal application sidebar, so Orthomap and Survey Data remain present while
-moving between user and management pages. Zero, inactive, and ambiguous access
-do not receive navigation;
-the strict portal context still redirects or errors fail-closed. RLS, read-only
-Surveys, and absent Outputs remain unchanged. TypeScript, targeted ESLint, and
-whitespace checks pass. Next action: staging deployment and authenticated
-desktop/mobile smoke, then User App Preview. Production remains unchanged.
+The user-tested org-admin navigation work is merged into `development` at
+`0739e44c`; the current branch starts from that tip.
+
+The workshop batch workflow is implemented locally. The ignored private
+allowlist starts empty, so its validated dry run created no jobs, staging query,
+or upload. `AH-026012` and `AH-026013` fail closed. Preparation discovers
+direct/nested `Z:\surveys\2026` layouts, blocks unreviewed PCDs and missing
+canonical staging mappings, groups at most three surveys, and checks MinIO
+capacity. Reviewed configs are SHA-256 frozen before the single hidden runner
+can stream, resume, and verify uploads. Manifest SQL is generated only after
+verification and never runs automatically. Focused tests and static checks
+pass. Production and database state are unchanged.
 
 Preserve unrelated user-owned scratch/deletion state in `.tmp/`, `issues.txt`,
 `workflow.txt`, and `improve.txt`.

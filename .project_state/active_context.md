@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-25
 
-Current epic: Organization Admin dashboard navigation.
+Current epic: Workshop asset batch migration readiness.
 
 Completed:
 
@@ -38,20 +38,19 @@ Completed:
 15. Signed-in survey-contract staging smoke passed against deployment
     `dcad51f2`; the update was restored and all access and compatibility checks
     held.
-16. The org-admin navigation documentation/priority update is committed
-    separately, and the dashboard landing, shared access resolver, reusable
-    dropdown, and persistent normal application sidebar across both route trees
-    are implemented locally.
-17. TypeScript, targeted ESLint, and whitespace checks pass for the navigation
-    slice.
+16. The user-tested org-admin navigation slice is integrated into
+    `development` at `0739e44c`.
+17. The workshop batch branch contains private-allowlist preparation, staging
+    and capacity gates, reviewed streaming uploads, a single hidden runner,
+    verification output, tests, and the operator runbook.
+18. The private allowlist is empty; no upload job or external mutation ran.
 
 Next sequence:
 
-1. Deploy `feature/org-admin-navigation` to staging and complete authenticated
-   desktop/mobile smoke for landing, dropdown navigation, normal-member denial,
-   strict org-admin routes, read-only Surveys, and absent Outputs.
-2. Follow with `feature/user-app-preview` and `fix/output-types` as separate
-   branches.
+1. Populate and review the private workshop allowlist and generated inventory.
+2. Freeze and start one approved staging wave, then complete protected-route
+   smoke before any separately approved manifest change.
+3. Follow with `feature/user-app-preview` and `fix/output-types`.
 
 Constraints:
 

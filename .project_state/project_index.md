@@ -76,7 +76,12 @@ Use this index after the compressed startup files. Document classifications prev
 - `app/dashboard/admin/`: transitional admin implementation.
 - `app/asimov-hawks/internal/asset-auth/route.ts`: protected asset authorization endpoint.
 - `lib/assets/minio-aliases.ts`: private asset alias resolver.
-- `scripts/publish-protected-assets.js`: manifest-driven publisher/report flow.
+- `scripts/publish-protected-assets.js`: legacy manifest-driven publisher/report flow.
+- `docs/workshop-asset-batch-runbook.md`: current private-allowlist,
+  preparation, review, background upload, verification, and manifest handoff.
+- `scripts/prepare-workshop-assets.js` and
+  `scripts/publish-workshop-assets.js`: current workshop batch preparation and
+  streaming staging publisher.
 
 ## Validation Baselines
 

@@ -91,7 +91,7 @@ Checksums remain optional for this workshop unless the project lead requires the
 - Authenticated intended users can load selected tiles and point clouds through NGINX.
 - Cross-organization and unknown-path requests fail closed.
 - Browser orthomap renders representative tile groups.
-- Survey 3D tab loads representative point clouds under the current browser size limit.
+- Survey 3D tab loads representative point clouds; the publisher imposes no 1 GB file-size cap, so browser/network validation remains required.
 - MinIO direct hostnames, real buckets, credentials, and private prefixes are not exposed to browsers.
 - Rollback source and active manifest key are recorded before expanding to the next wave.
 
@@ -101,13 +101,16 @@ Do not delete migrated MinIO prefixes as a first rollback step.
 
 If a wave fails, freeze further migration, leave protected paths fail-closed, and supersede the manifest back to the last known-good asset set or exclude the failing entry. Use `docs/protected-asset-rollback-runbook.md` for app, NGINX, MinIO, Supabase manifest, and Cloudflare recovery checks.
 
-## Next Decision
+## 2026-08-25 Batch Workflow
 
-The current user-selected Wave 1 candidate set is:
+The current workflow is documented in
+`docs/workshop-asset-batch-runbook.md`. Survey selection now comes only from
+the ignored private allowlist; there is no preselected replacement wave.
+`AH-026012` and `AH-026013` are permanently excluded. The project lead will
+add approved survey IDs, tile variants, exact PCD paths, and ignored PCD review
+records before another dry run.
 
-- finish `AH-026005` by copying the remaining `round-corners/24` local zoom prefix;
-- add `barbco2026/AH-0260001` as the first non-DNG tile survey;
-- add the available `barbco2026/AH-0260001` ODM point cloud;
-- confirm whether `AH-0260001` uses `round-corners` or `sharp-corners` in staging before manifest approval.
-
-Use `docs/workshop-wave1-staging-prep-2026-08-10.md` for the exact local counts, byte totals, destination prefixes, and manifest-prep SQL scaffold.
+No upload begins until the generated staging/database/source/capacity reports
+are clean and one wave is explicitly reviewed and SHA-256 frozen. Uploads may
+then run in the background one wave at a time. Generated manifest SQL remains a
+separate review-only handoff and never mutates staging automatically.

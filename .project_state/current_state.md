@@ -2,8 +2,8 @@
 
 Last updated: 2026-08-25
 
-Current branch: `feature/org-admin-navigation`, based on `development` at
-`dcad51f2`.
+Current branch: `feature/workshop-asset-batches`, based on `development` at
+`0739e44c`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -104,14 +104,15 @@ organization-admin, ordinary-user, and anonymous denial boundaries held without
 new console/network errors. The survey-contract staging gate is closed.
 Production is unchanged.
 
-The org-admin dashboard navigation correction is implemented locally on
-`feature/org-admin-navigation`: active organization admins land on the normal
-`/dashboard` experience and access the seven existing protected `/org-admin`
-destinations through a reusable dropdown. A shared server resolver exposes
-navigation only for exactly one active org-admin membership in an active
-organization; ambiguous, inactive, and absent access remain fail-closed. The
-normal application sidebar is reused by both route trees, so Orthomap and Survey
-Data remain visible while moving through organization-management pages. The
-strict portal context, RLS, survey read-only scope, and prohibition on Outputs
-are unchanged. TypeScript, targeted ESLint, and whitespace checks pass;
-deployment and authenticated responsive smoke remain pending.
+The user-tested org-admin navigation correction is integrated into
+`development` at `0739e44c`. Both route trees retain Orthomap, Survey Data,
+and the fail-closed Organization Admin dropdown. Authorization, RLS, read-only
+Surveys, and absent Outputs remain unchanged.
+
+The workshop asset batch workflow is implemented locally on
+`feature/workshop-asset-batches`. Its private allowlist starts empty and
+permanently blocks `AH-026012` and `AH-026013`. It discovers direct/nested
+Z-drive layouts, validates staging relationships read-only, generates waves of
+at most three surveys, freezes reviewed configs, capacity-gates and verifies
+streaming uploads, and emits review-only manifest SQL. No upload, database
+mutation, production change, manifest activation, or 1 GB PCD limit occurred.

@@ -21,9 +21,16 @@
                     "migrate-detected-objects":  "node scripts/migrate-detected-objects.js",
                     "migrate-detected-objects:apply":  "node scripts/migrate-detected-objects.js --apply",
                     "publish-protected-assets":  "node scripts/publish-protected-assets.js",
-                    "publish-protected-assets:apply":  "node scripts/publish-protected-assets.js --apply"
+                    "publish-protected-assets:apply":  "node scripts/publish-protected-assets.js --apply",
+                    "workshop-assets:test":  "node --test scripts/tests/workshop-assets.test.js",
+                    "workshop-assets:prepare":  "node scripts/prepare-workshop-assets.js",
+                    "workshop-assets:review":  "node scripts/review-workshop-asset-wave.js",
+                    "workshop-assets:upload":  "node scripts/publish-workshop-assets.js",
+                    "workshop-assets:runner":  "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/workshop-asset-runner.ps1"
                 },
     "dependencies":  {
+                         "@aws-sdk/client-s3":  "^3.1117.0",
+                         "@aws-sdk/lib-storage":  "^3.1117.0",
                          "@hookform/resolvers":  "^5.0.1",
                          "@radix-ui/react-avatar":  "^1.1.4",
                          "@radix-ui/react-checkbox":  "^1.2.3",
@@ -57,6 +64,7 @@
                          "maplibre-gl":  "^5.3.0",
                          "next":  "^15.3.2",
                          "next-themes":  "^0.4.6",
+                         "pg":  "^8.23.0",
                          "pmtiles":  "^4.3.0",
                          "react":  "^19.0.0",
                          "react-dom":  "^19.0.0",

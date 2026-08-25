@@ -32,23 +32,22 @@ Last updated: 2026-08-25
 - Survey-contract application deployment and signed-in staging smoke against
   `dcad51f2`, including restored metadata, compatibility checks, and denied-role
   coverage.
-- Local org-admin dashboard landing, shared access resolver, reusable
-  Organization Admin dropdown, persistent normal application sidebar across
-  dashboard/admin pages, and focused TypeScript, ESLint, and whitespace
-  validation.
+- Org-admin dashboard navigation, user validation, push, and integration into
+  `development` at `0739e44c`.
+- Local workshop asset batch tooling, empty private allowlist, permanent
+  exclusions, staging/data/capacity gates, reviewed background upload flow,
+  verification output, focused tests, and operator runbook.
 
 ## P1
 
-- Deploy and smoke the org-admin dashboard navigation on staging. Verify
-  desktop/mobile dropdown behavior, the seven existing protected destinations,
-  normal-member denial, read-only Surveys, and absent Outputs.
+- Populate and review the private workshop allowlist, then run one explicitly
+  approved staging wave and protected-asset smoke.
 
 ## P2
 
 - Build read-only User App Preview on `feature/user-app-preview`.
 - Restrict output types on `fix/output-types`, including affected-row
   inventory and legacy-value metadata preservation.
-- Continue workshop asset readiness after authorization work.
 
 ## Stabilization Cleanup
 
