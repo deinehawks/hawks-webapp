@@ -108,8 +108,10 @@ The P1 org-admin navigation correction is implemented locally. Active
 organization admins now land on `/dashboard`; a shared server-side resolver
 shows the reusable Organization Admin dropdown only for exactly one active
 org-admin membership in an active organization. The dropdown contains the seven
-existing protected portal routes, and the portal sidebar includes a Dashboard
-return path. Zero, inactive, and ambiguous access do not receive navigation;
+existing protected portal routes. Both `/dashboard` and `/org-admin` reuse the
+normal application sidebar, so Orthomap and Survey Data remain present while
+moving between user and management pages. Zero, inactive, and ambiguous access
+do not receive navigation;
 the strict portal context still redirects or errors fail-closed. RLS, read-only
 Surveys, and absent Outputs remain unchanged. TypeScript, targeted ESLint, and
 whitespace checks pass. Next action: staging deployment and authenticated

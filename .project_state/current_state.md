@@ -110,6 +110,8 @@ The org-admin dashboard navigation correction is implemented locally on
 destinations through a reusable dropdown. A shared server resolver exposes
 navigation only for exactly one active org-admin membership in an active
 organization; ambiguous, inactive, and absent access remain fail-closed. The
+normal application sidebar is reused by both route trees, so Orthomap and Survey
+Data remain visible while moving through organization-management pages. The
 strict portal context, RLS, survey read-only scope, and prohibition on Outputs
 are unchanged. TypeScript, targeted ESLint, and whitespace checks pass;
 deployment and authenticated responsive smoke remain pending.

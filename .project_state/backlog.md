@@ -33,8 +33,9 @@ Last updated: 2026-08-25
   `dcad51f2`, including restored metadata, compatibility checks, and denied-role
   coverage.
 - Local org-admin dashboard landing, shared access resolver, reusable
-  Organization Admin dropdown, dashboard return path, and focused TypeScript,
-  ESLint, and whitespace validation.
+  Organization Admin dropdown, persistent normal application sidebar across
+  dashboard/admin pages, and focused TypeScript, ESLint, and whitespace
+  validation.
 
 ## P1
 

@@ -40,7 +40,8 @@ Completed:
     held.
 16. The org-admin navigation documentation/priority update is committed
     separately, and the dashboard landing, shared access resolver, reusable
-    dropdown, and dashboard return path are implemented locally.
+    dropdown, and persistent normal application sidebar across both route trees
+    are implemented locally.
 17. TypeScript, targeted ESLint, and whitespace checks pass for the navigation
     slice.
 

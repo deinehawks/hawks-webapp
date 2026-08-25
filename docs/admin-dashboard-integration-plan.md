@@ -105,8 +105,10 @@ flowchart LR
 11. **Implemented locally; staging smoke pending:** `/dashboard` is the
     organization-admin landing experience and a reusable Organization Admin
     sidebar dropdown exposes the seven existing protected portal destinations.
-    This is navigation only and does not expand survey, output, mutation, or
-    organization scope.
+    The normal application sidebar is reused across `/dashboard` and
+    `/org-admin`, keeping Orthomap and Survey Data navigation visible while
+    moving between user and management pages. This is navigation only and does
+    not expand survey, output, mutation, or organization scope.
 
 Every admin mutation must authenticate the actor, require `platform_admin`, rely on RLS, validate identifiers and transitions, retain history instead of hard deleting access records, and produce an `admin_audit_log` entry. Audit coverage does not make an otherwise unauthorized mutation acceptable.
 
