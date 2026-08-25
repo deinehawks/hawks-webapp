@@ -60,7 +60,13 @@ output.
 
 Rolled-back database-role smoke passed: platform-admin RPC success generated
 one transactional audit row, direct platform-admin table update was denied, and
-ordinary-user RPC access was denied. A signed-in application UI click-through
-remains pending because the browser testing plugin is unavailable. The matching
-application code is integrated into `development`; deployment confirmation is
-the next gate.
+ordinary-user RPC access was denied.
+
+The signed-in staging application smoke passed on 2026-08-25 at 13:18 Asia/Manila
+against deployment commit `dcad51f2` using survey `AH-026005`. The
+platform-admin page loaded, identity/client fields remained read-only, an
+approved metadata edit persisted and was restored, identity/client values were
+unchanged, existing routes and assets continued to load, organization-admin and
+ordinary-user editing remained denied, anonymous access was denied, and no new
+console or network errors appeared. The survey-contract staging gate is closed.
+Production remains unchanged.

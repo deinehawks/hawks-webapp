@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-25
 
-Current epic: Survey identity and client-field contract.
+Current epic: Organization Admin dashboard navigation.
 
 Completed:
 
@@ -35,12 +35,21 @@ Completed:
 14. The checksummed backup/restore, migration/containment, one-file staging
     apply, remote contract/history, linked types, automated suite, and
     rolled-back database-role authorization smoke gates pass.
+15. Signed-in survey-contract staging smoke passed against deployment
+    `dcad51f2`; the update was restored and all access and compatibility checks
+    held.
+16. The org-admin navigation documentation/priority update is committed
+    separately, and the dashboard landing, shared access resolver, reusable
+    dropdown, and persistent normal application sidebar across both route trees
+    are implemented locally.
+17. TypeScript, targeted ESLint, and whitespace checks pass for the navigation
+    slice.
 
 Next sequence:
 
-1. Confirm deployment from `development` and complete a signed-in
-   platform-admin survey metadata save plus denied/read-only role click-through
-   in staging.
+1. Deploy `feature/org-admin-navigation` to staging and complete authenticated
+   desktop/mobile smoke for landing, dropdown navigation, normal-member denial,
+   strict org-admin routes, read-only Surveys, and absent Outputs.
 2. Follow with `feature/user-app-preview` and `fix/output-types` as separate
    branches.
 
@@ -53,5 +62,7 @@ Constraints:
   org-admin membership, including their own.
 - The strict org-admin context assumes the workshop rule of exactly one active
   org-admin organization membership.
+- Navigation visibility never replaces the strict org-admin context, server
+  checks, or RLS, and does not expose Outputs or survey mutations.
 - Survey identity/client contraction and global output-type migration remain
   separate slices.

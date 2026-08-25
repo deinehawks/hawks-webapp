@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
 import type { Tables } from "@/lib/database.types";
-import { createClient } from "@/utils/supabase/server";
+import { resolveOrgAdminAccess } from "@/lib/org-admin/access";
 
 type Organization = Tables<"organizations">;
 
@@ -29,51 +29,21 @@ export const getOrgAdminContext = cache(async (): Promise<OrgAdminContext> => {
     redirect("/dashboard");
   }
 
-  const supabase = await createClient();
-  const { data: memberships, error: membershipError } = await supabase
-    .from("organization_memberships")
-    .select("id, organization_id")
-    .eq("profile_id", user.id)
-    .eq("role", "org_admin")
-    .eq("status", "active")
-    .limit(2);
-
-  if (membershipError) {
-    throw new Error("Failed to resolve organization administrator access.", {
-      cause: membershipError,
-    });
-  }
-  if (!memberships || memberships.length === 0) {
+  const access = await resolveOrgAdminAccess(user.id);
+  if (access.status === "none") {
     redirect("/dashboard");
   }
-  if (memberships.length !== 1) {
+  if (access.status === "ambiguous") {
     throw new Error(
       "Organization administrator access is ambiguous. Contact a platform administrator.",
     );
   }
 
-  const membership = memberships[0];
-  const { data: organization, error: organizationError } = await supabase
-    .from("organizations")
-    .select("*")
-    .eq("id", membership.organization_id)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (organizationError) {
-    throw new Error("Failed to load the managed organization.", {
-      cause: organizationError,
-    });
-  }
-  if (!organization) {
-    redirect("/dashboard");
-  }
-
   return {
     user,
     profile,
-    membershipId: membership.id,
-    organization,
+    membershipId: access.membershipId,
+    organization: access.organization,
   };
 });
 

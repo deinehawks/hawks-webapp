@@ -5,8 +5,9 @@ Last updated: 2026-08-25
 ## Current Decisions
 
 - Keep the platform-admin and user experiences in one Next.js application and deployment, but use separate route trees and layouts.
-- `platform_admin` lands on `/admin`; an active `org_admin` lands on
-  `/org-admin`; an ordinary `user` lands on `/dashboard`.
+- `platform_admin` lands on `/admin`; active organization admins and ordinary
+  users land on `/dashboard`. Active organization admins reach `/org-admin`
+  through a role-aware sidebar dropdown.
 - The current `/dashboard/admin/*` nesting is superseded and transitional. Preserve it through redirects during implementation.
 - Users & Access for existing accounts is the first admin delivery wave.
 - Effective-access preview is read-only. The authenticated actor remains the platform admin; no user-equivalent session, cookie, token, or mutation authority is issued.
@@ -19,6 +20,9 @@ Last updated: 2026-08-25
 - The workshop org-admin portal resolves exactly one active org-admin organization membership and fails closed on zero or multiple matches.
 - Organization admins have read-only visibility into confirmed survey metadata.
   Survey mutation and every output view/mutation remain platform-admin-only.
+- Organization-admin sidebar visibility is presentation only. Exactly one
+  active org-admin membership in an active organization is required, while
+  strict route guards, server checks, and RLS remain authoritative.
 - Organization-scoped grants require active membership, an active organization, and a confirmed matching resource relationship. Null-organization grants are platform exceptions.
 - Suspension makes organization-scoped grants ineffective. Removal revokes them atomically and retains audit history.
 - Users create and confirm their own Auth accounts before review. Platform admins

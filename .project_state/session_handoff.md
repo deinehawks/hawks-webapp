@@ -2,7 +2,8 @@
 
 Last updated: 2026-08-25
 
-Branch after handoff: `development`.
+Current branch: `feature/org-admin-navigation`, based on `development` at
+`dcad51f2`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -97,10 +98,24 @@ updates and exposes the narrow RPC. Survey and audit counts remain 108 and 144.
 Linked DB lint reports only the known stale backfill function.
 
 The completed `feature/survey-contract` application and database slice is
-integrated into `development`. Next action: confirm the staging application
-deployment, then complete a signed-in platform-admin no-op metadata save and
-denied/read-only ordinary/org-admin UI click-through. Browser testing was
-unavailable in this session. Production remains unchanged.
+integrated into `development`. Signed-in staging smoke passed on deployment
+`dcad51f2`: the approved edit persisted and was restored, locked fields were
+unchanged, existing routes/assets worked, organization-admin and ordinary-user
+editing remained denied, anonymous access failed closed, and no new browser
+errors appeared. The survey-contract staging gate is closed.
+
+The P1 org-admin navigation correction is implemented locally. Active
+organization admins now land on `/dashboard`; a shared server-side resolver
+shows the reusable Organization Admin dropdown only for exactly one active
+org-admin membership in an active organization. The dropdown contains the seven
+existing protected portal routes. Both `/dashboard` and `/org-admin` reuse the
+normal application sidebar, so Orthomap and Survey Data remain present while
+moving between user and management pages. Zero, inactive, and ambiguous access
+do not receive navigation;
+the strict portal context still redirects or errors fail-closed. RLS, read-only
+Surveys, and absent Outputs remain unchanged. TypeScript, targeted ESLint, and
+whitespace checks pass. Next action: staging deployment and authenticated
+desktop/mobile smoke, then User App Preview. Production remains unchanged.
 
 Preserve unrelated user-owned scratch/deletion state in `.tmp/`, `issues.txt`,
 `workflow.txt`, and `improve.txt`.

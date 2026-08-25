@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getAllUserSurveys } from "@/lib/actions/surveys";
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
+import { resolveOrgAdminAccess } from "@/lib/org-admin/access";
 import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({
@@ -19,7 +20,12 @@ export default async function DashboardLayout({
   if (profile.account_status && profile.account_status !== "active") {
     redirect("/account/pending");
   }
-  const surveys = await getAllUserSurveys();
+  const [surveys, orgAdminAccess] = await Promise.all([
+    getAllUserSurveys(),
+    profile.role === "user"
+      ? resolveOrgAdminAccess(user.id)
+      : Promise.resolve({ status: "none" } as const),
+  ]);
 
   return (
     <SidebarProvider
@@ -30,7 +36,16 @@ export default async function DashboardLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar surveys={surveys} user={user} userProfile={profile} />
+      <AppSidebar
+        surveys={surveys}
+        user={user}
+        userProfile={profile}
+        orgAdminOrganizationName={
+          orgAdminAccess.status === "active"
+            ? orgAdminAccess.organization.name
+            : undefined
+        }
+      />
       <SidebarInset>
         <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
           <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">

@@ -2,7 +2,8 @@
 
 Last updated: 2026-08-25
 
-Current branch after handoff: `development`.
+Current branch: `feature/org-admin-navigation`, based on `development` at
+`dcad51f2`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -96,5 +97,21 @@ ESLint, and rolled-back database-role authorization smoke passed. Direct
 authenticated survey updates are now denied in staging and the narrow RPC is
 live. The 108 survey rows and 144 audit rows remained unchanged after smoke.
 Linked DB lint reports only the known stale backfill function. The application
-code is integrated into `development`; staging deployment confirmation and a
-signed-in UI click-through remain pending. Production is unchanged.
+code is integrated into `development`. The signed-in staging application smoke
+passed on deployment `dcad51f2`: the approved update persisted and was restored,
+identity/client fields stayed locked, routes/assets remained operational, and
+organization-admin, ordinary-user, and anonymous denial boundaries held without
+new console/network errors. The survey-contract staging gate is closed.
+Production is unchanged.
+
+The org-admin dashboard navigation correction is implemented locally on
+`feature/org-admin-navigation`: active organization admins land on the normal
+`/dashboard` experience and access the seven existing protected `/org-admin`
+destinations through a reusable dropdown. A shared server resolver exposes
+navigation only for exactly one active org-admin membership in an active
+organization; ambiguous, inactive, and absent access remain fail-closed. The
+normal application sidebar is reused by both route trees, so Orthomap and Survey
+Data remain visible while moving through organization-management pages. The
+strict portal context, RLS, survey read-only scope, and prohibition on Outputs
+are unchanged. TypeScript, targeted ESLint, and whitespace checks pass;
+deployment and authenticated responsive smoke remain pending.

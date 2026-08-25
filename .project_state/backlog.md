@@ -29,12 +29,19 @@ Last updated: 2026-08-25
 - Org-admin branch handoff and integration into `development`.
 - Local survey identity/client-field contract, narrow platform-admin RPC,
   locked admin UI, generated types, and focused/full validation.
+- Survey-contract application deployment and signed-in staging smoke against
+  `dcad51f2`, including restored metadata, compatibility checks, and denied-role
+  coverage.
+- Local org-admin dashboard landing, shared access resolver, reusable
+  Organization Admin dropdown, persistent normal application sidebar across
+  dashboard/admin pages, and focused TypeScript, ESLint, and whitespace
+  validation.
 
 ## P1
 
-- Confirm the integrated survey-contract application deployment and complete
-  the signed-in platform-admin save plus denied/read-only role click-through.
-  The staging database rollout and database-role smoke are complete.
+- Deploy and smoke the org-admin dashboard navigation on staging. Verify
+  desktop/mobile dropdown behavior, the seven existing protected destinations,
+  normal-member denial, read-only Surveys, and absent Outputs.
 
 ## P2
 
