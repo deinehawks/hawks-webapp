@@ -2,11 +2,9 @@
   "version": 1,
   "sourceRoot": "Z:\\surveys\\2026",
   "datasetYear": 2026,
+  "batchKey": "example",
   "maxSurveysPerWave": 3,
-  "permanentlyExcludedSurveyIds": [
-    "AH-026012",
-    "AH-026013"
-  ],
+  "pilotSurveyIds": [],
   "approvedSurveys": [],
   "approvedPointClouds": [],
   "ignoredPointClouds": []

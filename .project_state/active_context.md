@@ -1,6 +1,6 @@
 # Active Context
 
-Last updated: 2026-08-25
+Last updated: 2026-09-01
 
 Current epic: Workshop asset batch migration readiness.
 
@@ -43,14 +43,56 @@ Completed:
 17. The workshop batch branch contains private-allowlist preparation, staging
     and capacity gates, reviewed streaming uploads, a single hidden runner,
     verification output, tests, and the operator runbook.
-18. The private allowlist is empty; no upload job or external mutation ran.
+18. The populated allowlist's 31-selection dry run completed. `AH-026012`
+    and `AH-026013` are ready; 29 selections lack exact staging survey rows,
+    and `AH-026038` also has empty tile variants. No wave, upload, or external
+    mutation ran.
+19. `AH-026038` is confirmed unfinished and will be removed. The resulting
+    30-survey batch contains 17 individual-client and 13 organization-client
+    surveys; 28 survey identities require a reviewed staging onboarding
+    transaction because the Platform Admin UI cannot create clients, surveys,
+    or batch records.
+20. Read-only staging inventory found two new individual client codes, one
+    existing individual client without a person mapping, one unclassified
+    organization client without a canonical mapping, and two correctly mapped
+    organization clients. No onboarding mutation ran.
+21. The checksummed staging backup and isolated restore/rehearsal gate passed.
+    The exact authorization migration and both onboarding transaction forms
+    validated in a disposable clone; focused clone authorization passed 16/16
+    and the clean local full suite passed 170/170.
+22. The approved authorization migration and onboarding transaction are now
+    applied to staging. All 30 records and scope relationships verify, BSBG is
+    organization/cooperative, no account or grant counts changed, and the
+    organization asset preparation reports all 13 surveys ready.
+23. Organization Wave 1 (`AH-026012` and `AH-026013`) is reviewed, frozen,
+    uploaded, fully verified, and signed off in staging. The checksum, 37,868
+    objects, four capacity checks, and four protected manifest entries passed.
+    No manifest was activated.
+24. The workshop runtime is upgraded through NVM to Node.js 22.22.0. The
+    repository engine, `.nvmrc`, lockfile, and Node type definitions are
+    aligned; AWS SDK imports, focused tests 18/18, targeted ESLint, and
+    TypeScript pass.
+25. Organization Wave 2 is reviewed, frozen, uploaded, fully verified, and
+    signed off in staging. All 383,975 objects and 24,142,306,973 bytes passed
+    object and group checks; five capacity checks and five organization-
+    protected manifest entries passed. The runner stopped cleanly and no
+    manifest was activated.
+26. Organization Wave 3 is frozen for `AH-026023`, `AH-026024`, and
+    `AH-026028`. Its approved staging run stopped on local `ENOSPC` and
+    produced no sign-off. Atomic JSON writes and zero-byte state recovery are
+    implemented and tested; the exact frozen config can resume after local
+    disk space is freed.
 
 Next sequence:
 
-1. Populate and review the private workshop allowlist and generated inventory.
-2. Freeze and start one approved staging wave, then complete protected-route
-   smoke before any separately approved manifest change.
-3. Follow with `feature/user-app-preview` and `fix/output-types`.
+1. Free sufficient local project and temporary-drive space while preserving
+   the ignored Wave 3 config, runner evidence, and state path.
+2. Resume the exact frozen Wave 3 config, then fully verify and sign it off.
+3. Proceed through the remaining organization waves with separate review,
+   freeze, approval, upload, and sign-off gates.
+4. Complete organization uploads while private waves are prepared; approve one
+   combined manifest draft only after every expected survey verifies.
+5. Follow with `feature/user-app-preview` and `fix/output-types`.
 
 Constraints:
 
@@ -65,3 +107,7 @@ Constraints:
   checks, or RLS, and does not expose Outputs or survey mutations.
 - Survey identity/client contraction and global output-type migration remain
   separate slices.
+- Private asset support requires canonical people mappings, a null organization
+  scope, explicit protection-level enforcement, and eventual explicit grants;
+  never fabricate one-person organizations. No-organization account/dashboard
+  support remains deferred.

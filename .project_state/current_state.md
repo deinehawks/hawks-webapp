@@ -1,6 +1,6 @@
 # Current State
 
-Last updated: 2026-08-25
+Last updated: 2026-09-01
 
 Current branch: `feature/workshop-asset-batches`, based on `development` at
 `0739e44c`.
@@ -110,9 +110,90 @@ and the fail-closed Organization Admin dropdown. Authorization, RLS, read-only
 Surveys, and absent Outputs remain unchanged.
 
 The workshop asset batch workflow is implemented locally on
-`feature/workshop-asset-batches`. Its private allowlist starts empty and
-permanently blocks `AH-026012` and `AH-026013`. It discovers direct/nested
+`feature/workshop-asset-batches`. `AH-026012` and `AH-026013` are eligible
+for explicit selection after the earlier exclusion decision was corrected. It
+discovers direct/nested
 Z-drive layouts, validates staging relationships read-only, generates waves of
 at most three surveys, freezes reviewed configs, capacity-gates and verifies
 streaming uploads, and emits review-only manifest SQL. No upload, database
 mutation, production change, manifest activation, or 1 GB PCD limit occurred.
+
+The private allowlist is now populated and its full 31-selection read-only dry
+run completed. Only `AH-026012` and `AH-026013` are source/staging-ready;
+the other 29 selections have no exact staging survey identity match, and
+`AH-026038` additionally has empty tile-variant directories. Capacity passes
+for the two ready surveys, but no wave was generated. No upload or database
+mutation occurred.
+
+`AH-026038` was confirmed as unfinished and will be removed, leaving a
+30-survey batch with 28 missing staging survey identities.
+The Platform Admin UI can create organizations but not new clients, surveys, or
+batch dataset records. The temporary P1 path is a reviewed staging-only
+onboarding transaction.
+
+The supplied ownership intake classifies 17 surveys under individual clients
+and 13 under organization clients. Its reviewed staging transaction has now
+created the missing canonical records and relationships.
+
+Dual-scope workshop support is implemented locally. Preparation resolves
+explicit organization/private scope from canonical mappings; publishing
+accepts null-organization private entries; per-wave output is verification-only;
+and one combined manifest draft requires complete unique reports for all 30
+surveys. Migration `20260826000000_harden_workshop_asset_scopes.sql` enforces
+organization, private, and platform-admin protection semantics. Clean local
+replay, focused JavaScript 18/18, TypeScript, targeted ESLint, and full pgTAP
+170/170 pass. A read-only active-manifest inventory found six canonical
+organization entries and two legacy individual/null-organization entries, all
+still labeled organization; the migration preserves their existing
+`domain_can_read_survey` behavior until the combined superseding manifest.
+
+The workshop database staging gate is complete. Fresh checksummed backups and
+two isolated clone rehearsals passed before migration
+`20260826000000_harden_workshop_asset_scopes.sql` and the exact reviewed
+onboarding transaction were applied to staging. Remote history, function
+security, direct-execution denial, and no-pending checks pass. Staging now has
+all 30 selected surveys: 28 draft inserts, 13 confirmed organization
+relationships, zero private organization relationships, correct compatibility
+values, unchanged Auth/profile/grant counts, and the expected audit. BSBG is
+now `organization`, mapped to an active `cooperative`, with five confirmed
+survey relationships.
+
+Post-apply organization preparation found all 13 surveys ready, zero blocked
+or unreviewed point clouds, and passing capacity for about 51.07 GiB. Five
+local waves were regenerated with an explicit pilot rule. Wave 1 contains only
+`AH-026012` and `AH-026013`; the remaining 11 surveys are grouped into four
+waves of at most three.
+
+Organization Wave 1 is signed off in staging. Its reviewed configuration
+checksum matches and the full verification check passed for 37,868 objects
+totaling 6,705,469,416 bytes. Both surveys have verified tile and point-cloud
+groups, all four capacity checks passed, and four organization-protected
+manifest entries were emitted. No partial manifest SQL was generated or
+activated. The Wave 2 tooling prerequisite is complete: NVM now uses Node.js
+22.22.0, the repository declares Node 22, Node type definitions are aligned at
+22.20.1, AWS SDK imports pass without the prior warning, and the focused 18/18
+tests, targeted ESLint, and TypeScript pass. Production, Auth users,
+memberships, grants, and Supabase records are unchanged.
+
+Organization Wave 2 is signed off in staging from the frozen configuration
+`workshop-organization-wave-002-2026-08-28T10-37-28-724Z.jobs.json`. Its
+checksum remained `aa185ca748082ac178f9745514728f9b008fe3d7d224a1e8354162c66b005c16`.
+All 383,975 expected objects totaling 24,142,306,973 bytes verified across
+the tile and point-cloud groups for `AH-026014`, `AH-026015`, and
+`AH-026022`. All five capacity checks passed, every remote object exists with
+the expected content length, and five organization-protected manifest entries
+match the separate entry artifact. The runner stopped with an empty error log.
+No manifest SQL was generated or activated; production, database/Auth state,
+memberships, and grants remain unchanged. Evidence is in
+`docs/workshop-organization-wave-002-signoff-2026-09-01.md`.
+
+Organization Wave 3 is frozen as
+`workshop-organization-wave-003-2026-09-01T03-14-31-908Z.jobs.json` for
+`AH-026023`, `AH-026024`, and `AH-026028`; its SHA-256 is
+`374734d07c67b7a5bcf48c7c924f7b958e51064127cda764139c64e59caa932c`.
+The approved staging run stopped on local `ENOSPC` before sign-off and left a
+zero-byte ignored state file. No manifest was generated or activated. The
+publisher now uses atomic JSON replacement and safely reinitializes only an
+empty resume-state file, allowing existing remote object sizes to be checked on
+the next run. Focused tests pass 18/18. Free local disk space before resuming
+the exact frozen Wave 3 config.

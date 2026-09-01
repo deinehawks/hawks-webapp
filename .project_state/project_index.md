@@ -1,6 +1,6 @@
 ﻿# Project Index
 
-Last updated: 2026-08-25
+Last updated: 2026-09-01
 
 Use this index after the compressed startup files. Document classifications prevent historical plans from being mistaken for current instructions.
 
@@ -16,6 +16,15 @@ Use this index after the compressed startup files. Document classifications prev
 - `docs/survey-contract-staging-validation-2026-08-25.md`: checksummed backup,
   isolated restore, migration/containment, staging apply, and verification
   evidence for the first survey contract stage.
+- `docs/workshop-onboarding-staging-rehearsal-2026-08-27.md`: current
+  checksummed backup, isolated restore, authorization migration, onboarding
+  rollback/commit rehearsal, staging apply, and post-apply validation evidence.
+- `docs/workshop-organization-wave-001-signoff-2026-08-28.md`: Wave 1
+  configuration integrity, staging upload verification, capacity and
+  manifest-entry evidence, user sign-off, and Node.js follow-up.
+- `docs/workshop-organization-wave-002-signoff-2026-09-01.md`: Wave 2 frozen
+  configuration integrity, full staging object verification, capacity checks,
+  manifest-entry evidence, and sign-off boundaries.
 - `.project_state/decisions.md`: concise approved decisions and explicit supersessions.
 
 ## Supporting Current References

@@ -9,10 +9,10 @@ const { Upload } = require("@aws-sdk/lib-storage");
 const dotenv = require("dotenv");
 
 const {
-  PERMANENTLY_EXCLUDED_SURVEY_IDS,
   evaluateCapacity,
   isTemporaryDirectoryName,
   parseDfOutput,
+  validateJobManifestScope,
 } = require("./lib/workshop-assets");
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
@@ -56,7 +56,32 @@ async function readJson(filePath) {
 
 async function writeJson(filePath, value) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  const temporaryPath = filePath + "." + process.pid + "." + Date.now() + ".tmp";
+  try {
+    await fs.writeFile(temporaryPath, JSON.stringify(value, null, 2) + "\n", "utf8");
+    await fs.rename(temporaryPath, filePath);
+  } catch (error) {
+    await fs.rm(temporaryPath, { force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+async function readResumeState(filePath, waveId) {
+  const emptyState = { waveId, completedObjects: {} };
+  try {
+    const state = await readJson(filePath);
+    if (state.waveId !== waveId || !state.completedObjects || Array.isArray(state.completedObjects)) {
+      throw new Error("Resume state does not match wave " + waveId + ".");
+    }
+    return state;
+  } catch (error) {
+    if (error.code === "ENOENT") return emptyState;
+    if (error instanceof SyntaxError) {
+      const contents = await fs.readFile(filePath, "utf8");
+      if (!contents.trim()) return emptyState;
+    }
+    throw error;
+  }
 }
 
 async function collectFiles(root, extension) {
@@ -162,8 +187,8 @@ function validateConfig(config) {
   if (!config.capacityGuard?.enabled) throw new Error("Capacity guard must be enabled.");
   if (!Array.isArray(config.jobs) || !config.jobs.length || config.jobs.length > 3) throw new Error("A reviewed wave must contain one through three survey jobs.");
   for (const job of config.jobs) {
-    if (PERMANENTLY_EXCLUDED_SURVEY_IDS.includes(String(job.surveyId).toUpperCase())) throw new Error(`${job.surveyId} is permanently excluded.`);
-    if (!job.manifest?.organizationId || !job.manifest?.clientId) throw new Error(`${job.surveyId} is missing reviewed manifest scope.`);
+    const scopeError = validateJobManifestScope(job);
+    if (scopeError) throw new Error(scopeError);
   }
 }
 
@@ -191,40 +216,38 @@ async function buildGroups(config) {
   return groups;
 }
 
-function sqlValue(value) {
-  if (value === null || value === undefined) return "null";
-  return `'${String(value).replace(/'/g, "''")}'`;
-}
-
-function buildManifestSql(config, report) {
+function buildManifestEntries(config) {
   const entries = [];
   for (const job of config.jobs) {
     for (const tile of job.tiles ?? []) {
       const prefix = `${job.clientCode}/${job.year}/${job.surveyId}/ortho/${tile.tileFolder}`;
-      entries.push(["tile_group", job.manifest.organizationId, job.manifest.clientId, job.surveyId, prefix, tile.destinationAlias ?? "tiles", `/asimov-hawks/tiles/${job.clientCode}/${job.year}/${job.surveyId}/ortho/${tile.tileFolder}/{z}/{x}/{y}.png`]);
+      entries.push({
+        entryType: "tile_group",
+        organizationId: job.manifest.organizationId,
+        clientId: job.manifest.clientId,
+        surveyId: job.surveyId,
+        referenceKey: prefix,
+        destinationStorageAlias: tile.destinationAlias ?? "tiles",
+        nginxRoutePattern: `/asimov-hawks/tiles/${job.clientCode}/${job.year}/${job.surveyId}/ortho/${tile.tileFolder}/{z}/{x}/{y}.png`,
+        protectionLevel: job.manifest.protectionLevel,
+      });
     }
     for (const pointCloud of job.pointClouds ?? []) {
       const fileName = pointCloud.file ?? path.basename(pointCloud.sourceFile);
       const objectPath = pointCloud.destinationObjectPath ?? `${job.clientCode}/${job.year}/${job.surveyId}/point-clouds/${fileName}`;
-      entries.push(["point_cloud", job.manifest.organizationId, job.manifest.clientId, job.surveyId, objectPath, pointCloud.destinationAlias ?? "pointclouds", `/asimov-hawks/3d/${job.clientCode}/${job.year}/${job.surveyId}/${fileName}`]);
+      entries.push({
+        entryType: "point_cloud",
+        organizationId: job.manifest.organizationId,
+        clientId: job.manifest.clientId,
+        surveyId: job.surveyId,
+        referenceKey: objectPath,
+        destinationStorageAlias: pointCloud.destinationAlias ?? "pointclouds",
+        nginxRoutePattern: `/asimov-hawks/3d/${job.clientCode}/${job.year}/${job.surveyId}/${fileName}`,
+        protectionLevel: job.manifest.protectionLevel,
+      });
     }
   }
-  const values = entries.map((entry) => `  (:new_manifest_id, ${entry.map(sqlValue).join(", ")}, 'organization', '{"verified":true}'::jsonb)`).join(",\n");
-  return [
-    "-- REVIEW ONLY. This file never runs automatically.",
-    "-- Create a draft superseding manifest through the approved SQL-editor workflow.",
-    "-- Replace :new_manifest_id and :new_manifest_key only after reviewing the verification report.",
-    "insert into public.workshop_manifests (id, manifest_key, status, dataset_year, supersedes_manifest_id, title)",
-    "select :new_manifest_id, :new_manifest_key, 'draft', 2026, id, 'Workshop asset batch'",
-    "from public.workshop_manifests where dataset_year = 2026 and status = 'approved' and is_active = true;",
-    "",
-    "insert into public.workshop_manifest_entries (manifest_id, entry_type, organization_id, client_id, survey_id, reference_key, destination_storage_alias, nginx_route_pattern, protection_level, verification)",
-    "values",
-    `${values};`,
-    "",
-    `-- Verified objects: ${report.summary.verifiedObjects}; verified bytes: ${report.summary.verifiedBytes}.`,
-    "-- Do not approve, activate, or supersede the old manifest from this generated draft.",
-  ].join("\n");
+  return entries;
 }
 
 async function main() {
@@ -232,14 +255,14 @@ async function main() {
   try {
     const config = await readJson(args.config);
     validateConfig(config);
+    const manifestEntries = buildManifestEntries(config);
     const groups = await buildGroups(config);
     const client = createClient();
     const statePath = path.join(DEFAULT_STATE_ROOT, `${config.waveId}.json`);
-    let state = { waveId: config.waveId, completedObjects: {} };
-    try { state = await readJson(statePath); } catch (error) { if (error.code !== "ENOENT") throw error; }
+    const state = await readResumeState(statePath, config.waveId);
 
     let remainingBytes = groups.flatMap((group) => group.objects).reduce((sum, object) => sum + object.size, 0);
-    const report = { createdAt: new Date().toISOString(), configPath: args.config, waveId: config.waveId, groups: [], capacityChecks: [], summary: { verifiedObjects: 0, verifiedBytes: 0 } };
+    const report = { createdAt: new Date().toISOString(), configPath: args.config, waveId: config.waveId, groups: [], capacityChecks: [], manifestEntries, summary: { verifiedObjects: 0, verifiedBytes: 0 } };
     for (const group of groups) {
       if (args.stop) {
         try {
@@ -276,17 +299,22 @@ async function main() {
     report.completedAt = new Date().toISOString();
     const reportPath = path.join(OUTPUT_ROOT, "verification", `${config.waveId}.verification.json`);
     await writeJson(reportPath, report);
-    const sqlPath = path.join(OUTPUT_ROOT, "verification", `${config.waveId}.manifest-draft.sql`);
-    await fs.writeFile(sqlPath, `${buildManifestSql(config, report)}\n`, "utf8");
+    const entriesPath = path.join(OUTPUT_ROOT, "verification", `${config.waveId}.manifest-entries.json`);
+    await writeJson(entriesPath, { waveId: config.waveId, completedAt: report.completedAt, entries: manifestEntries });
     console.log(`Verified ${report.summary.verifiedObjects} objects. Report: ${reportPath}`);
-    console.log(`Manifest review draft: ${sqlPath}`);
+    console.log(`Verified manifest entries: ${entriesPath}`);
+    console.log("No partial manifest SQL was generated. Build one combined draft only after every selected wave verifies.");
   } finally {
     if (args.lock) await fs.rm(args.lock, { force: true });
     if (args.stop) await fs.rm(args.stop, { force: true });
   }
 }
 
-main().catch((error) => {
-  console.error("Workshop asset upload failed:", error.message);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error("Workshop asset upload failed:", error.message);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { buildManifestEntries, readResumeState, validateConfig, writeJson };

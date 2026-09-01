@@ -3,7 +3,7 @@
     "version":  "0.1.0",
     "private":  true,
     "engines":  {
-
+                    "node":  "22.x"
                 },
     "scripts":  {
                     "dev":  "set NEXT_DISABLE_TURBOPACK=1 \u0026\u0026 next dev",
@@ -23,9 +23,12 @@
                     "publish-protected-assets":  "node scripts/publish-protected-assets.js",
                     "publish-protected-assets:apply":  "node scripts/publish-protected-assets.js --apply",
                     "workshop-assets:test":  "node --test scripts/tests/workshop-assets.test.js",
+                    "workshop-onboarding:prepare":  "node scripts/prepare-workshop-onboarding.js",
+                    "workshop-onboarding:rehearse-local":  "node scripts/rehearse-workshop-onboarding-local.js",
                     "workshop-assets:prepare":  "node scripts/prepare-workshop-assets.js",
                     "workshop-assets:review":  "node scripts/review-workshop-asset-wave.js",
                     "workshop-assets:upload":  "node scripts/publish-workshop-assets.js",
+                    "workshop-assets:manifest":  "node scripts/build-workshop-manifest-draft.js",
                     "workshop-assets:runner":  "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/workshop-asset-runner.ps1"
                 },
     "dependencies":  {
@@ -81,7 +84,7 @@
     "devDependencies":  {
                             "@eslint/eslintrc":  "^3",
                             "@tailwindcss/postcss":  "^4",
-                            "@types/node":  "^20",
+                            "@types/node":  "^22.20.1",
                             "@types/react":  "^19",
                             "@types/react-dom":  "^19",
                             "eslint":  "^9",

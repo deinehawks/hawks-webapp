@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated: 2026-08-25
+Last updated: 2026-09-01
 
 ## Completed
 
@@ -34,20 +34,36 @@ Last updated: 2026-08-25
   coverage.
 - Org-admin dashboard navigation, user validation, push, and integration into
   `development` at `0739e44c`.
-- Local workshop asset batch tooling, empty private allowlist, permanent
-  exclusions, staging/data/capacity gates, reviewed background upload flow,
+- Local workshop asset batch tooling, private allowlist, staging/data/capacity
+  gates, reviewed background upload flow,
   verification output, focused tests, and operator runbook.
+- Organization Wave 1 staging upload, full 37,868-object verification, four
+  protected manifest-entry outputs, and user sign-off.
+- Node.js 22.22.0 workshop-tooling upgrade, repository runtime declaration,
+  Node 22 type alignment, AWS SDK import smoke, focused tests, targeted ESLint,
+  and TypeScript validation.
+- Organization Wave 2 review, freeze, approved staging upload, full
+  383,975-object verification, five protected manifest-entry outputs, clean
+  runner shutdown, and sign-off.
 
 ## P1
 
-- Populate and review the private workshop allowlist, then run one explicitly
-  approved staging wave and protected-asset smoke.
+- The staging migration/onboarding gate and Organization Waves 1 and 2 are
+  complete. Wave 3 is frozen but its approved staging run stopped on local
+  `ENOSPC`; free disk space, resume the exact frozen config, and sign it off
+  before processing later waves individually. Generate one combined manifest
+  draft only after all expected surveys verify.
 
 ## P2
 
 - Build read-only User App Preview on `feature/user-app-preview`.
 - Restrict output types on `fix/output-types`, including affected-row
   inventory and legacy-value metadata preservation.
+- Add a platform-admin Dataset Onboarding workflow for client creation,
+  confirmed canonical mapping, duplicate preview, and atomic batch survey
+  creation.
+- Add no-organization signup approval and grant-derived dashboard client
+  selection so supported individual accounts can consume the private assets.
 
 ## Stabilization Cleanup
 

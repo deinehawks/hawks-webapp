@@ -3,7 +3,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
 
-const { PERMANENTLY_EXCLUDED_SURVEY_IDS } = require("./lib/workshop-assets");
+const { validateJobManifestScope } = require("./lib/workshop-assets");
 
 function parseArgs(argv) {
   const index = argv.indexOf("--config");
@@ -27,8 +27,9 @@ async function main() {
   if (config.workflowVersion !== 1 || config.reviewed !== false) throw new Error("Only an unreviewed generated workflowVersion 1 config can be frozen.");
   if (!Array.isArray(config.jobs) || !config.jobs.length || config.jobs.length > 3) throw new Error("Generated wave must contain one through three jobs.");
   if (!config.capacityGuard?.enabled) throw new Error("Generated wave must enable the capacity guard.");
-  if (config.jobs.some((job) => PERMANENTLY_EXCLUDED_SURVEY_IDS.includes(String(job.surveyId).toUpperCase()))) {
-    throw new Error("Generated wave contains a permanently excluded survey.");
+  for (const job of config.jobs) {
+    const scopeError = validateJobManifestScope(job);
+    if (scopeError) throw new Error(scopeError);
   }
   const reviewed = {
     ...config,

@@ -84,6 +84,32 @@ Checksums remain optional for this workshop unless the project lead requires the
 10. Run NGINX smoke tests for anonymous `401`, authenticated `200`, denied cross-org `401`, and browser map/3D loading.
 11. Record results in a normal docs validation log and keep `.project_state` compact.
 
+## Known Onboarding Gaps And Deferred Capabilities
+
+The existing Platform Admin UI creates canonical organizations and manages
+existing client mappings and survey metadata, but it cannot create clients,
+create surveys, or batch-onboard dataset identities. The current workshop
+workaround is a reviewed staging-only transaction that atomically creates the
+client, confirmed primary organization mapping, immutable survey compatibility
+fields, and confirmed survey-organization relationships. Preparation remains
+read-only and must block missing records rather than creating them.
+
+A future Platform Admin Dataset Onboarding workflow should authenticate and
+authorize independently on the server, preview duplicates and conflicts,
+create stable unique client codes, select or create an active organization,
+batch-create immutable survey identities, apply all relationships atomically,
+and audit the operation. It must not expose service-role credentials or grant
+survey creation to organization admins.
+
+Individual-client protected asset support is implemented locally in the batch
+workflow. It uses canonical `people` and confirmed `client_people`, nullable
+manifest organization scope only with private protection, and explicit
+platform-issued null-organization survey grants. The authorization RPC now
+enforces protection levels and rejects ambiguous scope, anonymous users,
+unrelated users, and expired or revoked grants. No-organization signup and
+dashboard client selection remain deferred; private workshop entries therefore
+stay platform-admin-only until that separate account path and grants exist.
+
 ## Acceptance Criteria
 
 - Every migrated asset is included in the active approved staging manifest.
@@ -106,11 +132,15 @@ If a wave fails, freeze further migration, leave protected paths fail-closed, an
 The current workflow is documented in
 `docs/workshop-asset-batch-runbook.md`. Survey selection now comes only from
 the ignored private allowlist; there is no preselected replacement wave.
-`AH-026012` and `AH-026013` are permanently excluded. The project lead will
+The earlier exclusion of `AH-026012` and `AH-026013` was withdrawn on
+2026-08-26. Both surveys may be explicitly selected. The project lead will
 add approved survey IDs, tile variants, exact PCD paths, and ignored PCD review
 records before another dry run.
 
 No upload begins until the generated staging/database/source/capacity reports
-are clean and one wave is explicitly reviewed and SHA-256 frozen. Uploads may
-then run in the background one wave at a time. Generated manifest SQL remains a
-separate review-only handoff and never mutates staging automatically.
+are clean and one wave is explicitly reviewed and SHA-256 frozen. Organization
+and private splits use distinct wave IDs and may then run in the background one
+wave at a time. Each wave emits verified entries only. A single combined
+manifest SQL draft is allowed only after all 30 expected surveys have complete,
+unique verification reports; it remains a review-only handoff and never
+mutates staging automatically.

@@ -1,6 +1,6 @@
 # Session Handoff
 
-Last updated: 2026-08-25
+Last updated: 2026-09-01
 
 Current branch: `feature/workshop-asset-batches`, based on `development` at
 `0739e44c`.
@@ -108,14 +108,100 @@ The user-tested org-admin navigation work is merged into `development` at
 `0739e44c`; the current branch starts from that tip.
 
 The workshop batch workflow is implemented locally. The ignored private
-allowlist starts empty, so its validated dry run created no jobs, staging query,
-or upload. `AH-026012` and `AH-026013` fail closed. Preparation discovers
-direct/nested `Z:\surveys\2026` layouts, blocks unreviewed PCDs and missing
+allowlist is populated. The earlier exclusion of `AH-026012` and
+`AH-026013` was withdrawn;
+both may be explicitly selected. Preparation discovers direct/nested
+`Z:\surveys\2026` layouts, blocks unreviewed PCDs and missing
 canonical staging mappings, groups at most three surveys, and checks MinIO
 capacity. Reviewed configs are SHA-256 frozen before the single hidden runner
 can stream, resume, and verify uploads. Manifest SQL is generated only after
 verification and never runs automatically. Focused tests and static checks
 pass. Production and database state are unchanged.
+
+Preparation now prefers validated linked staging pooler metadata when explicit
+database host settings are absent, avoiding reliance on the unavailable direct
+database hostname while preserving the staging project lock. It also reports
+per-survey progress and uses bounded file-stat concurrency for large Z-drive
+inventories.
+
+The corrected full dry run completed. `AH-026012` is ready with 24,352 tiles
+and one approved PCD, and `AH-026013` is ready with 13,514 tiles and one
+approved PCD. The remaining 29 selections have no exact staging survey row;
+`AH-026038` additionally has empty round- and sharp-corner tile directories.
+No generated wave, upload, database mutation, or other external write occurred.
+The capacity check passes only for the currently ready 6.7 GB transfer, not for
+the blocked selections.
+
+`AH-026038` is unfinished and will be removed, leaving 30 workshop surveys
+and 28 missing staging survey identities. The existing
+Platform Admin UI can create organizations but cannot create clients, surveys,
+or batch dataset records. Use a reviewed staging-only onboarding transaction
+for the current batch; preparation must remain read-only.
+
+The supplied intake classifies 17 surveys under individual clients and 13 under
+organization clients. No personal contact details were written to Git.
+Individual/private publishing remains implemented without fabricated
+organizations, with distinct wave IDs and one 30-survey combined-manifest gate.
+
+The workshop database staging gate is complete. Fresh ignored checksummed
+schema/Auth/Public backups restored with matching captured counts, and both the
+original and BSBG-ID-locked transactions passed fresh-clone rehearsals. The
+user explicitly approved and staging applied only migration
+`20260826000000` followed by the exact reviewed onboarding transaction.
+Remote history, authorization contract, direct-execution denial, and
+no-pending checks pass.
+
+Post-commit and independent preview verification show 30 selected surveys, 28
+draft inserts, correct compatibility values, 13 confirmed organization
+relationships, zero private organization relationships, the intended canonical
+mappings, unchanged Auth/profile/grant counts, and the onboarding audit. BSBG
+is organization/cooperative with all five relationships.
+
+The 13-survey organization preparation passes with zero blocked/unreviewed
+items and capacity for about 51.07 GiB. Five local wave files exist. The pilot
+rule isolates `AH-026012` and `AH-026013` in Wave 1; later waves contain 3,
+3, 3, and 2 surveys.
+
+Organization Wave 1 is signed off in staging. The reviewed checksum matches,
+the runner stopped after successful completion, and the user-confirmed
+full-object check found zero failures among 37,868 objects totaling
+6,705,469,416 bytes. Tiles and one point cloud for each survey verified, all
+four capacity checks passed, and four organization-protected manifest entries
+were emitted. No partial manifest SQL was generated or activated. Evidence is
+in `docs/workshop-organization-wave-001-signoff-2026-08-28.md`.
+
+The Node warning follow-up is complete. NVM now selects Node.js 22.22.0; the
+repository declares Node 22 through `package.json` and `.nvmrc`; Node type
+definitions and the lockfile resolve to 22.20.1. AWS SDK imports pass without
+the prior warning, and focused workshop tests 18/18, targeted ESLint, and
+TypeScript pass. These runtime checks remain the validated baseline for later
+organization waves. Production, Auth users, memberships, grants, and Supabase
+records are unchanged.
+
+Wave 2 is signed off in staging from the frozen configuration
+`workshop-organization-wave-002-2026-08-28T10-37-28-724Z.jobs.json`.
+The user explicitly approved the staging upload. The frozen checksum remained
+`aa185ca748082ac178f9745514728f9b008fe3d7d224a1e8354162c66b005c16`.
+The single background runner completed all five groups and stopped cleanly with
+an empty error log. All 383,975 objects totaling 24,142,306,973 bytes passed
+`verified`, existence, content-length, group-count, and group-byte checks. All
+five capacity checks passed, and five organization-protected manifest entries
+match the separate artifact exactly. No partial manifest SQL was generated or
+activated. Production, database/Auth state, memberships, and grants remain
+unchanged. Evidence is in
+`docs/workshop-organization-wave-002-signoff-2026-09-01.md`.
+
+Wave 3 is frozen as
+`workshop-organization-wave-003-2026-09-01T03-14-31-908Z.jobs.json` for
+`AH-026023`, `AH-026024`, and `AH-026028`, with SHA-256
+`374734d07c67b7a5bcf48c7c924f7b958e51064127cda764139c64e59caa932c`.
+The approved staging runner stopped on local `ENOSPC`, emitted no completed
+verification report, and left the ignored Wave 3 state file at zero bytes.
+The runner remains stopped. Publisher JSON writes are now atomic, and an empty
+resume-state file safely reinitializes so remote object sizes can drive resume;
+focused tests pass 18/18. Preserve the ignored frozen config and runner
+evidence, free local disk space, and resume this exact config before Wave 3
+verification and sign-off. No manifest was generated or activated.
 
 Preserve unrelated user-owned scratch/deletion state in `.tmp/`, `issues.txt`,
 `workflow.txt`, and `improve.txt`.

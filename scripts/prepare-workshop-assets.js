@@ -12,14 +12,19 @@ const {
   evaluateCapacity,
   isTemporaryDirectoryName,
   parseDfOutput,
+  resolveDatasetScope,
   validateAllowlist,
 } = require("./lib/workshop-assets");
+const { resolveStagingDbConfig } = require("./lib/staging-db");
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 const execFileAsync = promisify(execFile);
 const DEFAULT_ALLOWLIST = path.resolve(process.cwd(), ".tmp/workshop-assets/allowlist.json");
 const DEFAULT_OUTPUT_ROOT = path.resolve(process.cwd(), ".tmp/workshop-assets");
-const STAGING_SUPABASE_PROJECT_REF = "llealjcaqvltrtdwwzrh";
+const requestedStatConcurrency = Number(process.env.WORKSHOP_ASSET_STAT_CONCURRENCY ?? 16);
+const FILE_STAT_CONCURRENCY = Number.isInteger(requestedStatConcurrency)
+  ? Math.min(64, Math.max(1, requestedStatConcurrency))
+  : 16;
 
 function parseArgs(argv) {
   const args = { allowlist: DEFAULT_ALLOWLIST, outputRoot: DEFAULT_OUTPUT_ROOT };
@@ -41,7 +46,7 @@ async function writeJson(filePath, value) {
 }
 
 async function collectFiles(root, predicate = () => true) {
-  const files = [];
+  const sourceFiles = [];
   const queue = [root];
   while (queue.length) {
     const directory = queue.shift();
@@ -56,59 +61,70 @@ async function collectFiles(root, predicate = () => true) {
       if (isTemporaryDirectoryName(entry.name)) continue;
       const fullPath = path.join(directory, entry.name);
       if (entry.isDirectory()) queue.push(fullPath);
-      else if (entry.isFile() && predicate(fullPath)) {
-        const stats = await fs.stat(fullPath);
-        files.push({ sourceFile: fullPath, size: stats.size });
-      }
+      else if (entry.isFile() && predicate(fullPath)) sourceFiles.push(fullPath);
     }
   }
+  const files = new Array(sourceFiles.length);
+  let cursor = 0;
+  await Promise.all(Array.from({ length: Math.min(FILE_STAT_CONCURRENCY, sourceFiles.length) }, async () => {
+    while (cursor < sourceFiles.length) {
+      const index = cursor;
+      cursor += 1;
+      const stats = await fs.stat(sourceFiles[index]);
+      files[index] = { sourceFile: sourceFiles[index], size: stats.size };
+    }
+  }));
   return files;
-}
-
-function resolveDbConfig() {
-  if (process.env.SUPABASE_DB_URL) {
-    if (!process.env.SUPABASE_DB_URL.includes(STAGING_SUPABASE_PROJECT_REF)) {
-      throw new Error("SUPABASE_DB_URL is not the approved staging project.");
-    }
-    return { connectionString: process.env.SUPABASE_DB_URL, ssl: { rejectUnauthorized: false } };
-  }
-  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const password = process.env.SUPABASE_DB_PASSWORD;
-  if (!projectUrl || !password) {
-    throw new Error("Populated allowlists require NEXT_PUBLIC_SUPABASE_URL and SUPABASE_DB_PASSWORD, or SUPABASE_DB_URL.");
-  }
-  const projectRef = new URL(projectUrl).hostname.split(".")[0];
-  if (projectRef !== STAGING_SUPABASE_PROJECT_REF) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL is not the approved staging project.");
-  }
-  return {
-    host: process.env.SUPABASE_DB_HOST ?? `db.${projectRef}.supabase.co`,
-    port: Number(process.env.SUPABASE_DB_PORT ?? 5432),
-    database: process.env.SUPABASE_DB_NAME ?? "postgres",
-    user: process.env.SUPABASE_DB_USER ?? "postgres",
-    password,
-    ssl: { rejectUnauthorized: false },
-  };
 }
 
 async function inventoryStaging(surveyIds) {
   if (!surveyIds.length) return [];
-  const client = new Client(resolveDbConfig());
+  const client = new Client(resolveStagingDbConfig());
   await client.connect();
   try {
     await client.query("begin read only");
     const result = await client.query(
       `select s.id as survey_id, s.client_id, c.code as client_code,
-              mapping.organization_id, organization.status as organization_status,
+              c.classification_kind,
+              organization_mapping.organization_id,
+              organization_mapping.mapping_count as organization_mapping_count,
+              organization.status as organization_status,
+              person_mapping.person_id,
+              person_mapping.mapping_count as person_mapping_count,
+              (
+                select count(*)::integer
+                  from public.survey_organizations as survey_mapping
+                 where survey_mapping.survey_id = s.id
+                   and survey_mapping.review_status = 'confirmed'
+              ) as survey_organization_count,
+              (
+                select count(*)::integer
+                  from public.survey_organizations as survey_mapping
+                 where survey_mapping.survey_id = s.id
+                   and survey_mapping.review_status = 'confirmed'
+                   and survey_mapping.organization_id = organization_mapping.organization_id
+              ) as expected_survey_organization_count,
               ortho.tile_folder
          from public.surveys as s
          left join public.clients as c on c.id = s.client_id
-         left join public.client_organizations as mapping
-           on mapping.client_id = s.client_id
-          and mapping.review_status = 'confirmed'
-          and mapping.is_primary = true
+         left join lateral (
+           select count(*)::integer as mapping_count,
+                  (array_agg(mapping.organization_id order by mapping.organization_id))[1] as organization_id
+             from public.client_organizations as mapping
+            where mapping.client_id = s.client_id
+              and mapping.review_status = 'confirmed'
+              and mapping.is_primary = true
+         ) as organization_mapping on true
          left join public.organizations as organization
-           on organization.id = mapping.organization_id
+           on organization.id = organization_mapping.organization_id
+         left join lateral (
+           select count(*)::integer as mapping_count,
+                  (array_agg(mapping.person_id order by mapping.person_id))[1] as person_id
+             from public.client_people as mapping
+            where mapping.client_id = s.client_id
+              and mapping.review_status = 'confirmed'
+              and mapping.is_primary = true
+         ) as person_mapping on true
          left join lateral (
            select o.tile_folder
              from public.orthos as o
@@ -139,11 +155,7 @@ async function readCapacity(remainingBytes) {
 }
 
 function databaseBlock(row) {
-  if (!row) return "Survey row is missing from staging.";
-  if (!row.client_id || !row.client_code) return "Survey has no canonical client relationship.";
-  if (!row.organization_id) return "Client has no confirmed primary organization mapping.";
-  if (row.organization_status !== "active") return "Mapped organization is not active.";
-  return null;
+  return resolveDatasetScope(row).error ?? null;
 }
 
 async function main() {
@@ -156,7 +168,7 @@ async function main() {
     createdAt: new Date().toISOString(),
     mode: "dry-run-only",
     allowlistPath: args.allowlist,
-    permanentExclusions: ["AH-026012", "AH-026013"],
+    permanentExclusions: [],
     ignoredPointClouds: allowlist.ignoredPointClouds,
     surveys: [],
     blocked: [],
@@ -185,13 +197,19 @@ async function main() {
   ]);
   const ready = [];
 
-  for (const survey of allowlist.approvedSurveys) {
+  for (let surveyIndex = 0; surveyIndex < allowlist.approvedSurveys.length; surveyIndex += 1) {
+    const survey = allowlist.approvedSurveys[surveyIndex];
+    console.log(`[${surveyIndex + 1}/${allowlist.approvedSurveys.length}] Inspecting ${survey.surveyId}...`);
     const source = await discoverSurveySource(allowlist.sourceRoot, survey.surveyId, survey.tileVariant);
     const row = dbRows.get(survey.surveyId);
     const reasons = [];
     if (source.status !== "ready") reasons.push(source.reason);
-    const dbReason = databaseBlock(row);
+    const resolvedScope = resolveDatasetScope(row);
+    const dbReason = resolvedScope.error ?? databaseBlock(row);
     if (dbReason) reasons.push(dbReason);
+    if (!resolvedScope.error && resolvedScope.scope !== survey.scope) {
+      reasons.push(`Allowlist scope ${survey.scope} does not match staging scope ${resolvedScope.scope}.`);
+    }
 
     let tileStats = { files: [], totalBytes: 0 };
     let discoveredPointClouds = [];
@@ -229,10 +247,11 @@ async function main() {
     if (!survey.includeTiles && !pointClouds.length) {
       reasons.push("Survey selects neither tiles nor an approved point cloud.");
     }
-    const item = { surveyId: survey.surveyId, tileVariant: survey.tileVariant, source, staging: row ?? null, tileStats, pointClouds, status: reasons.length ? "blocked" : "ready", reasons };
+    const item = { surveyId: survey.surveyId, scope: survey.scope, tileVariant: survey.tileVariant, source, staging: row ?? null, resolvedScope: resolvedScope.error ? null : resolvedScope, tileStats, pointClouds, status: reasons.length ? "blocked" : "ready", reasons };
     report.surveys.push(item);
     if (reasons.length) report.blocked.push({ surveyId: survey.surveyId, reasons });
     else ready.push(item);
+    console.log(`[${surveyIndex + 1}/${allowlist.approvedSurveys.length}] ${survey.surveyId}: ${item.status}; ${tileStats.fileCount ?? 0} tiles; ${pointClouds.length} approved PCD(s); ${unreviewed.length} unreviewed PCD(s).`);
   }
 
   const remainingBytes = ready.reduce((sum, item) => sum + item.tileStats.totalBytes + item.pointClouds.reduce((pcSum, pc) => pcSum + pc.size, 0), 0);
@@ -240,9 +259,9 @@ async function main() {
   if (!report.capacity.allowed) report.blocked.push({ surveyId: null, reasons: [report.capacity.reason ?? "MinIO capacity reserve would be violated."] });
 
   if (!report.blocked.length) {
-    const waves = createWaves(ready, allowlist.maxSurveysPerWave);
+    const waves = createWaves(ready, allowlist.maxSurveysPerWave, allowlist.pilotSurveyIds);
     for (let index = 0; index < waves.length; index += 1) {
-      const waveId = `wave-${String(index + 1).padStart(3, "0")}`;
+      const waveId = `${allowlist.batchKey}-wave-${String(index + 1).padStart(3, "0")}`;
       const config = {
         workflowVersion: 1,
         targetEnvironment: "staging",
@@ -250,13 +269,17 @@ async function main() {
         reviewed: false,
         waveId,
         capacityGuard: { enabled: true, reserveRatio: 0.15, minimumReserveBytes: 107374182400, transferOverheadRatio: 0.1 },
-        defaults: { uploadConcurrency: 3, pointCloudPartSizeBytes: 67108864, pointCloudQueueSize: 2, manifest: { protectionLevel: "organization" } },
+        defaults: { uploadConcurrency: 3, pointCloudPartSizeBytes: 67108864, pointCloudQueueSize: 2 },
         jobs: waves[index].map((item) => ({
           id: `${item.staging.client_code.toLowerCase()}-${item.surveyId.toLowerCase()}`,
           clientCode: item.staging.client_code.toLowerCase(),
           year: allowlist.datasetYear,
           surveyId: item.surveyId,
-          manifest: { organizationId: item.staging.organization_id, clientId: item.staging.client_id },
+          manifest: {
+            protectionLevel: item.resolvedScope.protectionLevel,
+            organizationId: item.resolvedScope.organizationId,
+            clientId: item.resolvedScope.clientId,
+          },
           tiles: item.source.status === "ready" && item.tileStats.fileCount ? [{ tileFolder: item.tileVariant, sourceRoot: item.source.tileRoot, destinationAlias: "tiles", sourceAlias: "workshop-z-drive" }] : [],
           pointClouds: item.pointClouds.map((pc) => ({ sourceFile: pc.sourceFile, file: path.basename(pc.sourceFile), destinationAlias: "pointclouds", sourceAlias: "workshop-z-drive" })),
         })),
