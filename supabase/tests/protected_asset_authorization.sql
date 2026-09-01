@@ -26,10 +26,10 @@ values
    '00000000-0000-0000-0000-000000000000', 'authenticated',
    'authenticated', 'asset-cross-org@example.test', '', now(), now(), now());
 
-insert into public.clients (id, code, name)
+insert into public.clients (id, code, name, classification_kind)
 values
-  ('30000000-0000-0000-0000-000000000201', 'asset-org-a', 'Asset Org A'),
-  ('30000000-0000-0000-0000-000000000202', 'asset-org-b', 'Asset Org B');
+  ('30000000-0000-0000-0000-000000000201', 'asset-org-a', 'Asset Org A', 'organization'),
+  ('30000000-0000-0000-0000-000000000202', 'asset-org-b', 'Asset Org B', 'organization');
 
 insert into public.organizations (id, type_code, code, name)
 values
@@ -37,6 +37,15 @@ values
    'cooperative', 'asset-org-a', 'Asset Organization A'),
   ('40000000-0000-0000-0000-000000000202',
    'cooperative', 'asset-org-b', 'Asset Organization B');
+
+insert into public.client_organizations (
+  client_id, organization_id, relationship_type, review_status, is_primary
+)
+values
+  ('30000000-0000-0000-0000-000000000201',
+   '40000000-0000-0000-0000-000000000201', 'legacy_client', 'confirmed', true),
+  ('30000000-0000-0000-0000-000000000202',
+   '40000000-0000-0000-0000-000000000202', 'legacy_client', 'confirmed', true);
 
 insert into public.organization_memberships (
   profile_id,

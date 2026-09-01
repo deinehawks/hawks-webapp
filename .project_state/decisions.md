@@ -1,6 +1,6 @@
 ﻿# Decisions
 
-Last updated: 2026-08-25
+Last updated: 2026-08-26
 
 ## Current Decisions
 
@@ -36,6 +36,31 @@ Last updated: 2026-08-25
 - Keep service-role credentials local/admin-only and outside browser/runtime/deployment code.
 - Keep workshop deployment limited to approved invited datasets and protected public-internet delivery through Cloudflare, NGINX, Supabase, and the approved asset origin.
 - Preserve legacy survey/client and asset-path compatibility where required, but never treat those relationships as profile authorization.
+- Workshop asset preparation is read-only and requires pre-existing staging
+  surveys, clients, and confirmed canonical mappings. Until a future Platform
+  Admin Dataset Onboarding workflow exists, new workshop metadata uses a
+  separately reviewed staging-only batch transaction.
+- Workshop asset preparation/publishing uses explicit `organization` and
+  `private` scopes. Private scope requires one confirmed primary
+  `client_people` mapping, no organization relationship, a null manifest
+  organization, and fail-closed protection-level authorization. Never create
+  fabricated one-person organizations.
+- The current 30-survey migration uses a 13-survey organization split followed
+  by a 17-survey private split. Per-wave reports cannot produce partial
+  manifest SQL; one combined draft requires complete unique verification for
+  all expected surveys.
+- The confirmed existing BSBG staging client is an organization client. The
+  private onboarding intake must pin its reviewed UUID, change
+  `classification_kind` from `unclassified` to
+  `organization`, create/map the active BSBG organization with type code
+  `cooperative`, and preserve the five-survey organization scope.
+- Preserve existing `domain_can_read_survey` behavior for legacy active
+  manifest entries labeled organization, including null-organization entries.
+  Correct their scope only through a reviewed superseding manifest; strict
+  canonical enforcement applies to new private entries.
+- No-organization account signup and dashboard client selection remain
+  deferred. Private workshop assets stay platform-admin-only until a supported
+  account exists and the platform issues explicit null-organization grants.
 - Treat survey `id` and `code` as immutable dataset identity, and retain
   `client_id`, `access_code`, and `organization_code` as read-only
   compatibility fields. Platform-admin metadata edits use the narrow audited

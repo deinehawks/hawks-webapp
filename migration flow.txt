@@ -1,0 +1,5 @@
+npm run workshop-assets:prepare
+
+pause: npm run workshop-assets:runner -- stop
+check status: npm run workshop-assets:runner -- status
+Resume using the same reviewed config: npm run workshop-assets:runner -- start -Config .tmp/workshop-assets/reviewed/<reviewed-file>.jobs.json
