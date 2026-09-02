@@ -1,9 +1,9 @@
 # Current State
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
-Current branch: `feature/workshop-asset-batches`, based on `development` at
-`0739e44c`.
+Current branch: `feature/user-app-preview`, based on `development` at
+`65cd9017`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -197,3 +197,15 @@ publisher now uses atomic JSON replacement and safely reinitializes only an
 empty resume-state file, allowing existing remote object sizes to be checked on
 the next run. Focused tests pass 18/18. Free local disk space before resuming
 the exact frozen Wave 3 config.
+
+The read-only User App Preview is implemented locally under
+`/user-app-preview/[profileId]`. Its dedicated full-screen user-style shell
+replaces the Admin sidebar during preview and exposes the target user's
+dashboard, every accessible client orthomap, and every accessible survey.
+The actor session is unchanged; no impersonation, mutation,
+service role, RLS weakening, or database migration is introduced. Effective
+survey scope mirrors Access Policy v2 and detections are filtered to visible
+survey IDs. TypeScript, focused ESLint, full pgTAP 170/170, workshop tests
+18/18, whitespace checks, and anonymous redirect smoke pass. Authenticated
+responsive sidebar smoke passed: the Admin sidebar is replaced, user-style
+navigation works, and Exit Preview returns to the selected user's Admin record.

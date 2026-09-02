@@ -58,7 +58,7 @@ import {
   MoreVerticalIcon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import Map, { Layer, Marker, Source } from "@vis.gl/react-maplibre";
 import {
@@ -103,7 +103,11 @@ function includesStringFilter(row: any, key: string, filterValue: string[]) {
 
 export type SurveyTableRow = z.infer<typeof schema>;
 
-const columns: ColumnDef<SurveyTableRow>[] = [
+function createColumns(
+  surveyHrefBase: string,
+  orthomapHrefBase: string,
+): ColumnDef<SurveyTableRow>[] {
+  return [
   {
     id: "select",
     header: ({ table }) => (
@@ -140,7 +144,13 @@ const columns: ColumnDef<SurveyTableRow>[] = [
     cell: ({ row }) => {
       // const id: string = row.getValue("id");
       // return <div> {id.toUpperCase()} </div>;
-      return <TableCellViewer survey={row.original} />;
+      return (
+        <TableCellViewer
+          orthomapHrefBase={orthomapHrefBase}
+          survey={row.original}
+          surveyHrefBase={surveyHrefBase}
+        />
+      );
     },
 
     enableHiding: false,
@@ -232,9 +242,22 @@ const columns: ColumnDef<SurveyTableRow>[] = [
       </DropdownMenu>
     ),
   },
-];
+  ];
+}
 
-export function DataTable({ data }: { data: SurveyTableRow[] }) {
+export function DataTable({
+  data,
+  surveyHrefBase = "/dashboard/surveys",
+  orthomapHrefBase = "/dashboard/orthomap",
+}: {
+  data: SurveyTableRow[];
+  surveyHrefBase?: string;
+  orthomapHrefBase?: string;
+}) {
+  const columns = useMemo(
+    () => createColumns(surveyHrefBase, orthomapHrefBase),
+    [surveyHrefBase, orthomapHrefBase],
+  );
   const [searchInputPlaceholder, setSearchInputPlaceholder] = useState("");
 
   const [pagination, setPagination] = useState<PaginationState>({
@@ -490,7 +513,15 @@ export function DataTable({ data }: { data: SurveyTableRow[] }) {
   );
 }
 
-function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
+function TableCellViewer({
+  survey,
+  surveyHrefBase,
+  orthomapHrefBase,
+}: {
+  survey: z.infer<typeof schema>;
+  surveyHrefBase: string;
+  orthomapHrefBase: string;
+}) {
   // ADD: Check if survey has valid boundary data
   const hasValidBoundaries =
     survey.geojson_boundaries &&
@@ -671,10 +702,10 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
           </Table>
         </div>
         <SheetFooter className="mt-auto flex gap-2 sm:flex-col sm:space-x-0">
-          <Link href={`/dashboard/surveys/${survey.id}`}>
+          <Link href={`${surveyHrefBase}/${survey.id}`}>
             <Button className="w-full"> View {survey.id} </Button>
           </Link>
-          <Link href={`/dashboard/orthomap/${survey.code || ""}`}>
+          <Link href={`${orthomapHrefBase}/${survey.code || ""}`}>
             <Button variant="outline" className="w-full">
               {" "}
               View {survey.code || "Orthomap"}
@@ -696,5 +727,4 @@ function DataAvailabilityIndicator({
 
   return <CircleXIcon className="size-4 text-destructive" />;
 }
-
 

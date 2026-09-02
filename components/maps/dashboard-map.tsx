@@ -23,7 +23,15 @@ function calculateCentroid(coordinates: number[][][]) {
   return [sumX / points.length, sumY / points.length];
 }
 
-function MapPopup({ popupInfo, setPopupInfo }: { popupInfo: any; setPopupInfo: (value: any) => void }) {
+function MapPopup({
+  popupInfo,
+  setPopupInfo,
+  surveyHrefBase,
+}: {
+  popupInfo: any;
+  setPopupInfo: (value: any) => void;
+  surveyHrefBase: string;
+}) {
   return (
     <AnimatePresence mode="wait">
       {popupInfo && (
@@ -148,7 +156,7 @@ function MapPopup({ popupInfo, setPopupInfo }: { popupInfo: any; setPopupInfo: (
                 transition={{ delay: 0.18 }}
                 className="pt-1"
               >
-                <Link href={`/dashboard/surveys/${popupInfo.id}`}>
+                <Link href={`${surveyHrefBase}/${popupInfo.id}`}>
                   <button className="w-full px-4 py-2.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold shadow-sm">
                     View Details →
                   </button>
@@ -275,7 +283,13 @@ function MapEvents({ data, setPopupInfo }: { data: any[]; setPopupInfo: (value: 
   return null;
 }
 
-export default function MapLibre({ data: surveys }: { data: any[] }) {
+export default function MapLibre({
+  data: surveys,
+  surveyHrefBase = "/dashboard/surveys",
+}: {
+  data: any[];
+  surveyHrefBase?: string;
+}) {
   const [popupInfo, setPopupInfo] = useState<any>(null);
 
   const { global_x, global_y } = calculateGlobalCenters(surveys);
@@ -475,7 +489,11 @@ export default function MapLibre({ data: surveys }: { data: any[] }) {
     >
       <MapEvents data={surveys} setPopupInfo={setPopupInfo} />
       {popupInfo && (
-        <MapPopup popupInfo={popupInfo} setPopupInfo={setPopupInfo} />
+        <MapPopup
+          popupInfo={popupInfo}
+          setPopupInfo={setPopupInfo}
+          surveyHrefBase={surveyHrefBase}
+        />
       )}
     </Map>
   );

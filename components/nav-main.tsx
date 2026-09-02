@@ -24,7 +24,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { isAfter, subMonths } from "date-fns";
-import type { Survey, UserProfile } from "@/lib/types";
+import type { Survey } from "@/lib/types";
 
 const data = {
   navMain: [
@@ -39,10 +39,14 @@ const data = {
 
 export function NavMain({
   surveys,
-  userProfile: _userProfile,
+  dashboardHref = "/dashboard",
+  surveyHrefBase = "/dashboard/surveys",
+  orthomapHrefBase = "/dashboard/orthomap",
 }: {
   surveys: Survey[];
-  userProfile: UserProfile;
+  dashboardHref?: string;
+  surveyHrefBase?: string;
+  orthomapHrefBase?: string;
 }) {
   const params = useParams();
   const selectedSurvey = params.surveyId;
@@ -52,7 +56,10 @@ export function NavMain({
       : Array.isArray(params.plantation)
         ? params.plantation[0]
         : undefined;
-  const clientCode = surveys[0]?.client.code ?? plantationParam;
+  const clientCodes = useMemo(
+    () => [...new Set(surveys.map((survey) => survey.client.code).filter(Boolean))],
+    [surveys],
+  );
   const sixMonthsAgo = useMemo(() => subMonths(new Date(), 6), []);
 
   const surveyNewMap = useMemo(() => {
@@ -82,28 +89,42 @@ export function NavMain({
   }, [surveys]);
 
   const surveyIds = useMemo(() => surveys?.map((s) => s.id) ?? [], [surveys]);
-  const isLoading = !surveyIds.length;
-
   return (
     <>
       <SidebarGroup>
         <SidebarGroupLabel>Orthomap</SidebarGroupLabel>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={params.plantation === clientCode}
-              asChild
-              className="transition-colors hover:bg-primary/10"
-            >
-              <Link
-                href={clientCode ? `/dashboard/orthomap/${clientCode}` : "/dashboard"}
-                className="flex items-center gap-2 px-3 py-2 rounded"
+          {clientCodes.length === 0 ? (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild className="transition-colors hover:bg-primary/10">
+                <Link href={dashboardHref} className="flex items-center gap-2 px-3 py-2 rounded">
+                  <Building2Icon className="size-4" />
+                  <span className="font-medium">No accessible orthomaps</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ) : clientCodes.map((clientCode) => (
+            <SidebarMenuItem key={clientCode}>
+              <SidebarMenuButton
+                isActive={plantationParam === clientCode}
+                asChild
+                className="transition-colors hover:bg-primary/10"
               >
-                <Building2Icon className="size-4" />
-                <span className="font-medium">{clientCode ?? "Pending assignment"}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+                <Link
+                  href={`${orthomapHrefBase}/${clientCode}`}
+                  className="flex items-center gap-2 px-3 py-2 rounded"
+                >
+                  <Building2Icon className="size-4" />
+                  <span className="font-medium">{clientCode}</span>
+                  {surveyCounts[clientCode] ? (
+                    <Badge variant="secondary" className="ml-auto">
+                      {surveyCounts[clientCode].total}
+                    </Badge>
+                  ) : null}
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
         </SidebarMenu>
       </SidebarGroup>
 
@@ -125,25 +146,21 @@ export function NavMain({
                   >
                     {item.icon && <item.icon className="size-4" />}
                     <span className="font-medium">{item.title}</span>
-                    {clientCode && surveyCounts[clientCode] && (
-                      <Badge variant="secondary" className="ml-auto flex gap-1">
-                        {surveyCounts[clientCode].total}
-                      </Badge>
-                    )}
+                    <Badge variant="secondary" className="ml-auto flex gap-1">
+                      {surveyIds.length}
+                    </Badge>
                     <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
 
                 <CollapsibleContent>
-                  {isLoading ? (
+                  {surveyIds.length === 0 ? (
                     <SidebarMenuSub>
-                      {[1, 2, 3].map((i) => (
-                        <SidebarMenuSubItem key={i}>
-                          <div className="flex items-center gap-2 px-3 py-2 w-full">
-                            <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded animate-shimmer w-full"></div>
-                          </div>
-                        </SidebarMenuSubItem>
-                      ))}
+                      <SidebarMenuSubItem>
+                        <div className="px-3 py-2 text-xs text-muted-foreground">
+                          No accessible surveys
+                        </div>
+                      </SidebarMenuSubItem>
                     </SidebarMenuSub>
                   ) : (
                     <SidebarMenuSub>
@@ -162,7 +179,7 @@ export function NavMain({
                             className="transition-colors hover:bg-primary/10 rounded px-3 py-2 flex items-center justify-between"
                           >
                             <Link
-                              href={`/dashboard/surveys/${id}`}
+                              href={`${surveyHrefBase}/${id}`}
                               className="flex items-center gap-2"
                             >
                               <span>{id}</span>
