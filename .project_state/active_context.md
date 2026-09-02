@@ -90,9 +90,9 @@ Completed:
 28. The user passed authenticated User App Preview smoke: the Admin sidebar is
     replaced, user-style navigation works, and Exit Preview returns to the
     selected user's Admin record.
-29. The workshop capacity policy is updated locally to the larger of 5% or
-    20 GiB after 10% transfer overhead. New freeze and publish validation
-    rejects stale policy metadata; focused tests pass 18/18.
+29. The workshop capacity policy is committed at `7c7d44fe`: retain the
+    larger of 5% or 20 GiB after 10% transfer overhead. New freeze and publish
+    validation rejects stale policy metadata; focused tests pass 18/18.
 
 Next sequence:
 
@@ -127,3 +127,5 @@ Constraints:
   scope, explicit protection-level enforcement, and eventual explicit grants;
   never fabricate one-person organizations. No-organization account/dashboard
   support remains deferred.
+- Docker Desktop container capacity is not sufficient evidence by itself.
+  Apply the same reserve policy to the physical host drive storing its data VHD.
