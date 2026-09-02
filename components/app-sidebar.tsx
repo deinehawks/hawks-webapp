@@ -93,7 +93,7 @@ export function AppSidebar({
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
-        <NavMain surveys={surveys} userProfile={userProfile} />
+        <NavMain surveys={surveys} />
         {orgAdminOrganizationName ? (
           <OrgAdminNav organizationName={orgAdminOrganizationName} />
         ) : null}

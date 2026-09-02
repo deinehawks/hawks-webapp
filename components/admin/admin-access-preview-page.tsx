@@ -198,9 +198,16 @@ export default async function AdminAccessPreviewPage({ params }: { params: Promi
 
   return (
     <main className="@container/main flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <Button asChild className="w-fit" size="sm" variant="outline">
-        <Link href={`/admin/users/${profile.id}`}><ArrowLeft />User detail</Link>
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild className="w-fit" size="sm" variant="outline">
+          <Link href={`/admin/users/${profile.id}`}><ArrowLeft />User detail</Link>
+        </Button>
+        {profile.role === "user" ? (
+          <Button asChild className="w-fit" size="sm">
+            <Link href={`/user-app-preview/${profile.id}`}><Eye />User app preview</Link>
+          </Button>
+        ) : null}
+      </div>
 
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">

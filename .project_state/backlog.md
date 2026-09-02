@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
 ## Completed
 
@@ -45,6 +45,8 @@ Last updated: 2026-09-01
 - Organization Wave 2 review, freeze, approved staging upload, full
   383,975-object verification, five protected manifest-entry outputs, clean
   runner shutdown, and sign-off.
+- Read-only User App Preview with a dedicated full-screen user-style sidebar,
+  target-scoped navigation, multi-client links, and authenticated smoke.
 
 ## P1
 
@@ -56,7 +58,6 @@ Last updated: 2026-09-01
 
 ## P2
 
-- Build read-only User App Preview on `feature/user-app-preview`.
 - Restrict output types on `fix/output-types`, including affected-row
   inventory and legacy-value metadata preservation.
 - Add a platform-admin Dataset Onboarding workflow for client creation,

@@ -294,6 +294,11 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
       <div className="flex flex-wrap gap-2">
         <Button asChild className="w-fit" size="sm" variant="outline"><Link href="/admin/users"><ArrowLeft />Users &amp; Access</Link></Button>
         <Button asChild className="w-fit" size="sm" variant="outline"><Link href={`/admin/access-preview/${profile.id}`}><Eye />Access preview</Link></Button>
+        {profile.role === "user" ? (
+          <Button asChild className="w-fit" size="sm">
+            <Link href={`/user-app-preview/${profile.id}`}><Eye />User app preview</Link>
+          </Button>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-3">

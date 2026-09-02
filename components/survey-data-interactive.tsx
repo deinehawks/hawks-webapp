@@ -23,8 +23,10 @@ type SurveySummary = {
 
 export default function SurveyDataInteractive({
   data,
+  surveyHrefBase = "/dashboard/surveys",
 }: {
   data: SurveySummary[];
+  surveyHrefBase?: string;
 }) {
   if (!data || data.length === 0) {
     return (
@@ -62,7 +64,7 @@ export default function SurveyDataInteractive({
 
       <CardContent className="flex-1 flex flex-col">
         <div className="flex-1 w-full">
-          <DashboardMapCaller data={data} />
+          <DashboardMapCaller data={data} surveyHrefBase={surveyHrefBase} />
         </div>
       </CardContent>
     </Card>

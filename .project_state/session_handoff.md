@@ -1,9 +1,9 @@
 # Session Handoff
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
-Current branch: `feature/workshop-asset-batches`, based on `development` at
-`0739e44c`.
+Current branch: `feature/user-app-preview`, based on `development` at
+`65cd9017`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -205,3 +205,15 @@ verification and sign-off. No manifest was generated or activated.
 
 Preserve unrelated user-owned scratch/deletion state in `.tmp/`, `issues.txt`,
 `workflow.txt`, and `improve.txt`.
+
+The User App Preview slice is implemented locally under
+`/user-app-preview/[profileId]`. A dedicated full-screen user-style sidebar
+replaces the Admin shell during preview and provides Dashboard, every
+accessible client orthomap, every accessible survey, selected-user context,
+and Exit Preview. Data remains target-scoped without changing the platform-admin
+session. Entry points exist on User Detail and Access Preview. No mutation,
+schema, RLS, or service-role change was made. TypeScript, focused ESLint, full
+pgTAP 170/170, workshop tests 18/18, diff checks, route compilation, and
+anonymous login redirect smoke pass. The user passed authenticated smoke: the
+Admin sidebar disappears, user-style navigation works, and Exit Preview returns
+to the selected user's Admin record. The slice is approved for integration.
