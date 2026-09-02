@@ -2,8 +2,7 @@
 
 Last updated: 2026-09-02
 
-Current branch: `feature/user-app-preview`, based on `development` at
-`65cd9017`.
+Current branch: `development`. User App Preview merge: `2a359188`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -216,4 +215,5 @@ schema, RLS, or service-role change was made. TypeScript, focused ESLint, full
 pgTAP 170/170, workshop tests 18/18, diff checks, route compilation, and
 anonymous login redirect smoke pass. The user passed authenticated smoke: the
 Admin sidebar disappears, user-style navigation works, and Exit Preview returns
-to the selected user's Admin record. The slice is approved for integration.
+to the selected user's Admin record. The feature is integrated into
+`development` at `2a359188`.

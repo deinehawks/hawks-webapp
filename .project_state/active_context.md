@@ -82,8 +82,8 @@ Completed:
     produced no sign-off. Atomic JSON writes and zero-byte state recovery are
     implemented and tested; the exact frozen config can resume after local
     disk space is freed.
-27. Read-only User App Preview is implemented locally on
-    `feature/user-app-preview` with a dedicated full-screen user-style
+27. Read-only User App Preview is integrated into `development` at
+    `2a359188` with a dedicated full-screen user-style
     sidebar, target-scoped dashboard/survey/orthomap/detection data,
     multi-client navigation, and explicit empty states. Static checks, full
     pgTAP 170/170, workshop tests 18/18, and anonymous redirect smoke pass.
@@ -93,17 +93,16 @@ Completed:
 
 Next sequence:
 
-1. Integrate the completed User App Preview into `development`.
-2. Discuss and approve the Wave 3 storage/recovery plan before any resume.
-3. Free sufficient local project and temporary-drive space while preserving
+1. Discuss and approve the Wave 3 storage/recovery plan before any resume.
+2. Free sufficient local project and temporary-drive space while preserving
    the ignored Wave 3 config, runner evidence, and state path.
-4. After fresh explicit approval, resume the exact frozen Wave 3 config, then
+3. After fresh explicit approval, resume the exact frozen Wave 3 config, then
    fully verify and sign it off.
-5. Proceed through the remaining organization waves with separate review,
+4. Proceed through the remaining organization waves with separate review,
    freeze, approval, upload, and sign-off gates.
-6. Complete organization uploads while private waves are prepared; approve one
+5. Complete organization uploads while private waves are prepared; approve one
    combined manifest draft only after every expected survey verifies.
-7. Follow User App Preview sign-off with `fix/output-types`.
+6. Follow User App Preview sign-off with `fix/output-types`.
 
 Constraints:
 

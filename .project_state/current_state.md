@@ -2,8 +2,7 @@
 
 Last updated: 2026-09-02
 
-Current branch: `feature/user-app-preview`, based on `development` at
-`65cd9017`.
+Current branch: `development`. User App Preview merge: `2a359188`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -209,3 +208,4 @@ survey IDs. TypeScript, focused ESLint, full pgTAP 170/170, workshop tests
 18/18, whitespace checks, and anonymous redirect smoke pass. Authenticated
 responsive sidebar smoke passed: the Admin sidebar is replaced, user-style
 navigation works, and Exit Preview returns to the selected user's Admin record.
+The feature is integrated into `development` at `2a359188`.
