@@ -2,7 +2,8 @@
 
 Last updated: 2026-09-02
 
-Current branch: `development`. User App Preview merge: `2a359188`.
+Current branch: `fix/workshop-capacity-reserve`, based on `development` at
+`4338eca8`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -217,3 +218,10 @@ anonymous login redirect smoke pass. The user passed authenticated smoke: the
 Admin sidebar disappears, user-style navigation works, and Exit Preview returns
 to the selected user's Admin record. The feature is integrated into
 `development` at `2a359188`.
+
+The capacity reserve policy is changed locally from the larger of 15%/100 GiB
+to the larger of 5%/20 GiB, retaining 10% transfer overhead. Preparation emits
+the shared values and review/publish reject stale capacity metadata. Focused
+tests pass 18/18, ESLint and TypeScript pass, and the runbook now requires a
+physical Docker Desktop host-drive check. The existing frozen Wave 3 config and
+checksum remain untouched; no runner, upload, manifest, or staging mutation ran.

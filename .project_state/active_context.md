@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-02
 
-Current epic: User App Preview while Wave 3 is paused for local capacity.
+Current epic: Workshop capacity policy while Wave 3 remains paused.
 
 Completed:
 
@@ -90,19 +90,25 @@ Completed:
 28. The user passed authenticated User App Preview smoke: the Admin sidebar is
     replaced, user-style navigation works, and Exit Preview returns to the
     selected user's Admin record.
+29. The workshop capacity policy is updated locally to the larger of 5% or
+    20 GiB after 10% transfer overhead. New freeze and publish validation
+    rejects stale policy metadata; focused tests pass 18/18.
 
 Next sequence:
 
-1. Discuss and approve the Wave 3 storage/recovery plan before any resume.
+1. Review and integrate the capacity-policy change.
 2. Free sufficient local project and temporary-drive space while preserving
    the ignored Wave 3 config, runner evidence, and state path.
-3. After fresh explicit approval, resume the exact frozen Wave 3 config, then
+3. Regenerate the equivalent Wave 3 config under the new policy, review its
+   scope and checksum, and freeze it without uploading.
+4. After fresh explicit approval, resume Wave 3 from the verified remote
+   objects, then
    fully verify and sign it off.
-4. Proceed through the remaining organization waves with separate review,
+5. Proceed through the remaining organization waves with separate review,
    freeze, approval, upload, and sign-off gates.
-5. Complete organization uploads while private waves are prepared; approve one
+6. Complete organization uploads while private waves are prepared; approve one
    combined manifest draft only after every expected survey verifies.
-6. Follow User App Preview sign-off with `fix/output-types`.
+7. Follow User App Preview sign-off with `fix/output-types`.
 
 Constraints:
 

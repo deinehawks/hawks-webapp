@@ -4,8 +4,8 @@ const path = require("node:path");
 
 const DEFAULT_SOURCE_ROOT = "Z:\\surveys\\2026";
 const MAX_SURVEYS_PER_WAVE = 3;
-const MIN_CAPACITY_RESERVE_BYTES = 100 * 1024 ** 3;
-const CAPACITY_RESERVE_RATIO = 0.15;
+const MIN_CAPACITY_RESERVE_BYTES = 20 * 1024 ** 3;
+const CAPACITY_RESERVE_RATIO = 0.05;
 const TRANSFER_OVERHEAD_RATIO = 0.1;
 const DATASET_SCOPES = Object.freeze(["organization", "private"]);
 
@@ -190,11 +190,27 @@ function createWaves(items, maximum = MAX_SURVEYS_PER_WAVE, pilotSurveyIds = [])
   return waves;
 }
 
-function evaluateCapacity({ totalBytes, availableBytes, remainingBytes }) {
-  const reserveBytes = Math.max(Math.ceil(totalBytes * CAPACITY_RESERVE_RATIO), MIN_CAPACITY_RESERVE_BYTES);
-  const plannedBytesWithOverhead = Math.ceil(remainingBytes * (1 + TRANSFER_OVERHEAD_RATIO));
+function evaluateCapacity({
+  totalBytes,
+  availableBytes,
+  remainingBytes,
+  reserveRatio = CAPACITY_RESERVE_RATIO,
+  minimumReserveBytes = MIN_CAPACITY_RESERVE_BYTES,
+  transferOverheadRatio = TRANSFER_OVERHEAD_RATIO,
+}) {
+  const reserveBytes = Math.max(Math.ceil(totalBytes * reserveRatio), minimumReserveBytes);
+  const plannedBytesWithOverhead = Math.ceil(remainingBytes * (1 + transferOverheadRatio));
   const projectedAvailableBytes = availableBytes - plannedBytesWithOverhead;
   return { allowed: projectedAvailableBytes >= reserveBytes, totalBytes, availableBytes, remainingBytes, plannedBytesWithOverhead, reserveBytes, projectedAvailableBytes };
+}
+
+function validateCapacityGuard(guard) {
+  if (!guard) return 'Capacity guard must be enabled.';
+  if (!guard.enabled) return 'Capacity guard must be enabled.';
+  if (guard.reserveRatio !== CAPACITY_RESERVE_RATIO) return 'Capacity guard reserve ratio is stale.';
+  if (guard.minimumReserveBytes !== MIN_CAPACITY_RESERVE_BYTES) return 'Capacity guard minimum reserve is stale.';
+  if (guard.transferOverheadRatio !== TRANSFER_OVERHEAD_RATIO) return 'Capacity guard transfer overhead is stale.';
+  return null;
 }
 
 function parseDfOutput(output) {
@@ -207,4 +223,4 @@ function parseDfOutput(output) {
   return { totalBytes, availableBytes };
 }
 
-module.exports = { CAPACITY_RESERVE_RATIO, DATASET_SCOPES, DEFAULT_SOURCE_ROOT, MAX_SURVEYS_PER_WAVE, MIN_CAPACITY_RESERVE_BYTES, TRANSFER_OVERHEAD_RATIO, createWaves, discoverSurveySource, evaluateCapacity, findRgbRoots, isTemporaryDirectoryName, normalizeSurveyId, parseDfOutput, resolveDatasetScope, validateAllowlist, validateJobManifestScope };
+module.exports = { CAPACITY_RESERVE_RATIO, DATASET_SCOPES, DEFAULT_SOURCE_ROOT, MAX_SURVEYS_PER_WAVE, MIN_CAPACITY_RESERVE_BYTES, TRANSFER_OVERHEAD_RATIO, createWaves, discoverSurveySource, evaluateCapacity, findRgbRoots, isTemporaryDirectoryName, normalizeSurveyId, parseDfOutput, resolveDatasetScope, validateAllowlist, validateCapacityGuard, validateJobManifestScope };

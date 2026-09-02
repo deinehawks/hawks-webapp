@@ -6,6 +6,9 @@ const path = require("node:path");
 const test = require("node:test");
 
 const {
+  CAPACITY_RESERVE_RATIO,
+  MIN_CAPACITY_RESERVE_BYTES,
+  TRANSFER_OVERHEAD_RATIO,
   createWaves,
   discoverSurveySource,
   evaluateCapacity,
@@ -13,6 +16,7 @@ const {
   parseDfOutput,
   resolveDatasetScope,
   validateAllowlist,
+  validateCapacityGuard,
   validateJobManifestScope,
 } = require("../lib/workshop-assets");
 const {
@@ -141,7 +145,12 @@ test("reviewed upload configs accept only consistent explicit scopes", () => {
     workflowVersion: 1,
     targetEnvironment: "staging",
     reviewed: true,
-    capacityGuard: { enabled: true },
+    capacityGuard: {
+      enabled: true,
+      reserveRatio: CAPACITY_RESERVE_RATIO,
+      minimumReserveBytes: MIN_CAPACITY_RESERVE_BYTES,
+      transferOverheadRatio: TRANSFER_OVERHEAD_RATIO,
+    },
   };
   const organizationJob = { surveyId: "AH-1", manifest: { clientId: "client", organizationId: "org", protectionLevel: "organization" } };
   const privateJob = { surveyId: "AH-2", manifest: { clientId: "client", organizationId: null, protectionLevel: "private" } };
@@ -254,8 +263,25 @@ test("zero-byte resume state recovers and the next write is valid", async (conte
 
 test("capacity preserves reserve and transfer overhead", () => {
   const tebibyte = 1024 ** 4;
-  assert.equal(evaluateCapacity({ totalBytes: tebibyte, availableBytes: 500 * 1024 ** 3, remainingBytes: 100 * 1024 ** 3 }).allowed, true);
-  assert.equal(evaluateCapacity({ totalBytes: tebibyte, availableBytes: 200 * 1024 ** 3, remainingBytes: 100 * 1024 ** 3 }).allowed, false);
+  const gibibyte = 1024 ** 3;
+  assert.equal(CAPACITY_RESERVE_RATIO, 0.05);
+  assert.equal(MIN_CAPACITY_RESERVE_BYTES, 20 * gibibyte);
+  assert.equal(evaluateCapacity({ totalBytes: tebibyte, availableBytes: 162 * gibibyte, remainingBytes: 100 * gibibyte }).allowed, true);
+  assert.equal(evaluateCapacity({ totalBytes: tebibyte, availableBytes: 161 * gibibyte, remainingBytes: 100 * gibibyte }).allowed, false);
+  assert.equal(evaluateCapacity({ totalBytes: 100 * gibibyte, availableBytes: 20 * gibibyte, remainingBytes: 0 }).allowed, true);
+  assert.equal(evaluateCapacity({ totalBytes: 100 * gibibyte, availableBytes: 19 * gibibyte, remainingBytes: 0 }).allowed, false);
+  assert.equal(validateCapacityGuard({
+    enabled: true,
+    reserveRatio: CAPACITY_RESERVE_RATIO,
+    minimumReserveBytes: MIN_CAPACITY_RESERVE_BYTES,
+    transferOverheadRatio: TRANSFER_OVERHEAD_RATIO,
+  }), null);
+  assert.notEqual(validateCapacityGuard({
+    enabled: true,
+    reserveRatio: 0.15,
+    minimumReserveBytes: MIN_CAPACITY_RESERVE_BYTES,
+    transferOverheadRatio: TRANSFER_OVERHEAD_RATIO,
+  }), null);
 });
 
 test("df output is parsed as bytes", () => {

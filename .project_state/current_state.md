@@ -2,7 +2,8 @@
 
 Last updated: 2026-09-02
 
-Current branch: `development`. User App Preview merge: `2a359188`.
+Current branch: `fix/workshop-capacity-reserve`, based on `development` at
+`4338eca8`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -209,3 +210,9 @@ survey IDs. TypeScript, focused ESLint, full pgTAP 170/170, workshop tests
 responsive sidebar smoke passed: the Admin sidebar is replaced, user-style
 navigation works, and Exit Preview returns to the selected user's Admin record.
 The feature is integrated into `development` at `2a359188`.
+
+The workshop capacity policy is updated locally to retain the larger of 5% or
+20 GiB after 10% transfer overhead. Generated configs now use shared policy
+constants, and review/publish reject stale policy metadata. The existing frozen
+Wave 3 config remains unchanged under the old policy and must be regenerated,
+reviewed, frozen, checksummed, and explicitly approved before any resume.

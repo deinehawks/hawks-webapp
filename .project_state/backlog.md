@@ -51,8 +51,9 @@ Last updated: 2026-09-02
 ## P1
 
 - The staging migration/onboarding gate and Organization Waves 1 and 2 are
-  complete. Wave 3 is frozen but its approved staging run stopped on local
-  `ENOSPC`; free disk space, resume the exact frozen config, and sign it off
+  complete. Wave 3 stopped on local `ENOSPC`. Integrate the 5%/20 GiB
+  capacity policy, regenerate and freeze the equivalent Wave 3 config, obtain
+  fresh explicit approval, resume from verified remote objects, and sign it off
   before processing later waves individually. Generate one combined manifest
   draft only after all expected surveys verify.
 

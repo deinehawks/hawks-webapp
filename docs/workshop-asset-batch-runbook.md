@@ -10,7 +10,8 @@ This workflow publishes only explicitly reviewed 2026 workshop tiles and point c
 - Preparation uses explicit database connection settings when present; otherwise it validates and uses the repository's linked staging pooler metadata with `SUPABASE_DB_PASSWORD`.
 - Every PCD must be explicitly approved or ignored with a reason. Unreviewed PCDs block preparation.
 - Waves contain at most three surveys.
-- MinIO must retain the larger of 15% capacity or 100 GiB after the remaining transfer plus 10% overhead.
+- MinIO must retain the larger of 5% capacity or 20 GiB after the remaining transfer plus 10% overhead.
+- On Docker Desktop, apply the same reserve check to the physical Windows drive that stores the Docker data VHD; container-reported free space alone is not sufficient.
 - Per-wave uploads emit verified entry JSON, not manifest SQL. One combined review-only manifest draft is generated only after all 30 expected surveys have exactly one complete verification report.
 
 ## Database onboarding prerequisite
