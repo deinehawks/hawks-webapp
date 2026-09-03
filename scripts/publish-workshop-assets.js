@@ -12,6 +12,7 @@ const {
   evaluateCapacity,
   isTemporaryDirectoryName,
   parseDfOutput,
+  validateCapacityGuard,
   validateJobManifestScope,
 } = require("./lib/workshop-assets");
 
@@ -172,11 +173,11 @@ async function mapConcurrent(items, concurrency, worker) {
   return results;
 }
 
-async function checkCapacity(remainingBytes) {
+async function checkCapacity(remainingBytes, capacityGuard) {
   const container = process.env.MINIO_DOCKER_CONTAINER ?? "hawks-minio";
   const dataPath = process.env.MINIO_DATA_PATH ?? "/data";
   const { stdout } = await execFileAsync("docker", ["exec", container, "df", "-B1", dataPath], { windowsHide: true });
-  const result = evaluateCapacity({ ...parseDfOutput(stdout), remainingBytes });
+  const result = evaluateCapacity({ ...parseDfOutput(stdout), remainingBytes, ...capacityGuard });
   if (!result.allowed) throw new Error(`Capacity guard blocked the next batch: projected free bytes ${result.projectedAvailableBytes}, required reserve ${result.reserveBytes}.`);
   return result;
 }
@@ -186,6 +187,8 @@ function validateConfig(config) {
   if (config.workflowVersion !== 1 || config.reviewed !== true) throw new Error("Only a frozen, reviewed workflowVersion 1 config may be uploaded.");
   if (!config.capacityGuard?.enabled) throw new Error("Capacity guard must be enabled.");
   if (!Array.isArray(config.jobs) || !config.jobs.length || config.jobs.length > 3) throw new Error("A reviewed wave must contain one through three survey jobs.");
+  const capacityError = validateCapacityGuard(config.capacityGuard);
+  if (capacityError) throw new Error(capacityError);
   for (const job of config.jobs) {
     const scopeError = validateJobManifestScope(job);
     if (scopeError) throw new Error(scopeError);
@@ -272,7 +275,7 @@ async function main() {
           if (error.code !== "ENOENT") throw error;
         }
       }
-      const capacity = await checkCapacity(remainingBytes);
+      const capacity = await checkCapacity(remainingBytes, config.capacityGuard);
       report.capacityChecks.push({ groupId: group.id, ...capacity });
       const concurrency = group.kind === "tiles" ? Number(config.defaults?.uploadConcurrency ?? 3) : Number(config.defaults?.pointCloudQueueSize ?? 2);
       const results = await mapConcurrent(group.objects, concurrency, async (object) => {

@@ -7,6 +7,9 @@ const { Client } = require("pg");
 const dotenv = require("dotenv");
 
 const {
+  CAPACITY_RESERVE_RATIO,
+  MIN_CAPACITY_RESERVE_BYTES,
+  TRANSFER_OVERHEAD_RATIO,
   createWaves,
   discoverSurveySource,
   evaluateCapacity,
@@ -268,7 +271,12 @@ async function main() {
         generatedAt: report.createdAt,
         reviewed: false,
         waveId,
-        capacityGuard: { enabled: true, reserveRatio: 0.15, minimumReserveBytes: 107374182400, transferOverheadRatio: 0.1 },
+        capacityGuard: {
+          enabled: true,
+          reserveRatio: CAPACITY_RESERVE_RATIO,
+          minimumReserveBytes: MIN_CAPACITY_RESERVE_BYTES,
+          transferOverheadRatio: TRANSFER_OVERHEAD_RATIO,
+        },
         defaults: { uploadConcurrency: 3, pointCloudPartSizeBytes: 67108864, pointCloudQueueSize: 2 },
         jobs: waves[index].map((item) => ({
           id: `${item.staging.client_code.toLowerCase()}-${item.surveyId.toLowerCase()}`,

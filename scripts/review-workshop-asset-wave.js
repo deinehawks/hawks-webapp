@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports, no-console */
+const { validateCapacityGuard } = require('./lib/workshop-assets');
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
@@ -27,6 +28,8 @@ async function main() {
   if (config.workflowVersion !== 1 || config.reviewed !== false) throw new Error("Only an unreviewed generated workflowVersion 1 config can be frozen.");
   if (!Array.isArray(config.jobs) || !config.jobs.length || config.jobs.length > 3) throw new Error("Generated wave must contain one through three jobs.");
   if (!config.capacityGuard?.enabled) throw new Error("Generated wave must enable the capacity guard.");
+  const capacityError = validateCapacityGuard(config.capacityGuard);
+  if (capacityError) throw new Error(capacityError);
   for (const job of config.jobs) {
     const scopeError = validateJobManifestScope(job);
     if (scopeError) throw new Error(scopeError);

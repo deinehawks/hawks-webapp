@@ -2,7 +2,8 @@
 
 Last updated: 2026-09-02
 
-Current branch: `development`. User App Preview merge: `2a359188`.
+Current branch: `fix/workshop-capacity-reserve` at `7c7d44fe`, based on
+`development` at `4338eca8`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -217,3 +218,16 @@ anonymous login redirect smoke pass. The user passed authenticated smoke: the
 Admin sidebar disappears, user-style navigation works, and Exit Preview returns
 to the selected user's Admin record. The feature is integrated into
 `development` at `2a359188`.
+
+Capacity policy commit `7c7d44fe` changes the reserve from the larger of
+15%/100 GiB to the larger of 5%/20 GiB while retaining 10% transfer overhead.
+Preparation emits shared values and review/publish reject stale capacity
+metadata. Focused tests pass 18/18, ESLint and TypeScript pass, and the runbook
+requires a physical Docker Desktop host-drive check. The existing frozen Wave 3
+config and checksum remain untouched; no runner, upload, manifest, or staging
+mutation ran. MinIO is healthy and reports about 1.33 TiB logical free space,
+but its Docker data VHD is on `C:`, which had about 81.56 GiB free. The
+conservative full-wave check requires about 85 GiB; target at least 95 GiB.
+Next, push and integrate this branch, then regenerate, review, and freeze the
+equivalent Wave 3 config without uploading. Resume still requires fresh
+explicit approval.
