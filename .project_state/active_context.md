@@ -1,6 +1,6 @@
 # Active Context
 
-Last updated: 2026-09-02
+Last updated: 2026-09-03
 
 Current epic: Workshop capacity policy while Wave 3 remains paused.
 
@@ -90,15 +90,17 @@ Completed:
 28. The user passed authenticated User App Preview smoke: the Admin sidebar is
     replaced, user-style navigation works, and Exit Preview returns to the
     selected user's Admin record.
-29. The workshop capacity policy is committed at `7c7d44fe`: retain the
-    larger of 5% or 20 GiB after 10% transfer overhead. New freeze and publish
-    validation rejects stale policy metadata; focused tests pass 18/18.
+29. The workshop capacity policy is integrated into `development` at
+    `3e1dd8bd`: retain the larger of 5% or 20 GiB after 10% transfer
+    overhead. New freeze and publish validation rejects stale policy metadata;
+    focused tests pass 18/18.
 
 Next sequence:
 
-1. Review and integrate the capacity-policy change.
-2. Free sufficient local project and temporary-drive space while preserving
-   the ignored Wave 3 config, runner evidence, and state path.
+1. Raise physical `C:` free space from 80.70 GiB to at least 95 GiB while
+   preserving the ignored Wave 3 config, runner evidence, and state path.
+2. Start MinIO through the approved infrastructure workflow and verify it is
+   healthy with sufficient logical and physical capacity.
 3. Regenerate the equivalent Wave 3 config under the new policy, review its
    scope and checksum, and freeze it without uploading.
 4. After fresh explicit approval, resume Wave 3 from the verified remote

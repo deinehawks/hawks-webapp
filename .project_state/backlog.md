@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated: 2026-09-02
+Last updated: 2026-09-03
 
 ## Completed
 
@@ -51,12 +51,12 @@ Last updated: 2026-09-02
 ## P1
 
 - The staging migration/onboarding gate and Organization Waves 1 and 2 are
-  complete. Wave 3 stopped on local `ENOSPC`. Integrate committed policy
-  change `7c7d44fe`, raise physical `C:` free space from the audited
-  81.56 GiB to at least 95 GiB, regenerate and freeze the equivalent Wave 3
-  config, obtain fresh explicit approval, resume from verified remote objects,
-  and sign it off before processing later waves individually. Generate one
-  combined manifest draft only after all expected surveys verify.
+  complete. Capacity policy `3e1dd8bd` is integrated. Wave 3 remains blocked
+  after local `ENOSPC`: physical `C:` had 80.70 GiB free against the
+  95 GiB target on 2026-09-03, and `hawks-minio` was stopped. After both
+  gates pass, regenerate and freeze the equivalent Wave 3 config, obtain fresh
+  explicit approval, resume from verified remote objects, and sign it off.
+  Generate one combined manifest draft only after all expected surveys verify.
 
 ## P2
 

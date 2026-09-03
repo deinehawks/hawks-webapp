@@ -1,9 +1,8 @@
 # Current State
 
-Last updated: 2026-09-02
+Last updated: 2026-09-03
 
-Current branch: `fix/workshop-capacity-reserve` at `7c7d44fe`, based on
-`development` at `4338eca8`.
+Current branch: `development`. Capacity-policy merge: `3e1dd8bd`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -211,11 +210,12 @@ responsive sidebar smoke passed: the Admin sidebar is replaced, user-style
 navigation works, and Exit Preview returns to the selected user's Admin record.
 The feature is integrated into `development` at `2a359188`.
 
-The workshop capacity policy is committed on the current branch at `7c7d44fe`
+The workshop capacity policy is integrated into `development` at `3e1dd8bd`
 and now retains the larger of 5% or 20 GiB after 10% transfer overhead.
 Generated configs use shared policy constants, and review/publish reject stale
 policy metadata. The existing frozen Wave 3 config remains unchanged under the
 old policy and must be regenerated, reviewed, frozen, checksummed, and
 explicitly approved before any resume. Docker Desktop stores MinIO in its
-`C:`-hosted data VHD; about 81.56 GiB was free at audit time. The conservative
-full-wave check needs about 85 GiB, so reach at least 95 GiB before re-freezing.
+`C:`-hosted data VHD. The 2026-09-03 gate found only 80.70 GiB free against
+the 95 GiB target, and `hawks-minio` was stopped. No Wave 3 config was
+regenerated or frozen.
