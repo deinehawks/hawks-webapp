@@ -1,6 +1,6 @@
 # Admin Dashboard Integration and Production Rollout Plan
 
-Last updated: 2026-08-18
+Last updated: 2026-09-10
 Status: Authoritative current admin architecture and delivery plan
 
 This is the primary source of truth for platform-admin routes, navigation, delivery order, and deferred admin scope. The permission model is owned by `docs/role-permission-model-and-migration-plan.md`; database rollout procedures are owned by `docs/supabase-migration-runbook.md`.
@@ -29,6 +29,24 @@ Users & Access now covers existing-account attachment and platform-approved self
 - Dedicated `/admin/users`, `/admin/users/[id]`, and `/admin/access-preview/[profileId]` workflows are implemented locally for existing accounts. They show membership/grant access state, read-only effective-access calculation, related audit activity, and account-scoped controls.
 - Dedicated read-only resource list routes are implemented locally through `/admin/[resource]` for clients, organizations, people, farms, surveys, memberships, and outputs, with links to existing detail pages.
 - Organization, farm, survey, and output operations now have dedicated audited workflows. Output Operations v1 registers draft catalog records, edits safe metadata, attaches existing storage references as object keys or package prefixes, shows a workshop-readiness checklist, manages readiness through approved transitions, and selects the current eligible output atomically without publishing, uploading, relocating, or deleting assets. Admin survey selectors identify records by short survey ID plus survey code, client context, and date when available to avoid duplicate client-code labels.
+- The output-type restriction is implemented on `fix/output-types`.
+  The Admin UI and server accept only `orthomosaic`, `point_cloud`,
+  `object_detection`, and `other`. The pending database migration preserves
+  unsupported historical values in `metadata.legacy_output_type` before
+  normalizing them to `other`, and aborts on metadata or current-selection
+  conflicts. The aggregate staging inventory found two `orthomosaic` rows
+  and zero unsupported values or conflicts. The clean local reset/replay passes across the full migration
+  history and seed. Focused pgTAP passes 21/21, the full suite passes 171/171,
+  workshop regression passes 18/18, and the static checks pass. The local gate
+  is closed. Fresh checksummed backups restore with matching counts; exact
+  migration/containment/reapply, focused clone pgTAP 21/21, and the one-file
+  linked dry-run passed. The separately approved one-file staging apply is now
+  complete: remote history, exact validated constraint, unchanged output-row
+  inventory, no-pending dry-run, linked-type comparison, database-role smoke,
+  full pgTAP 171/171, workshop regression 18/18, and static checks pass. The
+  signed-in local application smoke against migrated staging also passes,
+  including restored edits and denied-role boundaries. A hosted staging smoke
+  remains pending after integration and deployment.
 - Existing controlled mutations include legacy-client classification and canonical mapping, `member`/`org_admin` membership creation and platform-admin lifecycle management, user-first signup-request review, and survey/farm-grant creation, revocation, and reactivation. Audit visibility remains read-only while the underlying mutations are audited.
 - `profiles.role` is the account-level source and is constrained to `platform_admin | user`.
 - `organization_memberships.role` is the organization-level source and uses only `org_admin | member`; membership status is evaluated separately.

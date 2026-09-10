@@ -1,8 +1,8 @@
 # Session Handoff
 
-Last updated: 2026-09-03
+Last updated: 2026-09-10
 
-Current branch: `development`. Capacity-policy merge: `3e1dd8bd`.
+Current branch: `fix/output-types`, based on synchronized `development`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -232,3 +232,96 @@ Next, free the required host capacity, start and health-check MinIO through the
 approved infrastructure workflow, then regenerate, review, and freeze the
 equivalent Wave 3 config without uploading. Resume still requires fresh
 explicit approval.
+
+Wave 3 is now deferred until next week because WebODM is actively using
+Docker. The latest `C:` reading is 76.08 GiB free against the 95 GiB gate.
+Do not stop Docker/WSL or compact the Ubuntu VHDX until WebODM finishes.
+
+The next P2 slice is implemented locally on `fix/output-types`. Shared
+application values and Admin selectors restrict output types to
+`orthomosaic`, `point_cloud`, `object_detection`, and `other`; server
+actions enforce the same contract. Migration `20260904000000` aborts on
+legacy-metadata or current-selection conflicts, preserves each unsupported
+original value in `metadata.legacy_output_type`, normalizes it to `other`,
+and installs the exact database check constraint. Aggregate pre/post inventory,
+guarded containment, and updated authorization/output-operation fixtures are
+included.
+
+Node 22.22.0, `npx next typegen`, `npx tsc --noEmit`, focused ESLint, and
+`git diff --check` pass. Docker-dependent clean replay and focused/full pgTAP
+were intentionally not run. The aggregate staging query also remains pending
+because the current local service-role credential was rejected. Do not apply
+the migration remotely until valid read-only inventory, checksummed backup,
+isolated rehearsal, and separate explicit approval are complete. No staging,
+production, Docker, MinIO, Wave 3, or asset state was mutated.
+
+The user subsequently passed the authenticated output-management UI smoke:
+all four selector values, create/edit behavior, locked/current restrictions,
+role denial, and browser console/network checks behaved correctly. Treat this
+as pre-rollout UI evidence because the environment was not confirmed as
+post-migration staging; the database and staging gates remain open.
+
+The aggregate-only staging inventory subsequently succeeded through the
+locked staging database resolver inside `begin read only`: two total outputs,
+both `orthomosaic`; zero unsupported values, conflicting
+`legacy_output_type` metadata, or normalization current-selection
+collisions. The migration will not rewrite existing staging output rows.
+
+After WebODM processing completed, the approved clean local Supabase reset
+replayed every migration and seed successfully, including
+`20260904000000_restrict_survey_output_types.sql`. Focused pgTAP passes 21/21,
+the full 11-file suite passes 171/171, and workshop regression passes 18/18.
+Local DB lint reports only the known stale backfill function. Next route type
+generation, TypeScript, focused ESLint, and `git diff --check` pass. The local
+gate is closed. Fresh ignored schema/Auth/Public backups are SHA-256
+checksummed and restore into isolated database
+`output_types_rehearsal_20260907` with all 27 compared counts matching staging.
+Exact migration/containment/reapply passes with `UPDATE 0`, an unchanged output
+row fingerprint, and focused clone pgTAP 21/21 before and after reapply. The
+linked dry-run lists only migration `20260904000000`. Evidence is in
+`docs/output-types-staging-rehearsal-2026-09-07.md`.
+
+The user separately approved applying only migration `20260904000000` to
+non-production staging `llealjcaqvltrtdwwzrh`. The one-file apply succeeded.
+Remote history contains one row, the exact four-value constraint is validated,
+the two-row output inventory and fingerprint are unchanged, and linked dry-run
+is clean. Linked types showed no schema declaration change. Full pgTAP 171/171,
+workshop regression 18/18, route type generation, TypeScript, focused ESLint,
+whitespace, and linked DB lint with only the known stale backfill finding pass.
+A fully rolled-back database-role smoke allowed a platform-admin `other`
+insert, rejected `report` with `23514`, and denied ordinary/anonymous inserts
+with `42501`; the two staging rows remained identical. Evidence is in
+`docs/output-types-staging-rollout-2026-09-10.md`. The automated staging gate is
+closed. The user then passed signed-in Chrome smoke through
+`http://localhost:8080/asimov-hawks/admin` with Supabase project
+`llealjcaqvltrtdwwzrh` confirmed. The four-value selector, persisted and
+restored draft edit, archived lock, current eligibility, ordinary-user and
+anonymous redirects, console, and network checks all passed. This is
+local-application-to-staging evidence; after integration and deployment, a
+short hosted staging no-mutation smoke remains. Production is unchanged.
+
+After that smoke, treat Wave 3 storage recovery, upload, verification, and
+sign-off as P1. Physical `C:` had
+73.10 GiB free against the 95 GiB gate on 2026-09-07; no Wave 3 infrastructure
+or asset action occurred during this session. After Wave 3 sign-off, implement the
+Platform Admin Dataset Onboarding workflow on `feature/dataset-onboarding`,
+including reliable primary-farm assignment. The current Wave 3 does not depend
+on this future UI because its required staging records were created through the
+reviewed one-off onboarding transaction. After onboarding, implement the
+frontend work on separate branches: first `feature/survey-timeline`, then
+`feature/org-admin-tables`.
+
+The survey timeline must not group or replace unique survey IDs. It lists only
+authorized surveys that share the same primary farm, orders them by
+`surveys.flight_date`, and switches the survey viewer so users can compare
+dated orthomosaics and 3D point clouds. User App Preview must use the selected
+user's effective scope. A missing primary-farm relationship or single dated
+survey produces a current-only/empty-history state. Historical detection
+versioning, an added processing timestamp, and side-by-side comparison remain
+deferred.
+
+The org-admin table slice keeps the farm creation form, replaces repeated farm
+and survey cards with responsive tables, moves farm editing to
+`/org-admin/farms/[farmId]`, and adds an authorized survey View Data action.
+Neither frontend feature is implemented or smoke-tested yet; keep both visibly
+pending until their acceptance checks pass.

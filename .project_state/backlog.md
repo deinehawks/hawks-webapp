@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated: 2026-09-03
+Last updated: 2026-09-10
 
 ## Completed
 
@@ -47,24 +47,46 @@ Last updated: 2026-09-03
   runner shutdown, and sign-off.
 - Read-only User App Preview with a dedicated full-screen user-style sidebar,
   target-scoped navigation, multi-client links, and authenticated smoke.
+- Approved one-file output-type migration rollout to non-production staging,
+  including remote contract/history/inventory verification, no-pending dry-run,
+  linked type comparison, full automated regression, and rolled-back
+  database-role authorization smoke.
+- Signed-in local branch smoke against migrated staging for platform-admin
+  selector/edit/lock/current behavior, restored test data, ordinary/anonymous
+  redirects, and clean Chrome console/network checks.
 
 ## P1
 
 - The staging migration/onboarding gate and Organization Waves 1 and 2 are
-  complete. Capacity policy `3e1dd8bd` is integrated. Wave 3 remains blocked
-  after local `ENOSPC`: physical `C:` had 80.70 GiB free against the
-  95 GiB target on 2026-09-03, and `hawks-minio` was stopped. After both
-  gates pass, regenerate and freeze the equivalent Wave 3 config, obtain fresh
-  explicit approval, resume from verified remote objects, and sign it off.
-  Generate one combined manifest draft only after all expected surveys verify.
+  complete. Capacity policy `3e1dd8bd` is integrated. WebODM processing is
+  complete, but Wave 3 remains blocked after local `ENOSPC`; physical `C:` had
+  73.10 GiB free against the 95 GiB target on 2026-09-07. In a separately
+  approved infrastructure session, stop Docker/WSL cleanly, compact the Ubuntu
+  VHDX, recheck capacity, start/health-check MinIO, then regenerate and freeze
+  the equivalent Wave 3 config. Fresh explicit approval remains required
+  before upload. Generate one combined manifest draft only after all expected
+  surveys verify.
 
 ## P2
 
-- Restrict output types on `fix/output-types`, including affected-row
-  inventory and legacy-value metadata preservation.
+- Finish `fix/output-types`: the application/migration contract, local replay,
+  backup/rehearsal, approved staging apply, remote verification, automated
+  regression, rolled-back database-role smoke, and signed-in local UI against
+  staging pass. Integrate and deploy the branch, then complete the remaining
+  hosted staging no-mutation smoke. Production remains out of scope.
 - Add a platform-admin Dataset Onboarding workflow for client creation,
-  confirmed canonical mapping, duplicate preview, and atomic batch survey
-  creation.
+  confirmed canonical mapping, duplicate preview, reliable primary-farm
+  assignment, and atomic batch survey creation.
+- Add the next-week survey timeline after Wave 3 is safely running or signed
+  off. Keep survey IDs independent; relate authorized surveys through their
+  shared primary farm, order entries by `surveys.flight_date`, and switch the
+  displayed orthomosaic/3D survey when a date is selected. Historical
+  detection versions and side-by-side comparison remain deferred.
+- Replace the repeated `/org-admin/farms` and `/org-admin/surveys` cards with
+  responsive tables. Keep farm creation, move editing to
+  `/org-admin/farms/[farmId]`, and provide an authorized View Data action for
+  surveys. Implement this as a separate frontend branch after the migration
+  priority permits.
 - Add no-organization signup approval and grant-derived dashboard client
   selection so supported individual accounts can consume the private assets.
 

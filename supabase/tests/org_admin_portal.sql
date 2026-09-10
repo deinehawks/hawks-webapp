@@ -24,7 +24,7 @@ insert into public.survey_organizations(survey_id,organization_id,relationship_t
 ('oa-survey-a','32000000-0000-0000-0000-000000000001','participant','confirmed'),
 ('oa-survey-b','32000000-0000-0000-0000-000000000002','participant','confirmed');
 insert into public.survey_outputs(id,survey_id,output_type,status,is_current,storage_bucket,storage_path) values
-('62000000-0000-0000-0000-000000000001','oa-survey-a','legacy_type','ready',true,'survey-assets','fixed/path');
+('62000000-0000-0000-0000-000000000001','oa-survey-a','other','ready',true,'survey-assets','fixed/path');
 
 select extensions.plan(16);
 select extensions.is((select count(*) from pg_policies where schemaname='public' and policyname='organization admins manage ordinary members'),0::bigint,'broad membership policy is absent');

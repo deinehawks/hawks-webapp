@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { PostgrestError } from "@supabase/supabase-js";
 
+import {
+  isSurveyOutputType,
+  type SurveyOutputType,
+} from "@/lib/admin/output-types";
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
 import type {
   Database,
@@ -79,12 +83,10 @@ function readOptionalString(
     : null;
 }
 
-function parseOutputType(value: string): string {
-  const normalized = value.trim().toLowerCase().slice(0, 80);
-  if (!/^[a-z0-9_]+$/.test(normalized))
-    throw new Error(
-      "Output type must use lowercase letters, numbers, and underscores only.",
-    );
+function parseOutputType(value: string): SurveyOutputType {
+  const normalized = value.trim();
+  if (!isSurveyOutputType(normalized))
+    throw new Error("Unsupported survey output type.");
   return normalized;
 }
 function parseStorageBucket(value: string): string {

@@ -198,7 +198,7 @@ insert into public.survey_outputs (
 values (
   '60000000-0000-0000-0000-000000000011',
   'domain-survey-a',
-  'report',
+  'other',
   'ready',
   'Domain Survey A Report',
   true
