@@ -1,8 +1,8 @@
 # Active Context
 
-Last updated: 2026-09-03
+Last updated: 2026-09-10
 
-Current epic: Workshop capacity policy while Wave 3 remains paused.
+Current epic: Survey output-type restriction while Wave 3 is deferred.
 
 Completed:
 
@@ -94,23 +94,47 @@ Completed:
     `3e1dd8bd`: retain the larger of 5% or 20 GiB after 10% transfer
     overhead. New freeze and publish validation rejects stale policy metadata;
     focused tests pass 18/18.
+30. The output-type restriction is implemented locally on
+    `fix/output-types`: four shared allowed values, controlled Admin
+    selectors, matching server validation, fail-closed historical
+    normalization with metadata preservation, aggregate verification,
+    containment SQL, and updated pgTAP fixtures. Static non-Docker validation
+    passes. User-reported authenticated UI smoke passes. Clean reset/replay,
+    focused pgTAP 21/21, full pgTAP 171/171, workshop regression 18/18, local
+    DB lint with only the known stale backfill finding, route type generation,
+    TypeScript, focused ESLint, and whitespace validation pass. Fresh
+    checksummed staging backups restore with all 27 compared counts matching;
+    exact migration/containment/reapply, focused clone pgTAP 21/21, and a
+    one-file linked dry-run pass. The approved one-file staging apply, remote
+    history/constraint/inventory/no-pending checks, linked type comparison,
+    full automated suite, and rolled-back database-role smoke now pass. The
+    user also passed the signed-in local-application-to-staging Chrome smoke,
+    including restored mutation and denied-role checks. The branch is ready for
+    integration; hosted staging deployment smoke remains open.
 
 Next sequence:
 
-1. Raise physical `C:` free space from 80.70 GiB to at least 95 GiB while
-   preserving the ignored Wave 3 config, runner evidence, and state path.
-2. Start MinIO through the approved infrastructure workflow and verify it is
-   healthy with sufficient logical and physical capacity.
-3. Regenerate the equivalent Wave 3 config under the new policy, review its
-   scope and checksum, and freeze it without uploading.
-4. After fresh explicit approval, resume Wave 3 from the verified remote
-   objects, then
-   fully verify and sign it off.
-5. Proceed through the remaining organization waves with separate review,
-   freeze, approval, upload, and sign-off gates.
-6. Complete organization uploads while private waves are prepared; approve one
-   combined manifest draft only after every expected survey verifies.
-7. Follow User App Preview sign-off with `fix/output-types`.
+1. Integrate and deploy `fix/output-types` to hosted staging, then run a short
+   no-mutation deployment smoke for sign-in, selector/lock/current presentation,
+   denied-role redirects, and console/network health. Do not apply anything to
+   production.
+2. After the output-type staging gate, return to Wave 3 through a separately
+   approved infrastructure session: stop Docker/WSL cleanly, compact the
+   Ubuntu VHDX, and raise physical `C:` free space from 73.10 GiB to at least
+   95 GiB while preserving frozen evidence and recovery state.
+3. Start or retain MinIO through the approved infrastructure workflow, verify
+   capacity,
+   regenerate/review/freeze the equivalent Wave 3 config under the new policy,
+   and obtain fresh explicit approval before upload.
+4. After Wave 3 sign-off, implement `feature/dataset-onboarding`, including
+   reliable primary-farm assignment so newly onboarded surveys can participate
+   in chronological navigation. The current Wave 3 is not blocked by this UI
+   because its staging records already came from the reviewed one-off
+   onboarding transaction.
+5. Begin the frontend work on separate branches: implement
+   `feature/survey-timeline` first, followed by `feature/org-admin-tables`.
+   Do not mix either slice into the migration, output-type, or onboarding
+   branch.
 
 Constraints:
 
@@ -131,3 +155,10 @@ Constraints:
   support remains deferred.
 - Docker Desktop container capacity is not sufficient evidence by itself.
   Apply the same reserve policy to the physical host drive storing its data VHD.
+- Timeline entries are independently identified surveys sharing the same
+  primary `survey_farms` relationship and are ordered by
+  `surveys.flight_date`. Normal routes must remain RLS-scoped; User App Preview
+  must filter entries through the selected user's calculated effective scope.
+- The first timeline release switches between dated survey orthomosaics and
+  point clouds. It does not group survey IDs, add a processing-date column,
+  version detections, or provide side-by-side comparison.

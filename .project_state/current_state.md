@@ -1,8 +1,8 @@
 # Current State
 
-Last updated: 2026-09-03
+Last updated: 2026-09-10
 
-Current branch: `development`. Capacity-policy merge: `3e1dd8bd`.
+Current branch: `fix/output-types`, based on synchronized `development`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -219,3 +219,66 @@ explicitly approved before any resume. Docker Desktop stores MinIO in its
 `C:`-hosted data VHD. The 2026-09-03 gate found only 80.70 GiB free against
 the 95 GiB target, and `hawks-minio` was stopped. No Wave 3 config was
 regenerated or frozen.
+
+WebODM processing is now complete, but Wave 3 remains blocked on physical host
+capacity. The 2026-09-07 check reported 73.10 GiB free on `C:`, below the
+95 GiB gate, while MinIO was running healthy. No Docker/WSL compaction, wave
+regeneration, upload, or manifest action occurred during the output-type gate.
+
+The survey output-type restriction is implemented on
+`fix/output-types`. Admin forms now offer only `orthomosaic`,
+`point_cloud`, `object_detection`, and `other`; server actions enforce
+the same set. Migration `20260904000000_restrict_survey_output_types.sql`
+preserves unsupported historical values in `metadata.legacy_output_type`,
+normalizes them to `other`, and aborts on metadata/current-selection
+conflicts before changing rows. Aggregate inventory, guarded containment, and
+updated pgTAP fixtures are included. Node 22, Next route type generation,
+TypeScript, focused ESLint, and whitespace checks pass. Clean replay, pgTAP,
+staging inventory, checksummed backup, and isolated rehearsal now pass; staging
+apply remains separately gated. The user-reported
+authenticated UI smoke passed for the four-option selector, create/edit
+behavior, locked/current behavior, role denial, and browser console/network
+checks; the smoke environment was not established as staging, so it does not
+close the staging database gate. No Docker, MinIO, staging, or production
+mutation occurred.
+
+The aggregate-only staging output-type inventory then passed through the
+repository's locked database resolver in a read-only transaction: two total
+outputs, both `orthomosaic`, with zero unsupported values, conflicting
+legacy metadata, or normalization current-selection collisions. No staging
+rows were changed during that gate. The backup/rehearsal gate subsequently
+passed; the later approved apply is recorded below.
+
+The clean local database reset/replay now passes from the full migration
+history through seed completion, including migration `20260904000000`.
+Focused output pgTAP passes 21/21, the full suite passes 171/171, and workshop
+regression passes 18/18. Next route generation, TypeScript, focused ESLint, and
+whitespace validation pass. Database lint reports only the documented stale
+`app_private.backfill_legacy_organization_memberships` error. The local gate is
+closed. Fresh ignored schema/Auth/Public backups are SHA-256 checksummed and
+restore successfully into an isolated clone with all 27 compared counts
+matching staging. Exact migration/containment/reapply passes with `UPDATE 0`,
+an unchanged two-row fingerprint, and focused clone pgTAP 21/21 before and
+after reapply. The linked dry-run lists only migration `20260904000000`.
+Detailed rehearsal evidence is in
+`docs/output-types-staging-rehearsal-2026-09-07.md`.
+
+The user separately approved migration `20260904000000`, and it is now applied
+to non-production staging `llealjcaqvltrtdwwzrh`. The one-file push succeeded;
+remote history, the exact validated four-value constraint, unchanged two-row
+inventory and fingerprint, and no-pending dry-run all pass. Linked type
+generation showed schema-equivalent declarations with formatting-only generator
+churn, so checked-in types were preserved. Linked DB lint has only the known
+stale backfill finding; full pgTAP passes 171/171, workshop regression 18/18,
+route type generation, TypeScript, focused ESLint, and whitespace checks pass.
+A rolled-back database-role smoke allowed a platform-admin `other` insert,
+rejected `report` with `23514`, and denied ordinary/anonymous inserts with
+`42501`, leaving both staging rows unchanged. The automated staging gate is
+closed. The user then passed signed-in Chrome smoke through the local branch at
+`http://localhost:8080/asimov-hawks/admin` while confirming Supabase project
+`llealjcaqvltrtdwwzrh`: selector, persisted-and-restored draft edit, archived
+lock, current eligibility, ordinary/anonymous redirects, console, and network
+checks all passed. This closes local UI-to-staging compatibility; hosted staging
+deployment smoke remains pending after integration. Production is unchanged.
+Evidence is in
+`docs/output-types-staging-rollout-2026-09-10.md`.

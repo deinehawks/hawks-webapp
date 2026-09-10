@@ -29,20 +29,20 @@ insert into public.survey_outputs (
   storage_bucket, storage_path, is_current
 )
 values
-  ('73000000-0000-0000-0000-000000000001', 'output-survey-a', 'report', 'draft',
+  ('73000000-0000-0000-0000-000000000001', 'output-survey-a', 'orthomosaic', 'draft',
    'Draft with storage', 'reports', 'output-survey-a/report-v2.pdf', false),
-  ('73000000-0000-0000-0000-000000000002', 'output-survey-a', 'report', 'ready',
+  ('73000000-0000-0000-0000-000000000002', 'output-survey-a', 'orthomosaic', 'ready',
    'Current report', 'reports', 'output-survey-a/report-v1.pdf', true),
-  ('73000000-0000-0000-0000-000000000003', 'output-survey-a', 'map', 'draft',
+  ('73000000-0000-0000-0000-000000000003', 'output-survey-a', 'object_detection', 'draft',
    'Draft without storage', null, null, false),
-  ('73000000-0000-0000-0000-000000000004', 'output-survey-a', 'published_report', 'published',
+  ('73000000-0000-0000-0000-000000000004', 'output-survey-a', 'point_cloud', 'published',
    'Published report', 'reports', 'output-survey-a/published.pdf', false),
-  ('73000000-0000-0000-0000-000000000005', 'output-survey-a', 'archived_report', 'archived',
+  ('73000000-0000-0000-0000-000000000005', 'output-survey-a', 'other', 'archived',
    'Archived report', 'reports', 'output-survey-a/archived.pdf', false),
-  ('73000000-0000-0000-0000-000000000006', 'output-survey-a', 'map', 'draft',
+  ('73000000-0000-0000-0000-000000000006', 'output-survey-a', 'object_detection', 'draft',
    'Draft attach target', null, null, false);
 
-select extensions.plan(20);
+select extensions.plan(21);
 
 set local role authenticated;
 set local request.jwt.claims =
@@ -65,6 +65,14 @@ select extensions.is(
 
 set local request.jwt.claims =
   '{"sub":"72000000-0000-0000-0000-000000000001","role":"authenticated"}';
+
+select extensions.throws_ok(
+  $$insert into public.survey_outputs (survey_id, output_type)
+    values ('output-survey-a', 'report')$$,
+  '23514',
+  null,
+  'database rejects an unsupported survey output type'
+);
 
 select extensions.throws_ok(
   $$update public.survey_outputs
@@ -127,7 +135,7 @@ select extensions.is(
   (select id
    from public.survey_outputs
    where survey_id = 'output-survey-a'
-     and output_type = 'report'
+     and output_type = 'orthomosaic'
      and is_current),
   '73000000-0000-0000-0000-000000000001'::uuid,
   'current selection atomically replaces the previous report'

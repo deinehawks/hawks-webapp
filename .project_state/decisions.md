@@ -1,6 +1,6 @@
 ﻿# Decisions
 
-Last updated: 2026-08-26
+Last updated: 2026-09-04
 
 ## Current Decisions
 
@@ -66,6 +66,22 @@ Last updated: 2026-08-26
   compatibility fields. Platform-admin metadata edits use the narrow audited
   survey RPC; geospatial, output, and asset-routing fields remain outside that
   workflow.
+- Restrict generic survey output types to `orthomosaic`, `point_cloud`,
+  `object_detection`, and `other`. Normalize unsupported historical values
+  to `other` only after preserving the original in
+  `metadata.legacy_output_type`; abort rather than choose a winner when
+  normalization would conflict with existing metadata or current-output
+  uniqueness.
+- Model survey history as independently identified surveys connected through
+  the same primary `survey_farms` relationship; do not create an artificial
+  survey group. The user-facing timeline is ordered by `surveys.flight_date`
+  and selecting an entry loads that survey's orthomosaic and 3D point cloud.
+  The first release is chronological switching only: no processing-date
+  column, historical detection versioning, or side-by-side comparison.
+- Keep timeline authorization server-enforced. Ordinary routes expose only
+  surveys allowed by the signed-in user's RLS/effective access, while User App
+  Preview exposes only the selected user's calculated survey scope rather than
+  the platform admin's unrestricted scope.
 - Defer platform-created Auth accounts, automated invitation delivery, platform-admin role changes, true impersonation, hard deletion, broad asset/infrastructure administration, and full-history migration.
 
 ## Superseded Decisions

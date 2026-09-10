@@ -1,6 +1,6 @@
 ﻿# Project Index
 
-Last updated: 2026-09-01
+Last updated: 2026-09-10
 
 Use this index after the compressed startup files. Document classifications prevent historical plans from being mistaken for current instructions.
 
@@ -69,6 +69,12 @@ Use this index after the compressed startup files. Document classifications prev
   rollback files: staged and authenticated-smoke-validated platform-admin
   onboarding review queue contract.
 - `supabase/verification/`: current verification SQL.
+- `docs/output-types-staging-rehearsal-2026-09-07.md`: checksummed backup,
+  exact-count isolated restore, migration/containment/reapply, focused pgTAP,
+  and one-file dry-run evidence for the output-type staging migration.
+- `docs/output-types-staging-rollout-2026-09-10.md`: approved non-production
+  apply, remote history/constraint/inventory checks, automated regressions, and
+  rolled-back database-role authorization smoke evidence.
 - `supabase/verification/inventory_access_policy_v2.sql`: pre-rollout affected-data and policy inventory.
 - `supabase/rollback/20260818000000_access_policy_v2.sql`: guarded non-destructive containment rollback; full reversal uses the tested backup.
 

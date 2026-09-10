@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SURVEY_OUTPUT_TYPE_OPTIONS } from "@/lib/admin/output-types";
 import { formatAdminSurveyLabel } from "@/lib/admin/survey-labels";
 import { setCurrentOutput, transitionOutputStatus, updateOutput, updateOutputStorageReference } from "@/lib/actions/admin-outputs";
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
@@ -93,7 +94,7 @@ export default async function AdminOutputDetailPage({ params }: { params: Promis
           <form action={updateOutput} className="grid gap-4 lg:grid-cols-2">
             <input name="outputId" type="hidden" value={output.id} />
             <label className="grid gap-2 text-sm font-medium">Survey<select className="h-9 rounded-md border bg-background px-3 text-sm" defaultValue={output.survey_id} disabled={locked || output.is_current} name="surveyId" required>{surveys.map((survey) => <option key={survey.id} value={survey.id}>{formatAdminSurveyLabel(survey)}</option>)}</select>{output.is_current && !locked ? <input name="surveyId" type="hidden" value={output.survey_id} /> : null}</label>
-            <label className="grid gap-2 text-sm font-medium">Output type<input className="h-9 rounded-md border bg-background px-3 text-sm" defaultValue={output.output_type} disabled={locked || output.is_current} maxLength={80} name="outputType" pattern="[a-z0-9_]+" required />{output.is_current && !locked ? <input name="outputType" type="hidden" value={output.output_type} /> : null}</label>
+            <label className="grid gap-2 text-sm font-medium">Output type<select className="h-9 rounded-md border bg-background px-3 text-sm" defaultValue={output.output_type} disabled={locked || output.is_current} name="outputType" required>{SURVEY_OUTPUT_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{output.is_current && !locked ? <input name="outputType" type="hidden" value={output.output_type} /> : null}</label>
             <label className="grid gap-2 text-sm font-medium lg:col-span-2">Title<input className="h-9 rounded-md border bg-background px-3 text-sm" defaultValue={output.title ?? ""} disabled={locked} maxLength={200} name="title" /></label>
             <label className="grid gap-2 text-sm font-medium lg:col-span-2">Description<textarea className="min-h-28 rounded-md border bg-background px-3 py-2 text-sm" defaultValue={output.description ?? ""} disabled={locked} maxLength={2000} name="description" /></label>
             {!locked ? <div className="flex justify-end lg:col-span-2"><Button type="submit">Save changes</Button></div> : null}
