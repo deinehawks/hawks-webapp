@@ -2,10 +2,10 @@
 
 Target: non-production Supabase project `llealjcaqvltrtdwwzrh`.
 
-Status: staging database rollout and local-application-to-staging smoke passed.
-Migration `20260904000000_restrict_survey_output_types.sql` is applied to
-staging. Production was not accessed. A hosted staging deployment smoke remains
-pending after branch integration and deployment.
+Status: staging database rollout, local-application-to-staging smoke, and the
+post-integration hosted no-mutation smoke passed. Migration
+`20260904000000_restrict_survey_output_types.sql` is applied to staging. The
+output-type staging gate is closed; production was not accessed.
 
 ## Approval And Preflight
 
@@ -87,10 +87,32 @@ post-migration UI/database combination without claiming a hosted deployment.
 - an anonymous user was redirected to `/auth/login`;
 - no console errors, failed network requests, or unexpected behavior occurred.
 
-## Remaining Gate
+## Hosted Staging No-Mutation Smoke
 
-After this branch is integrated and deployed, run a short hosted staging smoke
-for sign-in, the four-value selector, locked/current presentation, denied-role
-redirects, and browser console/network health. No additional staging data
-mutation is required for that deployment check. No production rollout is
-authorized.
+On 2026-09-11 the user completed the post-integration smoke through
+`http://localhost:8080/asimov-hawks` using the merged output implementation at
+`76c8e915` plus the isolated Tailwind source-discovery fix on
+`fix/tailwind-source-scan`.
+
+Initial route compilation stalled in Tailwind automatic source discovery under
+both Webpack and Turbopack. Explicit source boundaries reduced an isolated CSS
+compile to 176 ms; after the fix, normal `npm run dev` compiled `/auth/login`
+in 10.5 seconds, and a clean single-server retry returned `200` through NGINX
+in about five seconds. TypeScript, focused ESLint, and whitespace validation
+passed. The source scan covers every tracked utility-bearing file; none were
+found outside the configured application directories.
+
+The user reported:
+
+- platform-admin sign-in passed;
+- the output list loaded;
+- the new selector contained exactly the four approved types;
+- draft, current-lock, and archived-lock presentation passed;
+- ordinary users were redirected to `/dashboard`;
+- anonymous users were redirected to `/auth/login`;
+- no console errors, failed network requests, or unexpected behavior occurred.
+
+The smoke did not submit a form, change output status/current selection, or
+otherwise mutate staging data. The output-type staging gate is closed. The
+Tailwind source-discovery fix still requires normal branch integration; no
+production rollout is authorized.

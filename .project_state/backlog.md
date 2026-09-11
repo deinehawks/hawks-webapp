@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated: 2026-09-10
+Last updated: 2026-09-11
 
 ## Completed
 
@@ -57,23 +57,20 @@ Last updated: 2026-09-10
 
 ## P1
 
-- The staging migration/onboarding gate and Organization Waves 1 and 2 are
-  complete. Capacity policy `3e1dd8bd` is integrated. WebODM processing is
-  complete, but Wave 3 remains blocked after local `ENOSPC`; physical `C:` had
-  73.10 GiB free against the 95 GiB target on 2026-09-07. In a separately
-  approved infrastructure session, stop Docker/WSL cleanly, compact the Ubuntu
-  VHDX, recheck capacity, start/health-check MinIO, then regenerate and freeze
-  the equivalent Wave 3 config. Fresh explicit approval remains required
-  before upload. Generate one combined manifest draft only after all expected
-  surveys verify.
+- Organization Waves 1 and 2 are complete. Host capacity now passes with
+  230.94 GiB free on `C:` after Docker VHD reclamation, and Docker, MinIO,
+  Supabase, NGINX, and WebODM recovered with existing data intact. Wave 3
+  remains paused pending approval for a dedicated 4 TB MinIO drive. Preserve
+  the frozen checksum and zero-byte state. Storage relocation, regeneration,
+  upload, and manifest work require separate plans and explicit approval;
+  production remains out of scope.
 
 ## P2
 
-- Finish `fix/output-types`: the application/migration contract, local replay,
-  backup/rehearsal, approved staging apply, remote verification, automated
-  regression, rolled-back database-role smoke, and signed-in local UI against
-  staging pass. Integrate and deploy the branch, then complete the remaining
-  hosted staging no-mutation smoke. Production remains out of scope.
+- Review and integrate `fix/tailwind-source-scan`; its explicit source boundary
+  resolves the hosted route compilation stall, and the output-type hosted
+  no-mutation smoke now passes. Verify `/auth/login` again from updated
+  `development` before creating the onboarding branch.
 - Add a platform-admin Dataset Onboarding workflow for client creation,
   confirmed canonical mapping, duplicate preview, reliable primary-farm
   assignment, and atomic batch survey creation.
