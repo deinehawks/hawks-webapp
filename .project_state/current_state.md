@@ -1,8 +1,8 @@
 # Current State
 
-Last updated: 2026-09-10
+Last updated: 2026-09-11
 
-Current branch: `fix/output-types`, based on synchronized `development`.
+Current branch: `fix/tailwind-source-scan`, based on `development` at `76c8e915`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -220,10 +220,17 @@ explicitly approved before any resume. Docker Desktop stores MinIO in its
 the 95 GiB target, and `hawks-minio` was stopped. No Wave 3 config was
 regenerated or frozen.
 
-WebODM processing is now complete, but Wave 3 remains blocked on physical host
-capacity. The 2026-09-07 check reported 73.10 GiB free on `C:`, below the
-95 GiB gate, while MinIO was running healthy. No Docker/WSL compaction, wave
-regeneration, upload, or manifest action occurred during the output-type gate.
+Docker Desktop was force-stopped cleanly after its normal stop timed out, and
+the Docker VHD was verified detached. During the interrupted elevation sequence
+the VHD was reclaimed from 802.68 GiB to 633.29 GiB; no further compaction was
+run. The final 2026-09-11 reading was 230.94 GiB free on `C:`, above the 95 GiB
+gate. Docker restarted normally: NGINX and MinIO health returned `200`, the
+MinIO data root remained populated, local Supabase returned with only the known
+vector restart condition, and WebODM retained 21 projects. The Wave 3 checksum
+remains `374734d07c67b7a5bcf48c7c924f7b958e51064127cda764139c64e59caa932c`
+and its resume state remains zero bytes. Despite available capacity, Wave 3 is
+paused pending the decision on a dedicated 4 TB MinIO drive. No regeneration,
+upload, manifest, pruning, storage relocation, or production action occurred.
 
 The survey output-type restriction is implemented on
 `fix/output-types`. Admin forms now offer only `orthomosaic`,
@@ -263,22 +270,25 @@ after reapply. The linked dry-run lists only migration `20260904000000`.
 Detailed rehearsal evidence is in
 `docs/output-types-staging-rehearsal-2026-09-07.md`.
 
-The user separately approved migration `20260904000000`, and it is now applied
-to non-production staging `llealjcaqvltrtdwwzrh`. The one-file push succeeded;
-remote history, the exact validated four-value constraint, unchanged two-row
-inventory and fingerprint, and no-pending dry-run all pass. Linked type
-generation showed schema-equivalent declarations with formatting-only generator
-churn, so checked-in types were preserved. Linked DB lint has only the known
-stale backfill finding; full pgTAP passes 171/171, workshop regression 18/18,
-route type generation, TypeScript, focused ESLint, and whitespace checks pass.
-A rolled-back database-role smoke allowed a platform-admin `other` insert,
-rejected `report` with `23514`, and denied ordinary/anonymous inserts with
-`42501`, leaving both staging rows unchanged. The automated staging gate is
-closed. The user then passed signed-in Chrome smoke through the local branch at
-`http://localhost:8080/asimov-hawks/admin` while confirming Supabase project
-`llealjcaqvltrtdwwzrh`: selector, persisted-and-restored draft edit, archived
-lock, current eligibility, ordinary/anonymous redirects, console, and network
-checks all passed. This closes local UI-to-staging compatibility; hosted staging
-deployment smoke remains pending after integration. Production is unchanged.
-Evidence is in
-`docs/output-types-staging-rollout-2026-09-10.md`.
+The output-type restriction is integrated into `development` at merge commit
+`76c8e915`, and migration `20260904000000` is applied to non-production staging
+`llealjcaqvltrtdwwzrh`. Remote history, the exact four-value constraint,
+unchanged two-row inventory/fingerprint, no-pending dry-run, linked types, full
+pgTAP 171/171, workshop regression 18/18, TypeScript, focused ESLint, database
+lint baseline, and rolled-back database-role authorization smoke all pass.
+
+The post-integration hosted no-mutation Chrome smoke now passes through
+`http://localhost:8080/asimov-hawks`: platform-admin sign-in, output list, exact
+four-value selector, draft/current/archived presentation and locking,
+ordinary-user and anonymous redirects, console, and network checks all passed.
+No staging data was changed. The output-type staging gate is closed and
+production remains unchanged.
+
+The hosted smoke exposed a Tailwind v4 automatic source-discovery stall under
+both Webpack and Turbopack. Branch `fix/tailwind-source-scan` limits discovery to
+the application source directories; every tracked utility-bearing file is
+covered. Normal `npm run dev` now compiles `/auth/login` in 10.5 seconds and
+returns `200` through NGINX. TypeScript, focused ESLint, and whitespace checks
+pass. This isolated fix is uncommitted and requires normal review/integration
+before `feature/dataset-onboarding` is created from updated `development`.
+Evidence is in `docs/output-types-staging-rollout-2026-09-10.md`.

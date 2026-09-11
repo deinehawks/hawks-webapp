@@ -1,8 +1,8 @@
 # Session Handoff
 
-Last updated: 2026-09-10
+Last updated: 2026-09-11
 
-Current branch: `fix/output-types`, based on synchronized `development`.
+Current branch: `fix/tailwind-source-scan`, based on `development` at `76c8e915`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -292,24 +292,33 @@ A fully rolled-back database-role smoke allowed a platform-admin `other`
 insert, rejected `report` with `23514`, and denied ordinary/anonymous inserts
 with `42501`; the two staging rows remained identical. Evidence is in
 `docs/output-types-staging-rollout-2026-09-10.md`. The automated staging gate is
-closed. The user then passed signed-in Chrome smoke through
-`http://localhost:8080/asimov-hawks/admin` with Supabase project
-`llealjcaqvltrtdwwzrh` confirmed. The four-value selector, persisted and
-restored draft edit, archived lock, current eligibility, ordinary-user and
-anonymous redirects, console, and network checks all passed. This is
-local-application-to-staging evidence; after integration and deployment, a
-short hosted staging no-mutation smoke remains. Production is unchanged.
+closed. The output implementation is integrated into `development` at
+`76c8e915`. The user passed the final hosted no-mutation Chrome smoke through
+`http://localhost:8080/asimov-hawks`: platform-admin sign-in, output list,
+exact four-value selector, draft/current/archived presentation and locking,
+ordinary-user and anonymous redirects, console, and network checks all passed.
+No form was submitted and no staging data changed. The output-type staging gate
+is closed; production is unchanged.
 
-After that smoke, treat Wave 3 storage recovery, upload, verification, and
-sign-off as P1. Physical `C:` had
-73.10 GiB free against the 95 GiB gate on 2026-09-07; no Wave 3 infrastructure
-or asset action occurred during this session. After Wave 3 sign-off, implement the
-Platform Admin Dataset Onboarding workflow on `feature/dataset-onboarding`,
-including reliable primary-farm assignment. The current Wave 3 does not depend
-on this future UI because its required staging records were created through the
-reviewed one-off onboarding transaction. After onboarding, implement the
-frontend work on separate branches: first `feature/survey-timeline`, then
-`feature/org-admin-tables`.
+Hosted smoke initially stalled because Tailwind automatic source discovery did
+not complete under Webpack or Turbopack. Branch `fix/tailwind-source-scan`
+explicitly limits discovery to application source directories, covering every
+tracked utility-bearing file. Normal `npm run dev` now compiles `/auth/login`
+in 10.5 seconds and serves it through NGINX. TypeScript, focused ESLint, and
+whitespace checks pass. The fix is uncommitted and pending normal integration.
+
+Docker recovered with existing data intact. The VHD was reclaimed from 802.68
+GiB to 633.29 GiB during the interrupted elevation sequence, leaving 230.94 GiB
+free on `C:`. NGINX and MinIO health return `200`, local Supabase retains only
+the known vector restart condition, and WebODM retains 21 projects. The Wave 3
+checksum and zero-byte state are unchanged. Wave 3 remains paused pending the
+decision on a dedicated 4 TB MinIO drive; do not regenerate, upload, relocate
+storage, build a manifest, or access production.
+
+Next, review and integrate `fix/tailwind-source-scan`, verify `/auth/login` from
+updated `development`, then create `feature/dataset-onboarding` from that clean
+tip. Inspect the reviewed onboarding transaction and schema/RPC contracts and
+obtain design approval before public or database contract changes.
 
 The survey timeline must not group or replace unique survey IDs. It lists only
 authorized surveys that share the same primary farm, orders them by

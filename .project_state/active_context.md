@@ -1,8 +1,8 @@
 # Active Context
 
-Last updated: 2026-09-10
+Last updated: 2026-09-11
 
-Current epic: Survey output-type restriction while Wave 3 is deferred.
+Current epic: Integrate the Tailwind compiler fix, then begin Dataset Onboarding.
 
 Completed:
 
@@ -94,47 +94,37 @@ Completed:
     `3e1dd8bd`: retain the larger of 5% or 20 GiB after 10% transfer
     overhead. New freeze and publish validation rejects stale policy metadata;
     focused tests pass 18/18.
-30. The output-type restriction is implemented locally on
-    `fix/output-types`: four shared allowed values, controlled Admin
-    selectors, matching server validation, fail-closed historical
-    normalization with metadata preservation, aggregate verification,
-    containment SQL, and updated pgTAP fixtures. Static non-Docker validation
-    passes. User-reported authenticated UI smoke passes. Clean reset/replay,
-    focused pgTAP 21/21, full pgTAP 171/171, workshop regression 18/18, local
-    DB lint with only the known stale backfill finding, route type generation,
-    TypeScript, focused ESLint, and whitespace validation pass. Fresh
-    checksummed staging backups restore with all 27 compared counts matching;
-    exact migration/containment/reapply, focused clone pgTAP 21/21, and a
-    one-file linked dry-run pass. The approved one-file staging apply, remote
-    history/constraint/inventory/no-pending checks, linked type comparison,
-    full automated suite, and rolled-back database-role smoke now pass. The
-    user also passed the signed-in local-application-to-staging Chrome smoke,
-    including restored mutation and denied-role checks. The branch is ready for
-    integration; hosted staging deployment smoke remains open.
+30. The output-type restriction is integrated into `development` at
+    `76c8e915`. Its local replay, staging backup/rehearsal/apply, remote
+    contract, automated regression, rolled-back authorization smoke, and
+    local-application-to-staging smoke pass. The user also passed the hosted
+    no-mutation Chrome smoke for sign-in, output list, exact four-value
+    selector, draft/current/archived presentation, denied-role redirects,
+    console, and network health. The output-type staging gate is closed.
+31. Hosted smoke exposed Tailwind automatic source discovery blocking route
+    compilation under both Webpack and Turbopack. `fix/tailwind-source-scan`
+    explicitly limits discovery to application source directories and covers
+    every tracked utility-bearing file. Normal `npm run dev` now compiles
+    `/auth/login` in 10.5 seconds and returns `200` through NGINX. TypeScript,
+    focused ESLint, and whitespace checks pass. The fix is uncommitted and
+    pending normal integration.
 
 Next sequence:
 
-1. Integrate and deploy `fix/output-types` to hosted staging, then run a short
-   no-mutation deployment smoke for sign-in, selector/lock/current presentation,
-   denied-role redirects, and console/network health. Do not apply anything to
-   production.
-2. After the output-type staging gate, return to Wave 3 through a separately
-   approved infrastructure session: stop Docker/WSL cleanly, compact the
-   Ubuntu VHDX, and raise physical `C:` free space from 73.10 GiB to at least
-   95 GiB while preserving frozen evidence and recovery state.
-3. Start or retain MinIO through the approved infrastructure workflow, verify
-   capacity,
-   regenerate/review/freeze the equivalent Wave 3 config under the new policy,
-   and obtain fresh explicit approval before upload.
-4. After Wave 3 sign-off, implement `feature/dataset-onboarding`, including
-   reliable primary-farm assignment so newly onboarded surveys can participate
-   in chronological navigation. The current Wave 3 is not blocked by this UI
-   because its staging records already came from the reviewed one-off
-   onboarding transaction.
-5. Begin the frontend work on separate branches: implement
-   `feature/survey-timeline` first, followed by `feature/org-admin-tables`.
-   Do not mix either slice into the migration, output-type, or onboarding
-   branch.
+1. Review and integrate `fix/tailwind-source-scan`, then verify the login route
+   still compiles and returns `200` from updated `development`.
+2. Create `feature/dataset-onboarding` only from that updated clean
+   `development`; inspect the reviewed onboarding transaction and current
+   schema/RPC contracts before proposing public or database changes.
+3. Implement Dataset Onboarding only after its contract design is approved,
+   including duplicate preview, canonical client ownership, reliable primary
+   farm assignment, and atomic batch survey creation.
+4. Keep Wave 3 paused pending the dedicated 4 TB MinIO drive decision. Preserve
+   the frozen checksum and zero-byte recovery state; do not regenerate, upload,
+   relocate storage, or build a manifest.
+5. After the storage decision, use a separate infrastructure plan for MinIO
+   relocation or an explicitly approved Wave 3 resume. Keep later survey
+   timeline and org-admin table work on separate branches.
 
 Constraints:
 
