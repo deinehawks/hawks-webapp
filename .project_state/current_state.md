@@ -2,7 +2,8 @@
 
 Last updated: 2026-09-11
 
-Current branch: `fix/tailwind-source-scan`, based on `development` at `76c8e915`.
+Current branch: `feature/dataset-onboarding`, based on synchronized
+`origin/development` at `6653aa45`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -292,3 +293,45 @@ returns `200` through NGINX. TypeScript, focused ESLint, and whitespace checks
 pass. This isolated fix is uncommitted and requires normal review/integration
 before `feature/dataset-onboarding` is created from updated `development`.
 Evidence is in `docs/output-types-staging-rollout-2026-09-10.md`.
+
+Platform Admin Dataset Onboarding is implemented locally on
+`feature/dataset-onboarding`. The protected two-step workflow previews and
+atomically commits one canonical client, one existing active owner, one
+existing active primary farm, and 1-100 normalized survey IDs. Shared private
+database validation, platform-admin-only preview/commit RPCs, conflict checks,
+confirmed ownership relationships, draft survey creation, compatibility
+values, primary operator farms, organization requester links, and batch audit
+evidence are included. Editing input invalidates preview; the UI shows inline
+field conflicts, exact derived records, explicit confirmation, and per-survey
+success links.
+
+Clean local migration replay passes. Focused onboarding pgTAP passes 37/37,
+the full 12-file suite passes 208/208, workshop regression passes 18/18, Next
+route types, TypeScript, targeted ESLint, and authored-file whitespace checks
+pass. Database lint reports only the known stale legacy backfill function. The
+official local Supabase generator added both RPC contracts but omits the
+tracked hosted PostgREST marker and emits an extra EOF blank line; no manual
+generated-file edit was made. The user completed the signed-in local UI smoke:
+new organization preview/commit, preview invalidation, created survey
+links/details, existing private preview, duplicate/existing-ID and farm-owner
+conflicts, inline errors, role redirects, console, and network checks all
+passed. Evidence is in
+`docs/dataset-onboarding-local-smoke-2026-09-11.md`.
+
+Final branch review and the non-production staging rehearsal are complete.
+Review tightened existing-survey conflicts to be case-insensitive and added a
+guarded, verified owner-role containment procedure. Aggregate staging inventory
+found no duplicate-ID or ownership conflicts, but staging has zero confirmed
+farm-person relationships, so private onboarding must remain blocked there.
+Only confirmed `owner` or `operator` farm relationships now qualify; confirmed
+contacts and representatives fail closed. Staging has two qualifying
+farm-organization relationships and zero qualifying farm-person relationships.
+Fresh Auth/Public backups are checksummed, all 48 compared base-table counts
+matched the isolated clone (excluding intentionally omitted managed Auth
+migration history), migration/containment/reapply passed without data-fingerprint
+change, clone pgTAP passed 37/37, and the linked dry-run lists only migration
+`20260911000000`. Clean local replay and the full automated suite pass again.
+Evidence is in
+`docs/dataset-onboarding-staging-rehearsal-2026-09-14.md`. Staging apply still
+requires separate explicit approval; production, Wave 3, MinIO, and assets were
+not mutated.

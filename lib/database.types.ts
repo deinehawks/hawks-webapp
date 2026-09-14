@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   public: {
     Tables: {
       account_signup_approvals: {
@@ -1900,6 +1895,14 @@ export type Database = {
           target_organization_id: string
         }
         Returns: string
+      }
+      platform_admin_commit_dataset_onboarding: {
+        Args: { onboarding_payload: Json }
+        Returns: Json
+      }
+      platform_admin_preview_dataset_onboarding: {
+        Args: { onboarding_payload: Json }
+        Returns: Json
       }
       platform_admin_update_survey: {
         Args: {
