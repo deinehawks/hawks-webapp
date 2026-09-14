@@ -341,10 +341,11 @@ validator and both public RPCs exist, are owned by `postgres`, use
 boundary. The owner/operator eligibility rule is present, aggregate inventory
 is unchanged, and the post-apply linked dry-run is clean. Linked staging type
 generation restored the PostgREST 14.5 marker, retained both RPC contracts, and
-passes TypeScript and whitespace. The linked type and rollout-evidence changes
-are uncommitted pending user commit/push. Signed-in staging UI smoke and PR
-review remain. Production, Wave 3, MinIO, assets, and onboarding records were
-not mutated.
+passes TypeScript and whitespace. Dataset Onboarding is integrated into
+`development` at `b35c50f5`. The user completed the post-merge no-mutation
+smoke successfully and also observed that route compilation remains materially
+faster after the Tailwind source-boundary fix. Production, Wave 3, MinIO,
+assets, and onboarding records were not mutated.
 
 The containment artifact was finalized after comparing hosted `postgres`
 function ownership with the clone's `supabase_admin` ownership. It now verifies
@@ -352,3 +353,16 @@ the deployed owner dynamically. Unconfirmed and wrong-role clone runs fail
 closed; owner execution and exact migration reapply preserve the relevant-row
 fingerprint. Final containment SHA-256 is
 `bd2e2f3a334ab65c20db51e593c2a3ccf43a440293a3217b2b348240271aa79c`.
+
+The org-admin farm/survey table improvement is implemented and validated on
+`feature/org-admin-tables`. Farm creation remains on the list page, confirmed
+farms use a responsive table, and editing moved to
+`/org-admin/farms/[farmId]` behind an explicit confirmed organization-link
+check plus the existing audited RPC. Confirmed surveys use a responsive table
+whose View Data action opens the existing authenticated, RLS-protected survey
+route. No database or authorization contract changed. Next route types,
+TypeScript, targeted ESLint, whitespace, and anonymous NGINX redirects pass.
+The user-assisted authenticated smoke also passes farm edit/restore,
+cross-organization denial, survey View Data/denial, responsive tables, role
+boundaries, and browser console/network health. The branch is ready to push and
+review.

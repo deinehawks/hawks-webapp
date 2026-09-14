@@ -368,10 +368,15 @@ relationships. The post-apply linked dry-run is clean.
 
 Linked staging type generation restored the PostgREST 14.5 marker, retained
 both RPC contracts, and added only hosted-generator conditional-type
-parentheses. TypeScript and whitespace pass. `lib/database.types.ts` and the
-new staging rollout evidence are uncommitted for the user to commit/push. Next
-complete signed-in hosted smoke, then open/review the PR before merging.
-Production, Wave 3, MinIO, assets, and onboarding records remain untouched.
+parentheses. TypeScript and whitespace pass. Dataset Onboarding is merged into
+`development` at `b35c50f5`; the user passed the post-merge no-mutation
+smoke and observed much faster compilation after the Tailwind source-boundary
+fix. Production, Wave 3, MinIO, assets, and onboarding records remain untouched.
+
+The final smoke-evidence commit `0a2b76e0` remains only on the old local
+`feature/dataset-onboarding` branch and was not included in PR #13. Keep it
+separate from feature work and integrate it later through a documentation-only
+PR if the detailed rollout record is required in `development`.
 
 After observing that hosted staging owns the functions as `postgres` while the
 clone uses `supabase_admin`, the containment artifact was made owner-portable:
@@ -380,6 +385,20 @@ owner. Missing-confirmation and wrong-role executions fail closed, while the
 owner containment/reapply cycle preserves the relevant-row fingerprint. Its
 final SHA-256 is
 `bd2e2f3a334ab65c20db51e593c2a3ccf43a440293a3217b2b348240271aa79c`.
+
+Org-admin farm/survey tables are implemented and validated on
+`feature/org-admin-tables`. Farm creation remains on the farm list; confirmed
+farms are tabular and edit through `/org-admin/farms/[farmId]`, which verifies
+the current admin organization's confirmed farm relationship before loading.
+The existing audited update RPC remains authoritative. Confirmed surveys are
+tabular and View Data uses `/dashboard/surveys/[surveyId]`, preserving its
+independent authentication and RLS. Route type generation, TypeScript, targeted
+ESLint, whitespace, and anonymous NGINX redirects pass. The user-assisted smoke
+also passes authenticated farm edit/restore, cross-organization denial, View
+Data and unauthorized-survey denial, responsive tables, role boundaries, and
+clean browser console/network checks. Evidence is in
+`docs/org-admin-tables-local-smoke-2026-09-14.md`. The branch is ready to push,
+review, merge, deploy from `development`, and post-merge smoke.
 
 The survey timeline must not group or replace unique survey IDs. It lists only
 authorized surveys that share the same primary farm, orders them by

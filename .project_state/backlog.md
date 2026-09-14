@@ -68,6 +68,8 @@ Last updated: 2026-09-14
 - Explicitly approved Dataset Onboarding migration apply to non-production
   staging, direct remote contract/privilege/inventory verification, clean
   post-apply dry-run, and linked staging type regeneration.
+- Dataset Onboarding integration into `development` at `b35c50f5` and
+  successful post-merge no-mutation smoke.
 
 ## P1
 
@@ -81,8 +83,8 @@ Last updated: 2026-09-14
 
 ## P2
 
-- Commit/push the linked Dataset Onboarding type and rollout evidence, complete
-  signed-in hosted smoke, and merge only after PR review passes.
+- Push, review, and integrate the validated `feature/org-admin-tables` branch,
+  then deploy `development` and run a short post-merge smoke.
 - Add the next-week survey timeline after Wave 3 is safely running or signed
   off. Keep survey IDs independent; relate authorized surveys through their
   shared primary farm, order entries by `surveys.flight_date`, and switch the
