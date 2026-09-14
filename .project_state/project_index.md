@@ -1,10 +1,14 @@
 ﻿# Project Index
 
-Last updated: 2026-09-10
+Last updated: 2026-09-11
 
 Use this index after the compressed startup files. Document classifications prevent historical plans from being mistaken for current instructions.
 
 ## Authoritative And Current
+
+- docs/dataset-onboarding-local-smoke-2026-09-11.md: local-only signed-in
+  Dataset Onboarding success, conflict, authorization, console, and network
+  smoke evidence.
 
 - `docs/admin-dashboard-integration-plan.md`: primary admin architecture, route split, delivery order, mutation boundaries, and deferred scope.
 - `docs/role-permission-model-and-migration-plan.md`: current account/membership/grant authority model and completed legacy-column migration history.
@@ -75,6 +79,16 @@ Use this index after the compressed startup files. Document classifications prev
 - `docs/output-types-staging-rollout-2026-09-10.md`: approved non-production
   apply, remote history/constraint/inventory checks, automated regressions, and
   rolled-back database-role authorization smoke evidence.
+- `docs/dataset-onboarding-staging-rehearsal-2026-09-14.md`: Dataset Onboarding
+  aggregate staging inventory, fresh backup hashes, isolated restore parity,
+  migration/containment/reapply checks, pgTAP, and one-file linked dry-run.
+- `docs/dataset-onboarding-staging-rollout-2026-09-14.md`: explicitly approved
+  non-production apply, direct remote contract/privilege/inventory checks,
+  clean post-apply dry-run, and linked staging type regeneration evidence.
+- `supabase/migrations/20260911000000_platform_admin_dataset_onboarding.sql`,
+  matching focused test, inventory, and guarded containment SQL: reviewed
+  platform-admin Dataset Onboarding database contract applied and verified in
+  non-production staging.
 - `supabase/verification/inventory_access_policy_v2.sql`: pre-rollout affected-data and policy inventory.
 - `supabase/rollback/20260818000000_access_policy_v2.sql`: guarded non-destructive containment rollback; full reversal uses the tested backup.
 

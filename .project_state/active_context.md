@@ -1,8 +1,8 @@
 # Active Context
 
-Last updated: 2026-09-11
+Last updated: 2026-09-14
 
-Current epic: Integrate the Tailwind compiler fix, then begin Dataset Onboarding.
+Current epic: Close Dataset Onboarding staging smoke and integration.
 
 Completed:
 
@@ -108,21 +108,43 @@ Completed:
     `/auth/login` in 10.5 seconds and returns `200` through NGINX. TypeScript,
     focused ESLint, and whitespace checks pass. The fix is uncommitted and
     pending normal integration.
+32. The Tailwind source-boundary fix is integrated into `development` at
+    `6653aa45`. `feature/dataset-onboarding` now implements the approved
+    platform-admin two-step UI and narrow preview/commit RPC contract. Clean
+    replay, focused pgTAP 37/37, full pgTAP 208/208, workshop tests 18/18,
+    route types, TypeScript, and targeted ESLint pass. Database lint has only
+    the known stale backfill finding.
+33. The user passed the full signed-in local Dataset Onboarding smoke against
+    127.0.0.1:54321: organization preview/commit, preview invalidation,
+    created survey links, private preview, all three blocking conflicts,
+    inline errors, authorization redirects, console, and network checks.
+34. Final branch review and staging rehearsal pass. Existing survey conflicts
+    are now case-insensitive. A fresh checksummed staging backup restored into
+    an isolated clone with all 48 compared base tables matching, the guarded
+    containment and exact reapply preserved the relevant-row fingerprint, clone
+    pgTAP passed 37/37, and the linked dry-run lists only migration
+    `20260911000000`. Only confirmed owner/operator farm relationships qualify;
+    staging has two qualifying organization relationships and zero qualifying
+    person relationships, so private onboarding cannot yet succeed there.
+35. After explicit approval, migration `20260911000000` was applied to
+    non-production staging. Remote history, function ownership/security/search
+    paths, RPC privileges, owner/operator rule, aggregate inventory, and
+    no-pending linked dry-run pass. Linked types restored the hosted PostgREST
+    marker and retain both RPC contracts; TypeScript and whitespace pass.
+36. The guarded containment artifact now verifies actual deployed function
+    ownership dynamically because staging uses `postgres` while the clone uses
+    `supabase_admin`. Missing-confirmation and wrong-role runs fail closed; the
+    owner containment/reapply cycle preserves the data fingerprint.
 
 Next sequence:
 
-1. Review and integrate `fix/tailwind-source-scan`, then verify the login route
-   still compiles and returns `200` from updated `development`.
-2. Create `feature/dataset-onboarding` only from that updated clean
-   `development`; inspect the reviewed onboarding transaction and current
-   schema/RPC contracts before proposing public or database changes.
-3. Implement Dataset Onboarding only after its contract design is approved,
-   including duplicate preview, canonical client ownership, reliable primary
-   farm assignment, and atomic batch survey creation.
-4. Keep Wave 3 paused pending the dedicated 4 TB MinIO drive decision. Preserve
+1. Commit and push the linked staging type regeneration and rollout evidence.
+2. Complete signed-in hosted staging UI smoke, then open/review the PR and
+   merge only after the smoke passes.
+3. Keep Wave 3 paused pending the dedicated 4 TB MinIO drive decision. Preserve
    the frozen checksum and zero-byte recovery state; do not regenerate, upload,
    relocate storage, or build a manifest.
-5. After the storage decision, use a separate infrastructure plan for MinIO
+4. After the storage decision, use a separate infrastructure plan for MinIO
    relocation or an explicitly approved Wave 3 resume. Keep later survey
    timeline and org-admin table work on separate branches.
 

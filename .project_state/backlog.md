@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated: 2026-09-11
+Last updated: 2026-09-14
 
 ## Completed
 
@@ -54,6 +54,20 @@ Last updated: 2026-09-11
 - Signed-in local branch smoke against migrated staging for platform-admin
   selector/edit/lock/current behavior, restored test data, ordinary/anonymous
   redirects, and clean Chrome console/network checks.
+- Tailwind source-boundary fix integrated into `development` at `6653aa45`.
+- Local Platform Admin Dataset Onboarding UI, narrow preview/commit RPCs,
+  generated contracts, clean replay, focused pgTAP 37/37, full pgTAP 208/208,
+  workshop regression 18/18, route types, TypeScript, and targeted ESLint.
+- Signed-in local Dataset Onboarding smoke covering successful organization
+  commit, private preview, invalidation, blocking conflicts, inline errors,
+  redirects, survey links, console, and network health.
+- Final Dataset Onboarding branch review, case-insensitive existing-ID guard,
+  aggregate staging inventory, fresh checksummed Auth/Public backup, 48-table
+  isolated restore comparison, containment/reapply rehearsal, owner/operator-only
+  farm eligibility, clone pgTAP 37/37, and one-migration linked dry-run.
+- Explicitly approved Dataset Onboarding migration apply to non-production
+  staging, direct remote contract/privilege/inventory verification, clean
+  post-apply dry-run, and linked staging type regeneration.
 
 ## P1
 
@@ -67,13 +81,8 @@ Last updated: 2026-09-11
 
 ## P2
 
-- Review and integrate `fix/tailwind-source-scan`; its explicit source boundary
-  resolves the hosted route compilation stall, and the output-type hosted
-  no-mutation smoke now passes. Verify `/auth/login` again from updated
-  `development` before creating the onboarding branch.
-- Add a platform-admin Dataset Onboarding workflow for client creation,
-  confirmed canonical mapping, duplicate preview, reliable primary-farm
-  assignment, and atomic batch survey creation.
+- Commit/push the linked Dataset Onboarding type and rollout evidence, complete
+  signed-in hosted smoke, and merge only after PR review passes.
 - Add the next-week survey timeline after Wave 3 is safely running or signed
   off. Keep survey IDs independent; relate authorized surveys through their
   shared primary farm, order entries by `surveys.flight_date`, and switch the

@@ -1,8 +1,9 @@
 # Session Handoff
 
-Last updated: 2026-09-11
+Last updated: 2026-09-14
 
-Current branch: `fix/tailwind-source-scan`, based on `development` at `76c8e915`.
+Current branch: `feature/dataset-onboarding` at pushed commit `9d5797eb`, one
+commit ahead of synchronized `origin/development` at `6653aa45`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -315,10 +316,70 @@ checksum and zero-byte state are unchanged. Wave 3 remains paused pending the
 decision on a dedicated 4 TB MinIO drive; do not regenerate, upload, relocate
 storage, build a manifest, or access production.
 
-Next, review and integrate `fix/tailwind-source-scan`, verify `/auth/login` from
-updated `development`, then create `feature/dataset-onboarding` from that clean
-tip. Inspect the reviewed onboarding transaction and schema/RPC contracts and
-obtain design approval before public or database contract changes.
+The Tailwind source-boundary fix is integrated into `development` at
+`6653aa45`. Platform Admin Dataset Onboarding is implemented locally on
+`feature/dataset-onboarding` with a two-step reviewed UI, shared fail-closed
+database validation, and authenticated platform-admin-only preview/commit
+RPCs. Commit uses a transaction advisory lock and creates the complete client,
+owner mapping, draft survey, primary-farm, organization relationship, and
+summary-audit batch atomically.
+
+Clean replay and all automated behavior checks pass: onboarding pgTAP 37/37,
+full pgTAP 208/208, workshop regression 18/18, route types, TypeScript, and
+targeted ESLint. Database lint contains only the known stale legacy backfill
+finding. The local generator includes both RPCs but omits the prior hosted-only
+PostgREST marker and writes an extra EOF blank; the guard correctly prevented
+manual editing of generated types. Whole-tree `git diff --check` therefore
+reports that generated EOF only; authored files are clean.
+
+The user completed the full signed-in local onboarding smoke against
+127.0.0.1:54321. New organization preview/commit, preview invalidation,
+created survey links/details, existing private preview, duplicate/existing-ID
+and farm-owner conflicts, inline errors, ordinary/anonymous redirects, console,
+and network checks all passed. Evidence is in
+docs/dataset-onboarding-local-smoke-2026-09-11.md.
+
+Final branch review and the staging rehearsal are complete. Review made the
+existing-survey conflict case-insensitive and added a fail-closed owner-role
+containment check. Aggregate staging inventory found no duplicate-ID or owner
+conflicts. Eligibility is now limited to confirmed `owner` or `operator`
+relationships: two staging farm-organization relationships qualify and zero
+farm-person relationships qualify. Private onboarding is therefore unavailable
+on staging until that prerequisite is separately created and reviewed.
+
+Fresh Auth/Public staging backups are checksummed under the ignored
+`backups/staging-dataset-onboarding-20260914/` directory. All 48 compared base
+tables matched in the isolated clone after excluding only intentionally omitted
+managed Auth migration history. Exact migration, confirmed containment, and
+reapply preserved the relevant-row fingerprint; clone pgTAP passed 37/37. A
+clean local replay, focused pgTAP 37/37, full pgTAP 208/208, workshop 18/18,
+route types, TypeScript, targeted ESLint, and authored whitespace pass. The
+linked dry-run lists only migration `20260911000000`. Full evidence is in
+`docs/dataset-onboarding-staging-rehearsal-2026-09-14.md`.
+
+The user explicitly approved and the CLI applied migration `20260911000000` to
+non-production staging. Direct read-only verification confirms exactly one
+remote history row; all three functions are owned by `postgres`, are
+`SECURITY DEFINER`, and have empty search paths. Authenticated may execute only
+the public RPCs, anon cannot, and the private validator remains inaccessible.
+The owner/operator eligibility rule and aggregate inventory are correct, with
+two qualifying organization farm relationships and zero qualifying person
+relationships. The post-apply linked dry-run is clean.
+
+Linked staging type generation restored the PostgREST 14.5 marker, retained
+both RPC contracts, and added only hosted-generator conditional-type
+parentheses. TypeScript and whitespace pass. `lib/database.types.ts` and the
+new staging rollout evidence are uncommitted for the user to commit/push. Next
+complete signed-in hosted smoke, then open/review the PR before merging.
+Production, Wave 3, MinIO, assets, and onboarding records remain untouched.
+
+After observing that hosted staging owns the functions as `postgres` while the
+clone uses `supabase_admin`, the containment artifact was made owner-portable:
+it dynamically verifies that the current operator can assume the deployed
+owner. Missing-confirmation and wrong-role executions fail closed, while the
+owner containment/reapply cycle preserves the relevant-row fingerprint. Its
+final SHA-256 is
+`bd2e2f3a334ab65c20db51e593c2a3ccf43a440293a3217b2b348240271aa79c`.
 
 The survey timeline must not group or replace unique survey IDs. It lists only
 authorized surveys that share the same primary farm, orders them by
