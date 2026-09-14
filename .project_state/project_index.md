@@ -85,6 +85,9 @@ Use this index after the compressed startup files. Document classifications prev
 - `docs/dataset-onboarding-staging-rollout-2026-09-14.md`: explicitly approved
   non-production apply, direct remote contract/privilege/inventory checks,
   clean post-apply dry-run, and linked staging type regeneration evidence.
+- `docs/org-admin-tables-local-smoke-2026-09-14.md`: responsive farm/survey
+  table implementation checks, scoped farm editing, authorized View Data, and
+  user-assisted UI smoke.
 - `supabase/migrations/20260911000000_platform_admin_dataset_onboarding.sql`,
   matching focused test, inventory, and guarded containment SQL: reviewed
   platform-admin Dataset Onboarding database contract applied and verified in

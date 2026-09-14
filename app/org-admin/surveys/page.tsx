@@ -1,11 +1,48 @@
+import Link from "next/link";
+
 import {
   EmptyState,
   OrgAdminPage,
   OrgAdminSection,
   StatusBadge,
 } from "@/components/org-admin/org-admin-ui";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import type { Tables } from "@/lib/database.types";
 import { getOrgAdminContext } from "@/lib/org-admin/context";
 import { createClient } from "@/utils/supabase/server";
+
+type SurveyListRow = Pick<
+  Tables<"surveys">,
+  "id" | "location" | "flight_date" | "area" | "type" | "category" | "status"
+>;
+
+function displayValue(value: string | null) {
+  return value || "Not set";
+}
+
+function formatArea(value: number | null) {
+  return value === null ? "Not set" : `${value} ha`;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "Not set";
+
+  const date = new Date(value.includes("T") ? value : `${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en-PH", {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(date);
+}
 
 export default async function OrgAdminSurveysPage() {
   const { organization } = await getOrgAdminContext();
@@ -19,63 +56,72 @@ export default async function OrgAdminSurveysPage() {
 
   const surveyIds = (links ?? []).map((link) => link.survey_id);
   const surveysResult = surveyIds.length
-    ? await supabase.from("surveys").select("*").in("id", surveyIds).order("id")
+    ? await supabase
+        .from("surveys")
+        .select("id, location, flight_date, area, type, category, status")
+        .in("id", surveyIds)
+        .order("id")
     : { data: [], error: null };
   if (surveysResult.error) {
     throw new Error("Failed to load survey records.", { cause: surveysResult.error });
   }
+
+  const surveys = (surveysResult.data ?? []) as SurveyListRow[];
 
   return (
     <OrgAdminPage
       title="Surveys"
       description="View confirmed organization surveys. All survey metadata is managed by platform administrators."
     >
-      {!surveysResult.data?.length ? (
-        <EmptyState>No confirmed organization surveys are available.</EmptyState>
-      ) : (
-        surveysResult.data.map((survey) => (
-          <OrgAdminSection
-            key={survey.id}
-            title={survey.id}
-            description="Read-only platform metadata"
-          >
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <StatusBadge value={survey.status} />
-                <span className="text-sm text-muted-foreground">
-                  Client ID: {survey.client_id ?? "Not assigned"}
-                </span>
-              </div>
-              <dl className="grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-4">
-                <SurveyValue label="Location" value={survey.location} />
-                <SurveyValue label="Flight date" value={survey.flight_date} />
-                <SurveyValue label="Area" value={survey.area} />
-                <SurveyValue label="Area code" value={survey.area_code} />
-                <SurveyValue label="Type" value={survey.type} />
-                <SurveyValue label="Category" value={survey.category} />
-              </dl>
-            </div>
-          </OrgAdminSection>
-        ))
-      )}
+      <OrgAdminSection
+        title="Confirmed surveys"
+        description="View survey data through the existing authenticated and RLS-protected route."
+      >
+        {surveys.length === 0 ? (
+          <EmptyState>No confirmed organization surveys are available.</EmptyState>
+        ) : (
+          <div className="overflow-hidden rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Survey ID</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Flight date</TableHead>
+                  <TableHead>Area</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {surveys.map((survey) => (
+                  <TableRow key={survey.id}>
+                    <TableCell className="font-medium">{survey.id}</TableCell>
+                    <TableCell className="min-w-48 whitespace-normal">
+                      {displayValue(survey.location)}
+                    </TableCell>
+                    <TableCell>{formatDate(survey.flight_date)}</TableCell>
+                    <TableCell>{formatArea(survey.area)}</TableCell>
+                    <TableCell>{displayValue(survey.type)}</TableCell>
+                    <TableCell>{displayValue(survey.category)}</TableCell>
+                    <TableCell>
+                      <StatusBadge value={survey.status} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/dashboard/surveys/${encodeURIComponent(survey.id)}`}>
+                          View Data
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </OrgAdminSection>
     </OrgAdminPage>
   );
 }
-
-function SurveyValue({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number | null;
-}) {
-  return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="mt-1 font-medium">{value ?? "Not set"}</dd>
-    </div>
-  );
-}
-

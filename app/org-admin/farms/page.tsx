@@ -1,21 +1,46 @@
+import Link from "next/link";
+
 import {
   EmptyState,
   OrgAdminPage,
   OrgAdminSection,
-  SelectField,
   StatusBadge,
   SubmitButton,
   TextAreaField,
   TextField,
 } from "@/components/org-admin/org-admin-ui";
-import { createOrgAdminFarm, updateOrgAdminFarm } from "@/lib/actions/org-admin";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { createOrgAdminFarm } from "@/lib/actions/org-admin";
+import type { Tables } from "@/lib/database.types";
 import { getOrgAdminContext } from "@/lib/org-admin/context";
 import { createClient } from "@/utils/supabase/server";
 
-const farmStatuses = [
-  { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
-] as const;
+type FarmListRow = Pick<
+  Tables<"farms">,
+  | "id"
+  | "name"
+  | "code"
+  | "crop"
+  | "location_name"
+  | "area_hectares"
+  | "status"
+>;
+
+function displayValue(value: string | null) {
+  return value || "Not set";
+}
+
+function formatArea(value: number | null) {
+  return value === null ? "Not set" : `${value} ha`;
+}
 
 export default async function OrgAdminFarmsPage() {
   const { organization } = await getOrgAdminContext();
@@ -29,16 +54,22 @@ export default async function OrgAdminFarmsPage() {
 
   const farmIds = (links ?? []).map((link) => link.farm_id);
   const farmsResult = farmIds.length
-    ? await supabase.from("farms").select("*").in("id", farmIds).order("name")
+    ? await supabase
+        .from("farms")
+        .select("id, name, code, crop, location_name, area_hectares, status")
+        .in("id", farmIds)
+        .order("name")
     : { data: [], error: null };
   if (farmsResult.error) {
     throw new Error("Failed to load farm records.", { cause: farmsResult.error });
   }
 
+  const farms = (farmsResult.data ?? []) as FarmListRow[];
+
   return (
     <OrgAdminPage
       title="Farms"
-      description="Create farms for your organization and edit metadata for confirmed linked farms."
+      description="Create farms for your organization and manage confirmed linked farms."
     >
       <OrgAdminSection
         title="Create farm"
@@ -56,44 +87,54 @@ export default async function OrgAdminFarmsPage() {
           <SubmitButton>Create farm</SubmitButton>
         </form>
       </OrgAdminSection>
-      <div className="space-y-4">
-        {!farmsResult.data?.length ? (
+
+      <OrgAdminSection
+        title="Confirmed farms"
+        description="Open a farm to edit its metadata and status."
+      >
+        {farms.length === 0 ? (
           <EmptyState>No confirmed organization farms are available.</EmptyState>
         ) : (
-          farmsResult.data.map((farm) => (
-            <OrgAdminSection
-              key={farm.id}
-              title={farm.name}
-              description={farm.code ? `Farm code: ${farm.code}` : "No farm code"}
-            >
-              <form action={updateOrgAdminFarm} className="space-y-4">
-                <input type="hidden" name="farmId" value={farm.id} />
-                <div className="flex items-center gap-2">
-                  <StatusBadge value={farm.status} />
-                </div>
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  <TextField name="name" label="Farm name" defaultValue={farm.name} required />
-                  <TextField name="code" label="Farm code" defaultValue={farm.code} />
-                  <TextField name="crop" label="Crop" defaultValue={farm.crop} />
-                  <TextField name="location" label="Location" defaultValue={farm.location_name} />
-                  <TextField
-                    name="areaHectares"
-                    label="Area (hectares)"
-                    type="number"
-                    min={0}
-                    step="any"
-                    defaultValue={farm.area_hectares}
-                  />
-                  <SelectField name="status" label="Status" defaultValue={farm.status} options={farmStatuses} />
-                </div>
-                <TextAreaField name="notes" label="Notes" defaultValue={farm.notes} />
-                <SubmitButton>Save farm</SubmitButton>
-              </form>
-            </OrgAdminSection>
-          ))
+          <div className="overflow-hidden rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Farm</TableHead>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Crop</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Area</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {farms.map((farm) => (
+                  <TableRow key={farm.id}>
+                    <TableCell className="min-w-48 font-medium whitespace-normal">
+                      {farm.name}
+                    </TableCell>
+                    <TableCell>{displayValue(farm.code)}</TableCell>
+                    <TableCell>{displayValue(farm.crop)}</TableCell>
+                    <TableCell className="min-w-48 whitespace-normal">
+                      {displayValue(farm.location_name)}
+                    </TableCell>
+                    <TableCell>{formatArea(farm.area_hectares)}</TableCell>
+                    <TableCell>
+                      <StatusBadge value={farm.status} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/org-admin/farms/${farm.id}`}>Edit</Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
-      </div>
+      </OrgAdminSection>
     </OrgAdminPage>
   );
 }
-

@@ -135,12 +135,20 @@ Completed:
     ownership dynamically because staging uses `postgres` while the clone uses
     `supabase_admin`. Missing-confirmation and wrong-role runs fail closed; the
     owner containment/reapply cycle preserves the data fingerprint.
+37. Dataset Onboarding is merged into `development` at `b35c50f5`; the user
+    passed the post-merge no-mutation smoke and confirmed route compilation
+    remains much faster after the Tailwind source-boundary fix.
+38. `feature/org-admin-tables` replaces repeated farm/survey cards with
+    responsive tables, keeps farm creation, moves farm editing to an explicitly
+    organization-scoped detail route, and links survey View Data through the
+    existing authenticated/RLS-protected route. Static checks, anonymous
+    redirects, and the full user-assisted authenticated/responsive smoke pass.
 
 Next sequence:
 
-1. Commit and push the linked staging type regeneration and rollout evidence.
-2. Complete signed-in hosted staging UI smoke, then open/review the PR and
-   merge only after the smoke passes.
+1. Push `feature/org-admin-tables`, review its focused pull request, and merge
+   only while its checks remain clean.
+2. Deploy the merged `development` branch and run a short post-merge smoke.
 3. Keep Wave 3 paused pending the dedicated 4 TB MinIO drive decision. Preserve
    the frozen checksum and zero-byte recovery state; do not regenerate, upload,
    relocate storage, or build a manifest.
