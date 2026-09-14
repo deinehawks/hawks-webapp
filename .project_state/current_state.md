@@ -342,9 +342,12 @@ boundary. The owner/operator eligibility rule is present, aggregate inventory
 is unchanged, and the post-apply linked dry-run is clean. Linked staging type
 generation restored the PostgREST 14.5 marker, retained both RPC contracts, and
 passes TypeScript and whitespace. The linked type and rollout-evidence changes
-are uncommitted pending user commit/push. Signed-in staging UI smoke and PR
-review remain. Production, Wave 3, MinIO, assets, and onboarding records were
-not mutated.
+were committed and pushed by the user. The signed-in staging no-mutation smoke
+passes for platform-admin previews, validation and conflict handling, private
+fail-closed behavior, role redirects, and browser console/network health. The
+smoke evidence is recorded in a follow-up branch commit; push and PR review
+remain. Production, Wave 3, MinIO, assets, and onboarding records were not
+mutated.
 
 The containment artifact was finalized after comparing hosted `postgres`
 function ownership with the clone's `supabase_admin` ownership. It now verifies

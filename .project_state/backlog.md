@@ -68,6 +68,9 @@ Last updated: 2026-09-14
 - Explicitly approved Dataset Onboarding migration apply to non-production
   staging, direct remote contract/privilege/inventory verification, clean
   post-apply dry-run, and linked staging type regeneration.
+- Signed-in hosted Dataset Onboarding no-mutation smoke covering platform-admin
+  previews, derived values, invalidation, blocking conflicts, private
+  fail-closed behavior, role denial/redirects, and clean Chrome console/network.
 
 ## P1
 
@@ -81,8 +84,9 @@ Last updated: 2026-09-14
 
 ## P2
 
-- Commit/push the linked Dataset Onboarding type and rollout evidence, complete
-  signed-in hosted smoke, and merge only after PR review passes.
+- Push the follow-up Dataset Onboarding staging-smoke evidence commit, then
+  merge only after PR review passes. Deploy the merged `development` branch
+  and complete a short post-merge no-mutation smoke.
 - Add the next-week survey timeline after Wave 3 is safely running or signed
   off. Keep survey IDs independent; relate authorized surveys through their
   shared primary farm, order entries by `surveys.flight_date`, and switch the

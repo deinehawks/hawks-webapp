@@ -368,10 +368,18 @@ relationships. The post-apply linked dry-run is clean.
 
 Linked staging type generation restored the PostgREST 14.5 marker, retained
 both RPC contracts, and added only hosted-generator conditional-type
-parentheses. TypeScript and whitespace pass. `lib/database.types.ts` and the
-new staging rollout evidence are uncommitted for the user to commit/push. Next
-complete signed-in hosted smoke, then open/review the PR before merging.
-Production, Wave 3, MinIO, assets, and onboarding records remain untouched.
+parentheses. TypeScript and whitespace pass. The user committed and pushed the
+linked type, containment, and initial rollout evidence.
+
+The signed-in hosted staging no-mutation smoke now passes in Chrome. Platform-
+admin access, new/existing organization previews, derived values, preview
+invalidation, duplicate/existing-ID and 100-ID conflicts, farm-owner mismatch,
+inline validation, private fail-closed behavior, ordinary/org-admin denial,
+anonymous redirect, and console/network checks all passed. No onboarding record
+was created. This smoke evidence is in a follow-up branch commit that still
+needs to be pushed; PR review, merge, deployment from `development`, and a
+short post-merge no-mutation smoke remain. Production, Wave 3, MinIO, assets,
+and onboarding records remain untouched.
 
 After observing that hosted staging owns the functions as `postgres` while the
 clone uses `supabase_admin`, the containment artifact was made owner-portable:

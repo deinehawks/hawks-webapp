@@ -135,12 +135,17 @@ Completed:
     ownership dynamically because staging uses `postgres` while the clone uses
     `supabase_admin`. Missing-confirmation and wrong-role runs fail closed; the
     owner containment/reapply cycle preserves the data fingerprint.
+37. The hosted staging no-mutation UI smoke passes in Chrome: platform-admin
+    access, new/existing organization previews, derived values, preview
+    invalidation, duplicate/existing-ID and limit conflicts, farm-owner mismatch,
+    private fail-closed behavior, role redirects, and console/network health all
+    passed without creating onboarding records.
 
 Next sequence:
 
-1. Commit and push the linked staging type regeneration and rollout evidence.
-2. Complete signed-in hosted staging UI smoke, then open/review the PR and
-   merge only after the smoke passes.
+1. Push the follow-up staging-smoke evidence commit.
+2. Open/review the PR and merge into `development` only after its checks and
+   focused diff pass, then deploy and run a short post-merge no-mutation smoke.
 3. Keep Wave 3 paused pending the dedicated 4 TB MinIO drive decision. Preserve
    the frozen checksum and zero-byte recovery state; do not regenerate, upload,
    relocate storage, or build a manifest.
