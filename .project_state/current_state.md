@@ -1,9 +1,9 @@
 # Current State
 
-Last updated: 2026-09-11
+Last updated: 2026-09-14
 
-Current branch: `feature/dataset-onboarding`, based on synchronized
-`origin/development` at `6653aa45`.
+Current branch: `feature/dataset-onboarding` at pushed commit `9d5797eb`, one
+commit ahead of synchronized `origin/development` at `6653aa45`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -332,6 +332,23 @@ migration history), migration/containment/reapply passed without data-fingerprin
 change, clone pgTAP passed 37/37, and the linked dry-run lists only migration
 `20260911000000`. Clean local replay and the full automated suite pass again.
 Evidence is in
-`docs/dataset-onboarding-staging-rehearsal-2026-09-14.md`. Staging apply still
-requires separate explicit approval; production, Wave 3, MinIO, and assets were
+`docs/dataset-onboarding-staging-rehearsal-2026-09-14.md`.
+
+Migration `20260911000000` is now applied to non-production staging after
+explicit approval. Remote history contains exactly one row; the private
+validator and both public RPCs exist, are owned by `postgres`, use
+`SECURITY DEFINER` with empty search paths, and retain the intended privilege
+boundary. The owner/operator eligibility rule is present, aggregate inventory
+is unchanged, and the post-apply linked dry-run is clean. Linked staging type
+generation restored the PostgREST 14.5 marker, retained both RPC contracts, and
+passes TypeScript and whitespace. The linked type and rollout-evidence changes
+are uncommitted pending user commit/push. Signed-in staging UI smoke and PR
+review remain. Production, Wave 3, MinIO, assets, and onboarding records were
 not mutated.
+
+The containment artifact was finalized after comparing hosted `postgres`
+function ownership with the clone's `supabase_admin` ownership. It now verifies
+the deployed owner dynamically. Unconfirmed and wrong-role clone runs fail
+closed; owner execution and exact migration reapply preserve the relevant-row
+fingerprint. Final containment SHA-256 is
+`bd2e2f3a334ab65c20db51e593c2a3ccf43a440293a3217b2b348240271aa79c`.

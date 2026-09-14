@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated: 2026-09-11
+Last updated: 2026-09-14
 
 ## Completed
 
@@ -65,6 +65,9 @@ Last updated: 2026-09-11
   aggregate staging inventory, fresh checksummed Auth/Public backup, 48-table
   isolated restore comparison, containment/reapply rehearsal, owner/operator-only
   farm eligibility, clone pgTAP 37/37, and one-migration linked dry-run.
+- Explicitly approved Dataset Onboarding migration apply to non-production
+  staging, direct remote contract/privilege/inventory verification, clean
+  post-apply dry-run, and linked staging type regeneration.
 
 ## P1
 
@@ -78,9 +81,8 @@ Last updated: 2026-09-11
 
 ## P2
 
-- Resolve the Dataset Onboarding generated-type metadata/EOF review, then apply
-  its single migration to non-production staging only after separate explicit
-  approval. Follow with remote contract checks and signed-in hosted smoke.
+- Commit/push the linked Dataset Onboarding type and rollout evidence, complete
+  signed-in hosted smoke, and merge only after PR review passes.
 - Add the next-week survey timeline after Wave 3 is safely running or signed
   off. Keep survey IDs independent; relate authorized surveys through their
   shared primary farm, order entries by `surveys.flight_date`, and switch the

@@ -1,8 +1,8 @@
 # Active Context
 
-Last updated: 2026-09-11
+Last updated: 2026-09-14
 
-Current epic: Validate and prepare Platform Admin Dataset Onboarding for staging rehearsal.
+Current epic: Close Dataset Onboarding staging smoke and integration.
 
 Completed:
 
@@ -126,15 +126,21 @@ Completed:
     `20260911000000`. Only confirmed owner/operator farm relationships qualify;
     staging has two qualifying organization relationships and zero qualifying
     person relationships, so private onboarding cannot yet succeed there.
+35. After explicit approval, migration `20260911000000` was applied to
+    non-production staging. Remote history, function ownership/security/search
+    paths, RPC privileges, owner/operator rule, aggregate inventory, and
+    no-pending linked dry-run pass. Linked types restored the hosted PostgREST
+    marker and retain both RPC contracts; TypeScript and whitespace pass.
+36. The guarded containment artifact now verifies actual deployed function
+    ownership dynamically because staging uses `postgres` while the clone uses
+    `supabase_admin`. Missing-confirmation and wrong-role runs fail closed; the
+    owner containment/reapply cycle preserves the data fingerprint.
 
 Next sequence:
 
-1. Review the generator-only PostgREST marker and EOF whitespace diff before
-   integration; do not manually edit the generated contract without explicit
-   approval.
-2. Applying migration `20260911000000` to non-production staging is the next
-   database gate and still requires separate explicit approval. Reverify the
-   target and backup hashes immediately before apply.
+1. Commit and push the linked staging type regeneration and rollout evidence.
+2. Complete signed-in hosted staging UI smoke, then open/review the PR and
+   merge only after the smoke passes.
 3. Keep Wave 3 paused pending the dedicated 4 TB MinIO drive decision. Preserve
    the frozen checksum and zero-byte recovery state; do not regenerate, upload,
    relocate storage, or build a manifest.

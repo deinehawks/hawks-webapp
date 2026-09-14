@@ -1,9 +1,9 @@
 # Session Handoff
 
-Last updated: 2026-09-11
+Last updated: 2026-09-14
 
-Current branch: `feature/dataset-onboarding`, based on synchronized
-`origin/development` at `6653aa45`.
+Current branch: `feature/dataset-onboarding` at pushed commit `9d5797eb`, one
+commit ahead of synchronized `origin/development` at `6653aa45`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -357,10 +357,29 @@ route types, TypeScript, targeted ESLint, and authored whitespace pass. The
 linked dry-run lists only migration `20260911000000`. Full evidence is in
 `docs/dataset-onboarding-staging-rehearsal-2026-09-14.md`.
 
-Do not apply migration `20260911000000` to staging without separate explicit
-approval. The official generated type diff still removes the tracked hosted
-PostgREST marker and adds one EOF blank; do not normalize it manually without
-explicit approval. Production, Wave 3, MinIO, and assets remain untouched.
+The user explicitly approved and the CLI applied migration `20260911000000` to
+non-production staging. Direct read-only verification confirms exactly one
+remote history row; all three functions are owned by `postgres`, are
+`SECURITY DEFINER`, and have empty search paths. Authenticated may execute only
+the public RPCs, anon cannot, and the private validator remains inaccessible.
+The owner/operator eligibility rule and aggregate inventory are correct, with
+two qualifying organization farm relationships and zero qualifying person
+relationships. The post-apply linked dry-run is clean.
+
+Linked staging type generation restored the PostgREST 14.5 marker, retained
+both RPC contracts, and added only hosted-generator conditional-type
+parentheses. TypeScript and whitespace pass. `lib/database.types.ts` and the
+new staging rollout evidence are uncommitted for the user to commit/push. Next
+complete signed-in hosted smoke, then open/review the PR before merging.
+Production, Wave 3, MinIO, assets, and onboarding records remain untouched.
+
+After observing that hosted staging owns the functions as `postgres` while the
+clone uses `supabase_admin`, the containment artifact was made owner-portable:
+it dynamically verifies that the current operator can assume the deployed
+owner. Missing-confirmation and wrong-role executions fail closed, while the
+owner containment/reapply cycle preserves the relevant-row fingerprint. Its
+final SHA-256 is
+`bd2e2f3a334ab65c20db51e593c2a3ccf43a440293a3217b2b348240271aa79c`.
 
 The survey timeline must not group or replace unique survey IDs. It lists only
 authorized surveys that share the same primary farm, orders them by

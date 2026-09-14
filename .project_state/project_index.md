@@ -82,10 +82,13 @@ Use this index after the compressed startup files. Document classifications prev
 - `docs/dataset-onboarding-staging-rehearsal-2026-09-14.md`: Dataset Onboarding
   aggregate staging inventory, fresh backup hashes, isolated restore parity,
   migration/containment/reapply checks, pgTAP, and one-file linked dry-run.
+- `docs/dataset-onboarding-staging-rollout-2026-09-14.md`: explicitly approved
+  non-production apply, direct remote contract/privilege/inventory checks,
+  clean post-apply dry-run, and linked staging type regeneration evidence.
 - `supabase/migrations/20260911000000_platform_admin_dataset_onboarding.sql`,
   matching focused test, inventory, and guarded containment SQL: reviewed
-  platform-admin Dataset Onboarding database contract awaiting explicit staging
-  apply approval.
+  platform-admin Dataset Onboarding database contract applied and verified in
+  non-production staging.
 - `supabase/verification/inventory_access_policy_v2.sql`: pre-rollout affected-data and policy inventory.
 - `supabase/rollback/20260818000000_access_policy_v2.sql`: guarded non-destructive containment rollback; full reversal uses the tested backup.
 

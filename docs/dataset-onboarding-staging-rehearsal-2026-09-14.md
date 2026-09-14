@@ -71,8 +71,10 @@ local clone.
   `8094f7ecf0a9b4ab5dd39bcc526903d113ce8f9965e28c3a26bc01af6ac367e9`
   across containment and re-application.
 - Unconfirmed containment failed closed. Rehearsal found and fixed an owner-role
-  issue: containment now assumes `supabase_admin`, verifies both grants are
-  actually absent, and fails instead of reporting ineffective success.
+  issue: containment now verifies dynamically that the operator can assume the
+  deployed functions' actual owner, verifies both grants are absent, and fails
+  instead of reporting ineffective success. This remains portable where a
+  disposable clone and hosted Supabase assign different function owners.
 - Confirmed containment revoked only authenticated RPC execution, retained the
   functions and data, and exact migration re-application restored the intended
   grants.
@@ -93,7 +95,7 @@ Final rehearsed artifact checksums:
 | Artifact | SHA-256 |
 | --- | --- |
 | Migration | `5473d589cb5744e5d268746ed7dced88623f6d2229e163cdea082cc0efa5cf55` |
-| Containment | `950e2373fb5379870b271108db6f07a90cda8aeacbd9ecb2c9813eef3208f5fd` |
+| Containment | `bd2e2f3a334ab65c20db51e593c2a3ccf43a440293a3217b2b348240271aa79c` |
 | Inventory | `cafb8eff0f44d950aad8850e3dad0d49c4dc3bf357f2f332fad07b35e08c0b5e` |
 | Focused pgTAP | `fa63b16c5ad452f37271a50ac23c7a73b769ae553da8c8a74c6141b68408e55b` |
 
@@ -109,18 +111,19 @@ Final rehearsed artifact checksums:
 - TypeScript: PASS.
 - Targeted ESLint: PASS.
 - Authored-file whitespace: PASS.
-- Whole-tree whitespace has only the previously documented official-generator
-  EOF blank in `lib/database.types.ts`.
+- Linked hosted type generation after rollout restored the PostgREST marker and
+  produced no extra EOF blank in `lib/database.types.ts`.
 - Linked `supabase db push --dry-run --linked`: PASS; it lists only
   `20260911000000_platform_admin_dataset_onboarding.sql`.
 
-## Remaining gates
+## Rollout follow-up
 
-- Do not apply the migration to staging without separate explicit approval.
-- Before any staging apply, verify the target project and current backup hashes
-  again, then apply exactly the one listed migration.
-- After apply, run RPC privilege/definition checks and the signed-in hosted UI
-  smoke. Organization onboarding can be exercised with confirmed staging data;
-  private onboarding remains blocked until its farm-person prerequisite exists.
+- After separate explicit approval, exactly the rehearsed migration was applied
+  to non-production staging and its history, definitions, privileges, inventory,
+  and linked generated types were verified. See
+  `docs/dataset-onboarding-staging-rollout-2026-09-14.md`.
+- The signed-in hosted UI smoke remains. Organization onboarding can be
+  exercised with confirmed staging data; private onboarding remains blocked
+  until its farm-person prerequisite exists.
 - Production, Wave 3, MinIO relocation, asset upload, manifest generation, and
   account invitations remain out of scope.
