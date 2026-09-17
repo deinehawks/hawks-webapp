@@ -2,8 +2,8 @@
 
 Last updated: 2026-09-17
 
-Current branch: `feature/survey-timeline` with uncommitted implementation
-based on clean `development` commit `49355d2e`.
+Current branch: `feature/orthomap-date-filter` with an uncommitted frontend
+implementation based on the timeline integration merge `db137c74`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -367,8 +367,8 @@ cross-organization denial, survey View Data/denial, responsive tables, role
 boundaries, and browser console/network health.
 
 The org-admin table slice is now integrated into `development` at
-`49355d2e`, and its post-merge smoke passed. Survey Timeline is implemented
-locally on `feature/survey-timeline`: normal routes load RLS-filtered dated
+`49355d2e`, and its post-merge smoke passed. Survey Timeline was implemented
+on `feature/survey-timeline`: normal routes load RLS-filtered dated
 surveys through canonical primary `survey_farms` links, while User App Preview
 first restricts relationships to the selected user's calculated survey IDs.
 The responsive timeline shows Orthomosaic/3D availability, preserves surveys
@@ -387,13 +387,21 @@ representative primary-farm timeline data: normal and preview routes, desktop
 and mobile navigation, ready/current-only/empty states, ordering and
 availability, viewer reset, authorization boundaries, keyboard behavior, and
 console/network health all behaved correctly. Evidence is in
-`docs/survey-timeline-smoke-2026-09-17.md`. The branch is ready for focused
-review and normal integration. This smoke does not authorize staging
+`docs/survey-timeline-smoke-2026-09-17.md`. It is integrated into
+`development` at `db137c74`. This smoke did not authorize staging
 relationship changes; those remain a separate reviewed data gate.
 
-The next approved frontend follow-up is a client-level Orthomap Survey dates
-filter, documented in `docs/orthomap-date-filter-plan.md`. It preserves All
-dates, filters every visible map/data layer through already-authorized survey
-IDs, uses a desktop date strip and mobile Select, and does not reuse or change
-the primary-farm Survey Timeline contract. It is unimplemented and must use a
-separate `feature/orthomap-date-filter` branch after timeline integration.
+The client-level Orthomap Survey dates filter is implemented locally on
+`feature/orthomap-date-filter`. Eligible current orthomosaics are grouped by
+UTC flight date; All dates remains the reload default. The shared component
+uses a desktop scroll-snap strip, mobile Select, static one-date summary, and
+specific zero-eligible state. Raster, boundary, label, detection, FOI,
+popup/event, loading, hover, and camera behavior all derive from the same
+visible survey IDs without changing route props, server scope, RLS, storage,
+or asset paths. Boundary/label GeoJSON is reactive while the MapLibre base
+style remains stable. Next route type generation, TypeScript, targeted ESLint,
+whitespace, workshop regression 18/18, login HTTP, and anonymous redirect
+checks pass. Authenticated multi-date interaction smoke remains pending because
+the current local dataset does not contain enough surveys for different flight
+dates to exercise the filter meaningfully. Evidence and the deferred checklist
+are in `docs/orthomap-date-filter-local-validation-2026-09-17.md`.

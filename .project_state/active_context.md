@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-17
 
-Current epic: Review and integrate the validated read-only Survey Timeline.
+Current epic: Validate and integrate the Orthomap Survey date filter.
 
 Completed:
 
@@ -158,31 +158,34 @@ Completed:
     normal and User App Preview routes, representative timeline states,
     navigation/viewer reset, authorization boundaries, keyboard behavior, and
     console/network health. Evidence is in
-    `docs/survey-timeline-smoke-2026-09-17.md`.
-40. A separate Orthomap follow-up is approved for planning. It will add an
-    all-dates-preserving client-level Survey dates filter, not reuse the
-    primary-farm route-switching timeline. Date selection must filter map
-    rasters, boundaries, labels, detections, events, and popups through the
-    already-authorized survey set. It remains unimplemented and belongs on
-    `feature/orthomap-date-filter` after timeline integration. The plan is in
-    `docs/orthomap-date-filter-plan.md`.
+    `docs/survey-timeline-smoke-2026-09-17.md`. It is integrated into
+    `development` at `db137c74`.
+40. `feature/orthomap-date-filter` implements the approved shared Orthomap
+    filter. It preserves All dates, derives eligible current orthomosaics from
+    already-authorized surveys, and consistently filters rasters, boundaries,
+    labels, detections, FOI counts/layers, events, and popups. The MapLibre base
+    style remains stable and the camera refits to boundary or finite extent
+    bounds. Route typegen, TypeScript, targeted ESLint, whitespace, workshop
+    regression 18/18, login HTTP, and anonymous redirect checks pass. No
+    database, RLS, route, storage, asset-path, or server-scope contract changed.
+    Authenticated multi-date interaction smoke is still pending until
+    representative surveys with different flight dates are available; evidence
+    is in `docs/orthomap-date-filter-local-validation-2026-09-17.md`.
 
 Next sequence:
 
-1. Review the focused Survey Timeline branch diff and confirm all intended new
-   files are included.
-2. Rerun the focused static/regression gates after review corrections, then
-   commit, push, and integrate the branch through its focused pull request.
-3. Deploy the merged `development` branch and run a short post-merge smoke on
-   normal and User App Preview survey routes.
-4. Create `feature/orthomap-date-filter` from updated `development` only
-   after timeline integration, then implement the separately documented
-   client-level date filter without changing farm-timeline semantics or
-   authorization.
-5. Keep Wave 3 paused pending the dedicated 4 TB MinIO drive decision. Preserve
+1. When representative multi-date survey data is available, complete
+   authenticated responsive smoke for All dates and date switching on normal
+   Orthomap and User App Preview, including zero/one/multiple-date states,
+   scope boundaries, camera, popups, keyboard, console, and network.
+2. Review the focused branch diff, correct any smoke findings, and rerun the
+   affected static/regression gates.
+3. Commit, push, and integrate `feature/orthomap-date-filter` through its
+   focused pull request, then run a short post-merge smoke from `development`.
+4. Keep Wave 3 paused pending the dedicated 4 TB MinIO drive decision. Preserve
    the frozen checksum and zero-byte recovery state; do not regenerate, upload,
    relocate storage, or build a manifest.
-6. After the storage decision, use a separate infrastructure plan for MinIO
+5. After the storage decision, use a separate infrastructure plan for MinIO
    relocation or an explicitly approved Wave 3 resume. Keep later survey
    timeline follow-ups separate from infrastructure work.
 
