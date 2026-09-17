@@ -2,7 +2,8 @@
 
 Date: 2026-09-17
 
-Branch: `feature/orthomap-date-filter`
+Integration: feature commit `94d13031`, merged locally into `development`
+at `5f941ce2`.
 
 ## Implemented Scope
 

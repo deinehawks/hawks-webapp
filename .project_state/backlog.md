@@ -88,10 +88,10 @@ Last updated: 2026-09-17
 
 ## P2
 
-- Complete authenticated responsive smoke and focused review for the implemented
-  Orthomap client-level Survey dates filter on
-  `feature/orthomap-date-filter`, then integrate it normally. Preserve All
-  dates by default and normal/preview authorization fail-closed. See
+- The Orthomap client-level Survey dates filter is merged locally into
+  `development` at `5f941ce2`. Complete authenticated responsive smoke when
+  representative multi-date surveys are available; preserve All dates by
+  default and normal/preview authorization fail-closed. See
   `docs/orthomap-date-filter-local-validation-2026-09-17.md`.
 - Add no-organization signup approval and grant-derived dashboard client
   selection so supported individual accounts can consume the private assets.

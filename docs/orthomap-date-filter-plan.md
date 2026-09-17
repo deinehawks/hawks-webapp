@@ -2,7 +2,8 @@
 
 Date: 2026-09-17
 
-Status: implemented locally; authenticated responsive smoke pending.
+Status: merged locally into `development`; authenticated responsive smoke
+pending until representative multi-date survey data is available.
 
 Implementation branch: `feature/orthomap-date-filter`, based on
 `development` after Survey Timeline integration.

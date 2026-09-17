@@ -168,9 +168,10 @@ Completed:
     bounds. Route typegen, TypeScript, targeted ESLint, whitespace, workshop
     regression 18/18, login HTTP, and anonymous redirect checks pass. No
     database, RLS, route, storage, asset-path, or server-scope contract changed.
-    Authenticated multi-date interaction smoke is still pending until
-    representative surveys with different flight dates are available; evidence
-    is in `docs/orthomap-date-filter-local-validation-2026-09-17.md`.
+    It is merged locally into `development` at `5f941ce2`. Authenticated
+    multi-date interaction smoke is still pending until representative surveys
+    with different flight dates are available; evidence is in
+    `docs/orthomap-date-filter-local-validation-2026-09-17.md`.
 
 Next sequence:
 
@@ -178,10 +179,10 @@ Next sequence:
    authenticated responsive smoke for All dates and date switching on normal
    Orthomap and User App Preview, including zero/one/multiple-date states,
    scope boundaries, camera, popups, keyboard, console, and network.
-2. Review the focused branch diff, correct any smoke findings, and rerun the
+2. If smoke later finds an issue, correct it on a focused branch and rerun the
    affected static/regression gates.
-3. Commit, push, and integrate `feature/orthomap-date-filter` through its
-   focused pull request, then run a short post-merge smoke from `development`.
+3. Push or deploy the locally merged `development` only through the normal
+   reviewed workflow; no push or deployment was performed in this session.
 4. Keep Wave 3 paused pending the dedicated 4 TB MinIO drive decision. Preserve
    the frozen checksum and zero-byte recovery state; do not regenerate, upload,
    relocate storage, or build a manifest.

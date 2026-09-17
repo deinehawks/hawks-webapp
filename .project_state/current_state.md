@@ -2,8 +2,8 @@
 
 Last updated: 2026-09-17
 
-Current branch: `feature/orthomap-date-filter` with an uncommitted frontend
-implementation based on the timeline integration merge `db137c74`.
+Current branch: `development`. The Orthomap date-filter feature is merged
+locally at `5f941ce2`; `origin/development` remains at `db137c74`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -391,8 +391,9 @@ console/network health all behaved correctly. Evidence is in
 `development` at `db137c74`. This smoke did not authorize staging
 relationship changes; those remain a separate reviewed data gate.
 
-The client-level Orthomap Survey dates filter is implemented locally on
-`feature/orthomap-date-filter`. Eligible current orthomosaics are grouped by
+The client-level Orthomap Survey dates filter was implemented on
+`feature/orthomap-date-filter` and merged locally into `development` at
+`5f941ce2`. Eligible current orthomosaics are grouped by
 UTC flight date; All dates remains the reload default. The shared component
 uses a desktop scroll-snap strip, mobile Select, static one-date summary, and
 specific zero-eligible state. Raster, boundary, label, detection, FOI,
