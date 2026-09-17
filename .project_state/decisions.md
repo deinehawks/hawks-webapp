@@ -1,6 +1,6 @@
 ﻿# Decisions
 
-Last updated: 2026-09-04
+Last updated: 2026-09-17
 
 ## Current Decisions
 
@@ -82,6 +82,19 @@ Last updated: 2026-09-04
   surveys allowed by the signed-in user's RLS/effective access, while User App
   Preview exposes only the selected user's calculated survey scope rather than
   the platform admin's unrestricted scope.
+- Keep the Survey Timeline presentation within the existing shadcn design
+  language: flight date is the primary label, the selected survey is explicit,
+  output availability is compact but never hidden, and container-responsive
+  navigation uses scrollable cards on wide layouts and a Select control on
+  narrow layouts. Visual refinements must not alter timeline scope, ordering,
+  routes, or viewer-reset behavior.
+- Add a separate client-level Survey dates filter to Orthomap after the Survey
+  Timeline is integrated. Preserve All dates as the default; filter rasters,
+  boundaries, labels, detections, events, and popups through the same
+  already-authorized visible survey IDs. Use a desktop date strip and mobile
+  Select. Do not reuse the primary-farm route-switching timeline, broaden
+  authorization, add a processing-date field, or include comparison/playback
+  in the first slice.
 - Defer platform-created Auth accounts, automated invitation delivery, platform-admin role changes, true impersonation, hard deletion, broad asset/infrastructure administration, and full-history migration.
 
 ## Superseded Decisions

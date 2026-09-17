@@ -1,9 +1,9 @@
 # Session Handoff
 
-Last updated: 2026-09-14
+Last updated: 2026-09-17
 
-Current branch: `feature/dataset-onboarding` at pushed commit `9d5797eb`, one
-commit ahead of synchronized `origin/development` at `6653aa45`.
+Current branch: `feature/survey-timeline` with uncommitted implementation
+based on clean `development` commit `49355d2e`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -397,20 +397,44 @@ ESLint, whitespace, and anonymous NGINX redirects pass. The user-assisted smoke
 also passes authenticated farm edit/restore, cross-organization denial, View
 Data and unauthorized-survey denial, responsive tables, role boundaries, and
 clean browser console/network checks. Evidence is in
-`docs/org-admin-tables-local-smoke-2026-09-14.md`. The branch is ready to push,
-review, merge, deploy from `development`, and post-merge smoke.
+`docs/org-admin-tables-local-smoke-2026-09-14.md`.
 
-The survey timeline must not group or replace unique survey IDs. It lists only
-authorized surveys that share the same primary farm, orders them by
-`surveys.flight_date`, and switches the survey viewer so users can compare
-dated orthomosaics and 3D point clouds. User App Preview must use the selected
-user's effective scope. A missing primary-farm relationship or single dated
-survey produces a current-only/empty-history state. Historical detection
-versioning, an added processing timestamp, and side-by-side comparison remain
-deferred.
+The org-admin table slice is integrated into `development` at `49355d2e`;
+the user reports that its post-merge smoke passed.
 
-The org-admin table slice keeps the farm creation form, replaces repeated farm
-and survey cards with responsive tables, moves farm editing to
-`/org-admin/farms/[farmId]`, and adds an authorized survey View Data action.
-Neither frontend feature is implemented or smoke-tested yet; keep both visibly
-pending until their acceptance checks pass.
+Survey Timeline is implemented locally on `feature/survey-timeline`. The
+server loader authenticates independently, uses canonical primary
+`survey_farms` links and normal-session RLS, returns dated same-farm surveys
+newest first with deterministic ID ordering, and reports output availability
+without hiding surveys that have neither output. User App Preview calculates
+the selected user's effective survey set first and queries relationships only
+for those IDs. The responsive component uses horizontally scrollable links on
+desktop and a select on narrow screens. Existing routes are retained and the
+viewer provider is keyed by survey ID to reset to Orthomosaic. The user
+confirmed the initial UI smoke behaves correctly. The approved visual
+refinement now uses shadcn Card composition, clearer date/current hierarchy,
+compact icon-based output indicators, scroll snapping, a richer mobile current
+summary, tailored empty states, and improved accessibility semantics without
+changing timeline behavior.
+
+Route typegen, TypeScript, targeted ESLint, whitespace, workshop regression
+18/18, and anonymous NGINX redirect smoke pass; the same automated gates pass
+after the UI refinement. The user then completed the full post-refinement
+responsive smoke using representative primary-farm data. Normal and User App
+Preview routes, desktop/mobile navigation, timeline states, ordering,
+availability, viewer reset, authorization boundaries, keyboard behavior, and
+console/network health all pass. Evidence is in
+`docs/survey-timeline-smoke-2026-09-17.md`. The branch is ready for focused
+review, final automated checks, commit/push, and integration. No staging or
+production relationship change is authorized by this smoke; staging assignment
+retains a separate reviewed gate. Historical detections, processing dates,
+grouping, and comparison remain deferred.
+
+After timeline integration, the approved next frontend slice is the
+client-level Orthomap Survey dates filter on
+`feature/orthomap-date-filter`. It preserves All dates, groups accessible
+orthomosaics by flight date, uses a desktop strip/mobile Select, and filters
+rasters, boundaries, labels, detections, map events, and popups through the
+same visible survey IDs. It does not reuse the farm-scoped timeline and makes
+no schema, RLS, storage, or route-contract change. See
+`docs/orthomap-date-filter-plan.md`.

@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated: 2026-09-14
+Last updated: 2026-09-17
 
 ## Completed
 
@@ -70,6 +70,9 @@ Last updated: 2026-09-14
   post-apply dry-run, and linked staging type regeneration.
 - Dataset Onboarding integration into `development` at `b35c50f5` and
   successful post-merge no-mutation smoke.
+- Org-admin farm/survey responsive tables, scoped farm detail editing, survey
+  View Data action, integration into `development` at `49355d2e`, and
+  successful post-merge smoke.
 
 ## P1
 
@@ -83,18 +86,15 @@ Last updated: 2026-09-14
 
 ## P2
 
-- Push, review, and integrate the validated `feature/org-admin-tables` branch,
-  then deploy `development` and run a short post-merge smoke.
-- Add the next-week survey timeline after Wave 3 is safely running or signed
-  off. Keep survey IDs independent; relate authorized surveys through their
-  shared primary farm, order entries by `surveys.flight_date`, and switch the
-  displayed orthomosaic/3D survey when a date is selected. Historical
-  detection versions and side-by-side comparison remain deferred.
-- Replace the repeated `/org-admin/farms` and `/org-admin/surveys` cards with
-  responsive tables. Keep farm creation, move editing to
-  `/org-admin/farms/[farmId]`, and provide an authorized View Data action for
-  surveys. Implement this as a separate frontend branch after the migration
-  priority permits.
+- Review and integrate `feature/survey-timeline`, whose automated gates and
+  complete user-assisted post-refinement smoke now pass. Follow with a short
+  post-merge smoke from `development`; staging relationship assignment remains
+  a separate gated data operation.
+- After timeline integration, implement the approved Orthomap client-level
+  Survey dates filter on `feature/orthomap-date-filter`. Preserve All dates by
+  default; filter rasters, boundaries, labels, detections, events, and popups
+  consistently; keep normal and preview authorization fail-closed. See
+  `docs/orthomap-date-filter-plan.md`.
 - Add no-organization signup approval and grant-derived dashboard client
   selection so supported individual accounts can consume the private assets.
 

@@ -1,8 +1,8 @@
 # Active Context
 
-Last updated: 2026-09-14
+Last updated: 2026-09-17
 
-Current epic: Close Dataset Onboarding staging smoke and integration.
+Current epic: Review and integrate the validated read-only Survey Timeline.
 
 Completed:
 
@@ -143,18 +143,48 @@ Completed:
     organization-scoped detail route, and links survey View Data through the
     existing authenticated/RLS-protected route. Static checks, anonymous
     redirects, and the full user-assisted authenticated/responsive smoke pass.
+39. The org-admin table slice is integrated into `development` at
+    `49355d2e` and its post-merge smoke passed. `feature/survey-timeline`
+    implements the RLS-scoped normal timeline, selected-user-scoped preview
+    timeline, responsive date navigation, explicit empty/current-only states,
+    output availability, and survey-keyed viewer reset. Route typegen,
+    TypeScript, targeted ESLint, whitespace, workshop regression 18/18, and
+    anonymous redirect smoke pass. The user confirmed the initial UI smoke.
+    The approved shadcn visual refinement adds standard Card composition,
+    stronger date/current hierarchy, concise output indicators, scroll snapping,
+    clearer mobile selection context, and tailored empty states. Post-refinement
+    TypeScript, targeted ESLint, whitespace, and workshop regression 18/18 pass.
+    The user then passed the complete post-refinement responsive smoke across
+    normal and User App Preview routes, representative timeline states,
+    navigation/viewer reset, authorization boundaries, keyboard behavior, and
+    console/network health. Evidence is in
+    `docs/survey-timeline-smoke-2026-09-17.md`.
+40. A separate Orthomap follow-up is approved for planning. It will add an
+    all-dates-preserving client-level Survey dates filter, not reuse the
+    primary-farm route-switching timeline. Date selection must filter map
+    rasters, boundaries, labels, detections, events, and popups through the
+    already-authorized survey set. It remains unimplemented and belongs on
+    `feature/orthomap-date-filter` after timeline integration. The plan is in
+    `docs/orthomap-date-filter-plan.md`.
 
 Next sequence:
 
-1. Push `feature/org-admin-tables`, review its focused pull request, and merge
-   only while its checks remain clean.
-2. Deploy the merged `development` branch and run a short post-merge smoke.
-3. Keep Wave 3 paused pending the dedicated 4 TB MinIO drive decision. Preserve
+1. Review the focused Survey Timeline branch diff and confirm all intended new
+   files are included.
+2. Rerun the focused static/regression gates after review corrections, then
+   commit, push, and integrate the branch through its focused pull request.
+3. Deploy the merged `development` branch and run a short post-merge smoke on
+   normal and User App Preview survey routes.
+4. Create `feature/orthomap-date-filter` from updated `development` only
+   after timeline integration, then implement the separately documented
+   client-level date filter without changing farm-timeline semantics or
+   authorization.
+5. Keep Wave 3 paused pending the dedicated 4 TB MinIO drive decision. Preserve
    the frozen checksum and zero-byte recovery state; do not regenerate, upload,
    relocate storage, or build a manifest.
-4. After the storage decision, use a separate infrastructure plan for MinIO
+6. After the storage decision, use a separate infrastructure plan for MinIO
    relocation or an explicitly approved Wave 3 resume. Keep later survey
-   timeline and org-admin table work on separate branches.
+   timeline follow-ups separate from infrastructure work.
 
 Constraints:
 

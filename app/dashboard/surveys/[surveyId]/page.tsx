@@ -1,8 +1,10 @@
 import SurveyMapCaller from "@/components/callers/survey-map-caller";
+import { SurveyTimeline } from "@/components/survey-timeline";
 import {
   getObjectDetectionData,
   getUserSurvey,
 } from "@/lib/actions/surveys";
+import { getAccessibleSurveyTimeline } from "@/lib/surveys/timeline";
 import { SurveyMapStoreProvider } from "@/providers/survey-map-store-provider";
 
 export default async function Page({
@@ -12,10 +14,10 @@ export default async function Page({
 }) {
   const { surveyId } = await params;
   const survey = await getUserSurvey(surveyId);
-  const detectedObjects = await getObjectDetectionData(
-    surveyId,
-    survey?.client_id ?? undefined,
-  );
+  const [detectedObjects, timeline] = await Promise.all([
+    getObjectDetectionData(surveyId, survey.client_id ?? undefined),
+    getAccessibleSurveyTimeline(survey),
+  ]);
 
   if (!survey) {
     return (
@@ -27,7 +29,12 @@ export default async function Page({
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-2 h-full">
-      <SurveyMapStoreProvider>
+      <SurveyTimeline
+        currentSurveyId={survey.id}
+        hrefBase="/dashboard/surveys"
+        timeline={timeline}
+      />
+      <SurveyMapStoreProvider key={survey.id}>
         <SurveyMapCaller survey={survey} detectedObjects={detectedObjects} />
       </SurveyMapStoreProvider>
     </div>

@@ -1,9 +1,9 @@
 # Current State
 
-Last updated: 2026-09-14
+Last updated: 2026-09-17
 
-Current branch: `feature/dataset-onboarding` at pushed commit `9d5797eb`, one
-commit ahead of synchronized `origin/development` at `6653aa45`.
+Current branch: `feature/survey-timeline` with uncommitted implementation
+based on clean `development` commit `49355d2e`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -364,5 +364,36 @@ route. No database or authorization contract changed. Next route types,
 TypeScript, targeted ESLint, whitespace, and anonymous NGINX redirects pass.
 The user-assisted authenticated smoke also passes farm edit/restore,
 cross-organization denial, survey View Data/denial, responsive tables, role
-boundaries, and browser console/network health. The branch is ready to push and
-review.
+boundaries, and browser console/network health.
+
+The org-admin table slice is now integrated into `development` at
+`49355d2e`, and its post-merge smoke passed. Survey Timeline is implemented
+locally on `feature/survey-timeline`: normal routes load RLS-filtered dated
+surveys through canonical primary `survey_farms` links, while User App Preview
+first restricts relationships to the selected user's calculated survey IDs.
+The responsive timeline shows Orthomosaic/3D availability, preserves surveys
+with neither output, and navigates through existing routes with the viewer
+provider keyed by survey ID so selection resets to Orthomosaic. Missing farm,
+missing flight date, and current-only states are explicit. Route typegen,
+TypeScript, targeted ESLint, whitespace, workshop regression 18/18, and
+anonymous redirect smoke pass. The user confirmed the initial UI smoke behaves
+correctly. The approved shadcn refinement now uses standard Card primitives,
+stronger date/current hierarchy, concise icon-based output indicators,
+scroll-snap desktop navigation, a clearer mobile summary, neutral empty-state
+copy, and improved navigation/group semantics without changing functionality.
+Post-refinement TypeScript, targeted ESLint, whitespace, and workshop regression
+18/18 pass. The user then passed the complete responsive smoke with
+representative primary-farm timeline data: normal and preview routes, desktop
+and mobile navigation, ready/current-only/empty states, ordering and
+availability, viewer reset, authorization boundaries, keyboard behavior, and
+console/network health all behaved correctly. Evidence is in
+`docs/survey-timeline-smoke-2026-09-17.md`. The branch is ready for focused
+review and normal integration. This smoke does not authorize staging
+relationship changes; those remain a separate reviewed data gate.
+
+The next approved frontend follow-up is a client-level Orthomap Survey dates
+filter, documented in `docs/orthomap-date-filter-plan.md`. It preserves All
+dates, filters every visible map/data layer through already-authorized survey
+IDs, uses a desktop date strip and mobile Select, and does not reuse or change
+the primary-farm Survey Timeline contract. It is unimplemented and must use a
+separate `feature/orthomap-date-filter` branch after timeline integration.
