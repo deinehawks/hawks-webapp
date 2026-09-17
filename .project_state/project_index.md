@@ -12,9 +12,12 @@ Use this index after the compressed startup files. Document classifications prev
 - `docs/survey-timeline-smoke-2026-09-17.md`: user-assisted responsive,
   navigation, timeline-state, preview-scope, authorization, accessibility,
   console, and network smoke evidence for the Survey Timeline branch.
-- `docs/orthomap-date-filter-plan.md`: approved, unimplemented client-level
-  Orthomap date-filter behavior, authorization boundary, implementation shape,
-  and acceptance criteria.
+- `docs/orthomap-date-filter-local-validation-2026-09-17.md`: automated and
+  anonymous HTTP evidence plus the pending authenticated responsive smoke
+  checklist for the Orthomap Survey date filter.
+- `docs/orthomap-date-filter-plan.md`: implemented client-level Orthomap
+  date-filter behavior, authorization boundary, implementation shape, and
+  acceptance criteria.
 
 - `docs/admin-dashboard-integration-plan.md`: primary admin architecture, route split, delivery order, mutation boundaries, and deferred scope.
 - `docs/role-permission-model-and-migration-plan.md`: current account/membership/grant authority model and completed legacy-column migration history.
