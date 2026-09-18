@@ -23,6 +23,17 @@ function calculateCentroid(coordinates: number[][][]) {
   return [sumX / points.length, sumY / points.length];
 }
 
+function formatUtcDate(value: string): string {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return "Not available";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(timestamp));
+}
+
 function MapPopup({
   popupInfo,
   setPopupInfo,
@@ -68,7 +79,8 @@ function MapPopup({
                     Survey Area
                   </div>
                   <div className="text-lg font-semibold text-primary-foreground">
-                    {`${popupInfo.code}-${popupInfo.area_code}`}
+                    {[popupInfo.code, popupInfo.area_code].filter(Boolean).join("-") ||
+                      popupInfo.id}
                   </div>
                 </div>
                 <div className="text-xs px-2.5 py-1 bg-primary-foreground/20 text-primary-foreground rounded-md font-medium">
@@ -93,7 +105,9 @@ function MapPopup({
                     </span>
                   </div>
                   <span className="text-base font-bold text-foreground">
-                    {popupInfo.area.toFixed(2)} ha
+                    {typeof popupInfo.area === "number"
+                      ? popupInfo.area.toFixed(2) + " ha"
+                      : "Not available"}
                   </span>
                 </div>
               </motion.div>
@@ -116,7 +130,7 @@ function MapPopup({
                           Flight date
                         </span>
                         <span className="text-sm font-semibold text-foreground">
-                          {popupInfo.flight_date}
+                          {formatUtcDate(popupInfo.flight_date)}
                         </span>
                       </div>
                     )}
@@ -334,7 +348,9 @@ export default function MapLibre({
       type: "Feature",
       properties: {
         survey_id: survey.id,
-        label: `${survey.code}-${survey.area_code}`,
+        label:
+          [survey.code, survey.area_code].filter(Boolean).join("-") ||
+          String(survey.id),
       },
       geometry: {
         type: "Point",

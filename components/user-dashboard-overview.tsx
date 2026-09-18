@@ -1,40 +1,49 @@
-import { DataTable, type SurveyTableRow } from "@/components/data-table";
-import { SectionCards } from "@/components/section-cards";
-import SurveyDataInteractive from "@/components/survey-data-interactive";
+import { DashboardSurveyExplorer } from "@/components/dashboard-survey-explorer";
+import { DashboardSummaryCards } from "@/components/dashboard-summary-cards";
+import { Badge } from "@/components/ui/badge";
 import type { ComputerVisionObject, Survey } from "@/lib/types";
 
-function toSurveyTableRows(surveys: Survey[]): SurveyTableRow[] {
-  return surveys.flatMap((survey) => {
-    if (survey.area == null || !survey.area_code || !survey.flight_date ||
-      !survey.location || survey.min_x == null || survey.max_x == null ||
-      survey.min_y == null || survey.max_y == null || !survey.geojson_boundaries) return [];
-    return [{
-      id: survey.id, code: survey.code, area_code: survey.area_code,
-      flight_date: new Date(survey.flight_date), location: survey.location,
-      area: survey.area, tags: survey.tags ?? [], min_x: survey.min_x,
-      max_x: survey.max_x, min_y: survey.min_y, max_y: survey.max_y,
-      geojson_boundaries: survey.geojson_boundaries,
-    }];
-  });
-}
-
 export function UserDashboardOverview({
-  surveys, detectedObjects, surveyHrefBase = "/dashboard/surveys",
+  surveys,
+  detectedObjects,
+  surveyHrefBase = "/dashboard/surveys",
   orthomapHrefBase = "/dashboard/orthomap",
 }: {
-  surveys: Survey[]; detectedObjects: ComputerVisionObject[];
-  surveyHrefBase?: string; orthomapHrefBase?: string;
+  surveys: Survey[];
+  detectedObjects: ComputerVisionObject[];
+  surveyHrefBase?: string;
+  orthomapHrefBase?: string;
 }) {
+  const client = surveys[0]?.client;
+
   return (
-    <div className="@container/main flex flex-1 flex-col gap-2">
-      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-        <SectionCards surveys={surveys} detectedObjects={detectedObjects} />
-        <div className="min-h-[600px] h-full px-4 lg:px-6">
-          <SurveyDataInteractive data={surveys} surveyHrefBase={surveyHrefBase} />
-        </div>
-        <DataTable data={toSurveyTableRows(surveys)}
-          orthomapHrefBase={orthomapHrefBase} surveyHrefBase={surveyHrefBase} />
+    <main className="@container/main flex flex-1 flex-col">
+      <div className="flex flex-col gap-6 px-4 py-5 lg:px-6 lg:py-6">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-primary">Survey workspace</p>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Survey Dashboard
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Explore the maps, outputs, and crop findings available to your account.
+            </p>
+          </div>
+          {client ? (
+            <Badge variant="outline" className="w-fit px-3 py-1 text-sm">
+              {client.name || client.code}
+            </Badge>
+          ) : null}
+        </header>
+
+        <DashboardSummaryCards surveys={surveys} detectedObjects={detectedObjects} />
+        <DashboardSurveyExplorer
+          detectedObjects={detectedObjects}
+          orthomapHrefBase={orthomapHrefBase}
+          surveyHrefBase={surveyHrefBase}
+          surveys={surveys}
+        />
       </div>
-    </div>
+    </main>
   );
 }
