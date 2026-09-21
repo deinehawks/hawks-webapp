@@ -1,15 +1,18 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { sidebarNavigationButtonClass } from "@/components/sidebar-nav-link";
 import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import type { Survey } from "@/lib/types";
-import { Building2Icon, ListIcon } from "lucide-react";
+import { Building2Icon, ListIcon, MapIcon } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
@@ -32,6 +35,10 @@ export function NavMain({
   orthomapHrefBase?: string;
 }) {
   const params = useParams();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const closeMobileNavigation = () => {
+    if (isMobile) setOpenMobile(false);
+  };
   const selectedSurvey =
     typeof params.surveyId === "string"
       ? params.surveyId
@@ -99,12 +106,16 @@ export function NavMain({
   return (
     <>
       <SidebarGroup>
-        <SidebarGroupLabel>Orthomap</SidebarGroupLabel>
+        <SidebarGroupLabel>Orthomaps</SidebarGroupLabel>
         <SidebarMenu>
           {clientCodes.length === 0 ? (
             <SidebarMenuItem>
-              <SidebarMenuButton asChild className="transition-colors hover:bg-primary/10">
-                <Link href={dashboardHref}>
+              <SidebarMenuButton
+                asChild
+                className={sidebarNavigationButtonClass}
+                tooltip="No accessible orthomaps"
+              >
+                <Link href={dashboardHref} onClick={closeMobileNavigation}>
                   <Building2Icon aria-hidden="true" />
                   <span>No accessible orthomaps</span>
                 </Link>
@@ -114,18 +125,21 @@ export function NavMain({
             clientCodes.map((clientCode) => (
               <SidebarMenuItem key={clientCode}>
                 <SidebarMenuButton
-                  isActive={plantationParam === clientCode}
                   asChild
-                  className="transition-colors hover:bg-primary/10"
+                  className={sidebarNavigationButtonClass}
+                  isActive={plantationParam === clientCode}
+                  tooltip={clientCode}
                 >
-                  <Link href={orthomapHrefBase + "/" + encodeURIComponent(clientCode)}>
+                  <Link
+                    aria-current={plantationParam === clientCode ? "page" : undefined}
+                    href={orthomapHrefBase + "/" + encodeURIComponent(clientCode)}
+                    onClick={closeMobileNavigation}
+                  >
                     <Building2Icon aria-hidden="true" />
-                    <span className="font-medium">{clientCode}</span>
-                    <Badge variant="secondary" className="ml-auto">
-                      {surveyCounts.get(clientCode) ?? 0}
-                    </Badge>
+                    <span>{clientCode}</span>
                   </Link>
                 </SidebarMenuButton>
+                <SidebarMenuBadge>{surveyCounts.get(clientCode) ?? 0}</SidebarMenuBadge>
               </SidebarMenuItem>
             ))
           )}
@@ -140,9 +154,16 @@ export function NavMain({
         <SidebarMenu>
           {recentSurveys.length === 0 ? (
             <SidebarMenuItem>
-              <p className="px-2 py-2 text-xs text-muted-foreground">
-                No accessible surveys
-              </p>
+              <SidebarMenuButton
+                asChild
+                className={sidebarNavigationButtonClass}
+                tooltip="No accessible surveys"
+              >
+                <div aria-disabled="true" className="text-muted-foreground">
+                  <MapIcon aria-hidden="true" />
+                  <span>No accessible surveys</span>
+                </div>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           ) : (
             recentSurveys.map((survey) => {
@@ -150,19 +171,23 @@ export function NavMain({
               return (
                 <SidebarMenuItem key={surveyId}>
                   <SidebarMenuButton
-                    isActive={surveyId === selectedSurvey}
                     asChild
-                    className="transition-colors hover:bg-primary/10"
+                    className={sidebarNavigationButtonClass}
+                    isActive={surveyId === selectedSurvey}
+                    tooltip={surveyId}
                   >
-                    <Link href={surveyHrefBase + "/" + encodeURIComponent(surveyId)}>
+                    <Link
+                      aria-current={surveyId === selectedSurvey ? "page" : undefined}
+                      href={surveyHrefBase + "/" + encodeURIComponent(surveyId)}
+                      onClick={closeMobileNavigation}
+                    >
+                      <MapIcon aria-hidden="true" />
                       <span className="truncate">{surveyId}</span>
-                      {newSurveyIds.has(surveyId) ? (
-                        <Badge variant="secondary" className="ml-auto text-[10px]">
-                          NEW
-                        </Badge>
-                      ) : null}
                     </Link>
                   </SidebarMenuButton>
+                  {newSurveyIds.has(surveyId) ? (
+                    <SidebarMenuBadge className="text-[10px]">NEW</SidebarMenuBadge>
+                  ) : null}
                 </SidebarMenuItem>
               );
             })
@@ -170,8 +195,15 @@ export function NavMain({
 
           {surveys.length > 0 ? (
             <SidebarMenuItem>
-              <SidebarMenuButton asChild className="transition-colors hover:bg-primary/10">
-                <Link href={dashboardHref + "#survey-explorer"}>
+              <SidebarMenuButton
+                asChild
+                className={sidebarNavigationButtonClass}
+                tooltip="View all surveys"
+              >
+                <Link
+                  href={dashboardHref + "#survey-explorer"}
+                  onClick={closeMobileNavigation}
+                >
                   <ListIcon aria-hidden="true" />
                   <span>View all surveys</span>
                 </Link>

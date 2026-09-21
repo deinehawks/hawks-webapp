@@ -1,22 +1,30 @@
-import Image from "next/image";
-import Link from "next/link";
-import { Building2Icon, ClipboardCheckIcon, ClipboardListIcon, ClipboardPlusIcon, FileBarChartIcon, LayoutDashboardIcon, MapIcon, ShieldCheckIcon, UserPlusIcon, UsersIcon } from "lucide-react";
+"use client";
+
+import {
+  Building2Icon,
+  ClipboardCheckIcon,
+  ClipboardListIcon,
+  ClipboardPlusIcon,
+  FileBarChartIcon,
+  LayoutDashboardIcon,
+  MapIcon,
+  ShieldCheckIcon,
+  UserPlusIcon,
+  UsersIcon,
+} from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
-import hawksLogo from "@/public/hawks/logo.png";
-import hawksTypescript from "@/public/hawks/typescript.png";
-
 import { NavUser } from "@/components/nav-user";
+import { SidebarBrand } from "@/components/sidebar-brand";
+import { SidebarNavLink } from "@/components/sidebar-nav-link";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 
 export function AdminSidebar({
@@ -25,172 +33,70 @@ export function AdminSidebar({
   user: User;
 }) {
   return (
-    <Sidebar collapsible="offcanvas" variant="inset">
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-              asChild
-            >
-              <Link href="/admin" className="flex items-center justify-start">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground">
-                  <div className="relative w-8">
-                    <Image
-                      src={hawksLogo}
-                      alt="ASIMOV-HAWKS logo"
-                      style={{ width: "100%", height: "auto" }}
-                    />
-                  </div>
-                </div>
-                <div className="relative w-[150px]">
-                  <Image
-                    src={hawksTypescript}
-                    alt="ASIMOV-HAWKS wordmark"
-                    style={{ width: "100%", height: "auto" }}
-                  />
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
+    <Sidebar collapsible="icon" variant="inset">
+      <SidebarBrand href="/admin" />
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Platform Admin</SidebarGroupLabel>
+          <SidebarGroupLabel>Main</SidebarGroupLabel>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Admin Overview"
-                className="transition-colors hover:bg-primary/10"
-                asChild
-              >
-                <Link href="/admin">
-                  <ShieldCheckIcon />
-                  <span>Admin Overview</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="View User App"
-                className="transition-colors hover:bg-primary/10"
-                asChild
-              >
-                <Link href="/dashboard">
-                  <LayoutDashboardIcon />
-                  <span>View User App</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            <SidebarNavLink
+              exact
+              href="/admin"
+              icon={ShieldCheckIcon}
+              label="Admin Overview"
+            />
+            <SidebarNavLink
+              href="/dashboard"
+              icon={LayoutDashboardIcon}
+              label="View User App"
+            />
           </SidebarMenu>
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Current Wave</SidebarGroupLabel>
+          <SidebarGroupLabel>Access</SidebarGroupLabel>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Users & Access"
-                className="transition-colors hover:bg-primary/10"
-                asChild
-              >
-                <Link href="/admin/users">
-                  <UsersIcon />
-                  <span>Users &amp; Access</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Signup Approvals"
-                className="transition-colors hover:bg-primary/10"
-                asChild
-              >
-                <Link href="/admin/signup-approvals">
-                  <UserPlusIcon />
-                  <span>Signup Approvals</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Organization Onboarding"
-                className="transition-colors hover:bg-primary/10"
-                asChild
-              >
-                <Link href="/admin/onboarding-requests">
-                  <ClipboardCheckIcon />
-                  <span>Organization Onboarding</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Organizations"
-                className="transition-colors hover:bg-primary/10"
-                asChild
-              >
-                <Link href="/admin/organizations">
-                  <Building2Icon />
-                  <span>Organizations</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Farms"
-                className="transition-colors hover:bg-primary/10"
-                asChild
-              >
-                <Link href="/admin/farms">
-                  <ClipboardListIcon />
-                  <span>Farms</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Surveys"
-                className="transition-colors hover:bg-primary/10"
-                asChild
-              >
-                <Link href="/admin/surveys">
-                  <MapIcon />
-                  <span>Surveys</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Dataset Onboarding"
-                className="transition-colors hover:bg-primary/10"
-                asChild
-              >
-                <Link href="/admin/dataset-onboarding">
-                  <ClipboardPlusIcon />
-                  <span>Dataset Onboarding</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Outputs"
-                className="transition-colors hover:bg-primary/10"
-                asChild
-              >
-                <Link href="/admin/outputs">
-                  <FileBarChartIcon />
-                  <span>Outputs</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            <SidebarNavLink href="/admin/users" icon={UsersIcon} label="Users & Access" />
+            <SidebarNavLink
+              href="/admin/signup-approvals"
+              icon={UserPlusIcon}
+              label="Signup Approvals"
+            />
+            <SidebarNavLink
+              href="/admin/onboarding-requests"
+              icon={ClipboardCheckIcon}
+              label="Organization Onboarding"
+            />
+          </SidebarMenu>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Data Management</SidebarGroupLabel>
+          <SidebarMenu>
+            <SidebarNavLink
+              href="/admin/organizations"
+              icon={Building2Icon}
+              label="Organizations"
+            />
+            <SidebarNavLink href="/admin/farms" icon={ClipboardListIcon} label="Farms" />
+            <SidebarNavLink href="/admin/surveys" icon={MapIcon} label="Surveys" />
+            <SidebarNavLink
+              href="/admin/dataset-onboarding"
+              icon={ClipboardPlusIcon}
+              label="Dataset Onboarding"
+            />
+            <SidebarNavLink
+              href="/admin/outputs"
+              icon={FileBarChartIcon}
+              label="Outputs"
+            />
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   );
 }
