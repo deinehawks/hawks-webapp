@@ -15,6 +15,8 @@ type DashboardSurvey = {
 
 type DashboardMapCallerProps = {
   data: DashboardSurvey[];
+  onSurveySelect?: (surveyId: string) => void;
+  selectedSurveyId?: string | null;
   surveyHrefBase?: string;
 };
 
@@ -32,6 +34,8 @@ const DashboardMap = dynamic(() => import("@/components/maps/dashboard-map"), {
 
 export default function DashboardMapCaller({
   data,
+  onSurveySelect,
+  selectedSurveyId,
   surveyHrefBase = "/dashboard/surveys",
 }: DashboardMapCallerProps) {
   if (!Array.isArray(data) || data.length === 0) {
@@ -68,5 +72,12 @@ export default function DashboardMapCaller({
     );
   }
 
-  return <DashboardMap data={validData} surveyHrefBase={surveyHrefBase} />;
+  return (
+    <DashboardMap
+      data={validData}
+      onSurveySelect={onSurveySelect}
+      selectedSurveyId={selectedSurveyId}
+      surveyHrefBase={surveyHrefBase}
+    />
+  );
 }

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ComputerVisionObject, Survey } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import {
   BoxIcon,
   CalendarDaysIcon,
@@ -20,7 +21,7 @@ import {
   SproutIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 
 type AvailabilityFilter = "all" | "orthomosaic" | "point_cloud" | "detections";
 type SurveySort = "newest" | "oldest" | "id";
@@ -50,12 +51,13 @@ function formatArea(area: number | null): string {
 }
 
 function SurveyAvailabilityBadges({
-  hasDetections,
+  detectionCount,
   survey,
 }: {
-  hasDetections: boolean;
+  detectionCount: number;
   survey: Survey;
 }) {
+  const hasDetections = detectionCount > 0;
   const hasOutput = Boolean(survey.ortho || survey.point_cloud || hasDetections);
   return (
     <div className="flex flex-wrap gap-1.5" aria-label="Available survey data">
@@ -71,12 +73,10 @@ function SurveyAvailabilityBadges({
           3D
         </Badge>
       ) : null}
-      {hasDetections ? (
-        <Badge variant="secondary" className="gap-1">
-          <SproutIcon className="size-3" aria-hidden="true" />
-          Detections
-        </Badge>
-      ) : null}
+      <Badge variant={hasDetections ? "secondary" : "outline"} className="gap-1">
+        <SproutIcon className="size-3" aria-hidden="true" />
+        {detectionCount} {detectionCount === 1 ? "detection" : "detections"}
+      </Badge>
       {!hasOutput ? <Badge variant="outline">No outputs available</Badge> : null}
     </div>
   );
@@ -84,51 +84,68 @@ function SurveyAvailabilityBadges({
 
 function SurveyResultCard({
   detectionCount,
+  onSelect,
   orthomapHrefBase,
+  selected,
   survey,
   surveyHrefBase,
 }: {
   detectionCount: number;
+  onSelect: () => void;
   orthomapHrefBase: string;
+  selected: boolean;
   survey: Survey;
   surveyHrefBase: string;
 }) {
   const surveyId = String(survey.id);
   const clientCode = survey.client?.code || survey.code;
   return (
-    <article className="rounded-xl border bg-card p-4 shadow-xs transition-colors hover:border-primary/40">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Survey
-          </p>
-          <h3 className="truncate text-base font-semibold" title={surveyId}>
-            {surveyId}
-          </h3>
-        </div>
-        <Badge variant="outline" className="shrink-0">
-          {survey.status || "Status unavailable"}
-        </Badge>
-      </div>
-      <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
-        <div className="flex items-start gap-2">
-          <CalendarDaysIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          <div><dt className="sr-only">Flight date</dt><dd>{formatUtcDate(survey.flight_date)}</dd></div>
-        </div>
-        <div className="flex items-start gap-2">
-          <MapPinIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+    <article
+      className={cn(
+        "rounded-xl border bg-card p-4 shadow-xs transition-colors hover:border-primary/40",
+        selected && "border-primary bg-primary/5 ring-2 ring-primary/20",
+      )}
+      id={"survey-result-" + surveyId}
+    >
+      <button
+        aria-pressed={selected}
+        className="w-full rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        onClick={onSelect}
+        type="button"
+      >
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <dt className="sr-only">Location</dt>
-            <dd className="line-clamp-2">{survey.location || "Not available"}</dd>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Survey
+            </p>
+            <h3 className="truncate text-base font-semibold" title={surveyId}>
+              {surveyId}
+            </h3>
           </div>
+          <Badge variant="outline" className="shrink-0">
+            {survey.status || "Status unavailable"}
+          </Badge>
         </div>
-        <div className="flex items-start gap-2">
-          <MapIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          <div><dt className="sr-only">Area</dt><dd>{formatArea(survey.area)}</dd></div>
-        </div>
-      </dl>
+        <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
+          <div className="flex items-start gap-2">
+            <CalendarDaysIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <div><dt className="sr-only">Flight date</dt><dd>{formatUtcDate(survey.flight_date)}</dd></div>
+          </div>
+          <div className="flex items-start gap-2">
+            <MapPinIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <div className="min-w-0">
+              <dt className="sr-only">Location</dt>
+              <dd className="line-clamp-2">{survey.location || "Not available"}</dd>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <MapIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <div><dt className="sr-only">Area</dt><dd>{formatArea(survey.area)}</dd></div>
+          </div>
+        </dl>
+      </button>
       <div className="mt-3">
-        <SurveyAvailabilityBadges hasDetections={detectionCount > 0} survey={survey} />
+        <SurveyAvailabilityBadges detectionCount={detectionCount} survey={survey} />
       </div>
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Button asChild size="sm">
@@ -161,6 +178,7 @@ export function DashboardSurveyExplorer({
 }) {
   const [availability, setAvailability] = useState<AvailabilityFilter>("all");
   const [query, setQuery] = useState("");
+  const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null);
   const [sort, setSort] = useState<SurveySort>("newest");
   const [view, setView] = useState<ExplorerView>("list");
 
@@ -210,6 +228,15 @@ export function DashboardSurveyExplorer({
       });
   }, [availability, detectionCounts, query, sort, surveys]);
 
+  useEffect(() => {
+    if (
+      selectedSurveyId &&
+      !visibleSurveys.some((survey) => String(survey.id) === selectedSurveyId)
+    ) {
+      setSelectedSurveyId(null);
+    }
+  }, [selectedSurveyId, visibleSurveys]);
+
   const hasFilters = query.trim().length > 0 || availability !== "all" || sort !== "newest";
   const resetFilters = () => {
     setAvailability("all");
@@ -229,6 +256,17 @@ export function DashboardSurveyExplorer({
     setView(nextView);
     requestAnimationFrame(() => {
       document.getElementById("survey-" + nextView + "-tab")?.focus();
+    });
+  };
+  const revealSurveyResult = (surveyId: string) => {
+    setSelectedSurveyId(surveyId);
+    setView("list");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document
+          .getElementById("survey-result-" + surveyId)
+          ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
     });
   };
 
@@ -259,7 +297,9 @@ export function DashboardSurveyExplorer({
         <SurveyResultCard
           detectionCount={detectionCounts.get(String(survey.id)) ?? 0}
           key={survey.id}
+          onSelect={() => setSelectedSurveyId(String(survey.id))}
           orthomapHrefBase={orthomapHrefBase}
+          selected={selectedSurveyId === String(survey.id)}
           survey={survey}
           surveyHrefBase={surveyHrefBase}
         />
@@ -285,7 +325,12 @@ export function DashboardSurveyExplorer({
 
   const map = (
     <div className="h-[30rem] overflow-hidden rounded-xl border lg:h-[38rem]">
-      <DashboardMapCaller data={visibleSurveys} surveyHrefBase={surveyHrefBase} />
+      <DashboardMapCaller
+        data={visibleSurveys}
+        onSurveySelect={revealSurveyResult}
+        selectedSurveyId={selectedSurveyId}
+        surveyHrefBase={surveyHrefBase}
+      />
     </div>
   );
 
@@ -357,7 +402,7 @@ export function DashboardSurveyExplorer({
                 onKeyDown={handleViewKeyDown}
                 tabIndex={view === "list" ? 0 : -1}
               >
-                <ListIcon aria-hidden="true" />List
+                <ListIcon aria-hidden="true" />Results
               </Button>
               <Button
                 aria-controls="survey-map-panel"

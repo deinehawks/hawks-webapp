@@ -1,13 +1,14 @@
-# Dashboard Overview and Survey Explorer Page Split
+# Analytics-First Dashboard and Survey Explorer Page Split
 
 Date: 2026-09-18
-Status: Approved plan; implementation pending
+Status: Implemented; primary signed-in UI smoke passed
 
 ## Summary
 
-Keep the main user Dashboard as a general overview and move the completed
-survey-focused experience to the existing survey index route. Continue the
-work on `feature/dashboard-survey-explorer`; no new branch is required.
+Keep the main user Dashboard focused on crop analytics and operational
+readiness while the dedicated survey index owns survey discovery, results,
+and mapping. Continue the work on `feature/dashboard-survey-explorer`; no new
+branch is required.
 
 Canonical routes:
 
@@ -19,27 +20,35 @@ Canonical routes:
 
 ## Main Dashboard
 
-- Restore the original cards, overview map, and full paginated survey-table
-  composition as the account-wide landing page.
-- Keep the Analysis/Inventory summary mode while correcting null handling,
-  date calculations, percentages, and output-readiness labels.
-- Show every authorized survey. Missing values display as `Not available`, and
-  surveys without boundaries remain in the table while being excluded from map
-  geometry.
-- Retain useful search, filtering, sorting, pagination, column visibility, and
-  real navigation into survey details.
-- Add a clear action that opens Survey Explorer.
-- Do not restore misleading row-selection or mutation behavior. Edit, Copy,
-  Favorite, and Delete require separate authorization and lifecycle designs.
+- Remove the survey map, recent-survey list, and Analysis/Inventory toggle from
+  Dashboard. Survey discovery and maps belong only to Survey Explorer.
+- Default crop-health analytics to the newest accessible survey with
+  classified detection data. Provide a local survey selector without
+  persisting its value.
+- Keep each health snapshot survey-scoped so repeated flights are not combined.
+  Show flight date, classified detections, infected detections, infection rate,
+  and a native healthy/infected composition bar.
+- Show account-wide mission-status and Orthomosaic/3D/detection readiness.
+- Rank up to five surveys with infected detections by count, rate, newest UTC
+  flight date, and survey ID. Do not present this as a clinical severity score.
+- Treat absent classified data as unavailable rather than zero-percent
+  infection, and disclose that model detections require field verification.
+- Use one client label, an `N clients` label, or no label as appropriate.
 
 ## Dedicated Survey Explorer
 
-- Move the current survey-focused header, summary cards, search, availability
-  filters, sorting, responsive map/results layout, and empty states to
-  `/dashboard/surveys`.
+- Move the survey-focused search, availability filters, sorting, responsive
+  map/results layout, and empty states to `/dashboard/surveys`. Do not repeat
+  the Dashboard summary cards here.
 - Preserve local-only filter state, exact map/result parity, a single MapLibre
   instance, UTC dates, incomplete-record handling, and keyboard-accessible
-  mobile Map/List tabs.
+  mobile Results/Map tabs that open on Results.
+- Show survey ID, flight date, location, area, status, available outputs, and
+  detection count in each result.
+- Selecting a result highlights its map boundary and fits the map to it without
+  navigating. Selecting a map boundary highlights and reveals the matching
+  result.
+- Keep explicit View Survey and View Orthomap actions.
 - Add the equivalent target-scoped page under User App Preview using the
   existing preview data calculation and preview-specific link bases.
 - Add route-specific loading skeletons for the general Dashboard and Survey
@@ -47,11 +56,12 @@ Canonical routes:
 
 ## Sidebar and Compatibility
 
-- Add primary Dashboard and Survey Explorer links to both normal and preview
-  sidebars.
-- Keep the Orthomap section and five newest survey shortcuts.
-- Point `View all surveys` to the dedicated Survey Explorer route instead of a
-  Dashboard hash.
+- Add primary Dashboard and Surveys links to both normal and preview sidebars.
+- Keep the Orthomap section as the distinct client-level visualization entry.
+- Remove Homepage because `/` is already a role-aware redirect rather than a
+  separate destination.
+- Remove the entire Recent Surveys group because Survey Explorer is the
+  authoritative newest-first survey browser.
 - Preserve existing survey-detail and Orthomap routes, server loaders, RLS,
   protected-asset behavior, and User App Preview scope.
 - Add no database queries, schema changes, URL filter parameters, storage
@@ -61,14 +71,15 @@ Canonical routes:
 
 - Run Next route type generation, TypeScript, targeted ESLint,
   `git diff --check`, and workshop regression 18/18.
-- Smoke-test zero, one, many, and incomplete surveys on both Dashboard and
-  Survey Explorer.
-- Verify summary calculations, UTC ordering, table controls, map geometry,
-  filters, map/list parity, mobile tabs, sidebar active states, and all normal
-  and preview link destinations.
+- Smoke-test zero surveys, no detections, one and many detection-bearing
+  surveys, missing dates, multiple clients, and incomplete records in normal
+  and preview contexts.
+- Verify exact-label classification, selector ordering, survey-scoped rates,
+  readiness counts, attention ranking, Survey Explorer map/result behavior,
+  sidebar active states, and all normal and preview link destinations.
 - Verify anonymous redirects, target-scoped preview access, keyboard/focus
-  behavior, responsive layouts, clean console output, and absence of duplicate
-  map or tile requests.
+  behavior, responsive layouts, clean console output, and that Dashboard makes
+  no map or tile requests.
 
 ## Deferred Work
 

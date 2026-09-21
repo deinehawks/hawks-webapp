@@ -1,6 +1,6 @@
 "use client";
 
-import { HouseIcon, LayoutDashboardIcon, ShieldCheckIcon } from "lucide-react";
+import { LayoutDashboardIcon, ListIcon, ShieldCheckIcon } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import type { Survey, UserProfile } from "@/lib/types";
 
@@ -43,7 +43,11 @@ export function AppSidebar({
               icon={LayoutDashboardIcon}
               label="Dashboard"
             />
-            <SidebarNavLink exact href="/" icon={HouseIcon} label="Homepage" />
+            <SidebarNavLink
+              href="/dashboard/surveys"
+              icon={ListIcon}
+              label="Surveys"
+            />
           </SidebarMenu>
         </SidebarGroup>
         <NavMain surveys={surveys} />

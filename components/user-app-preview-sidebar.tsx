@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, LayoutDashboardIcon, LogOutIcon, UserRound } from "lucide-react";
+import { Eye, LayoutDashboardIcon, ListIcon, LogOutIcon, UserRound } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
 import { SidebarBrand } from "@/components/sidebar-brand";
@@ -51,13 +51,17 @@ export function UserAppPreviewSidebar({
               icon={LayoutDashboardIcon}
               label="Dashboard"
             />
+            <SidebarNavLink
+              href={`${base}/surveys`}
+              icon={ListIcon}
+              label="Surveys"
+            />
           </SidebarMenu>
         </SidebarGroup>
 
         <NavMain
           dashboardHref={base}
           orthomapHrefBase={`${base}/orthomap`}
-          surveyHrefBase={`${base}/surveys`}
           surveys={surveys}
         />
       </SidebarContent>

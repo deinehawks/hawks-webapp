@@ -1,7 +1,7 @@
-import { UserDashboardOverview } from "@/components/user-dashboard-overview";
+import { UserSurveyExplorer } from "@/components/user-survey-explorer";
 import { getUserAppPreviewData } from "@/lib/admin/user-app-preview";
 
-export default async function UserAppPreviewPage({
+export default async function UserAppPreviewSurveyExplorerPage({
   params,
 }: {
   params: Promise<{ profileId: string }>;
@@ -22,8 +22,9 @@ export default async function UserAppPreviewPage({
 
   const base = `/user-app-preview/${profileId}`;
   return (
-    <UserDashboardOverview
+    <UserSurveyExplorer
       detectedObjects={preview.detectedObjects}
+      orthomapHrefBase={`${base}/orthomap`}
       surveyHrefBase={`${base}/surveys`}
       surveys={preview.surveys}
     />
