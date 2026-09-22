@@ -93,21 +93,21 @@ function TimelineAvailability({
 
 function statusDescription(timeline: SurveyTimelineState): string {
   switch (timeline.status) {
-    case "missing-primary-farm":
-      return "A primary farm is required before this survey can appear on a chronological timeline.";
+    case "missing-area-identity":
+      return "A survey code and area code are required before this survey can appear on a chronological timeline.";
     case "missing-flight-date":
       return "A flight date is required before this survey can appear on a chronological timeline.";
     case "current-only":
-      return "This is the only authorized dated survey on this primary farm.";
+      return "This is the only authorized dated survey recorded for this area.";
     case "ready":
-      return `Browse ${timeline.entries.length} authorized dated surveys from the same primary farm.`;
+      return `Browse ${timeline.entries.length} authorized dated surveys recorded for this area.`;
   }
 }
 
 function emptyStateLabel(timeline: SurveyTimelineState): string | null {
   switch (timeline.status) {
-    case "missing-primary-farm":
-      return "Primary farm required";
+    case "missing-area-identity":
+      return "Survey code and area code required";
     case "missing-flight-date":
       return "Flight date required";
     case "current-only":
@@ -200,7 +200,7 @@ export function SurveyTimeline({
                   className="mb-2 block text-xs font-medium text-muted-foreground"
                   htmlFor="survey-timeline-select"
                 >
-                  Select flight date
+                  Select survey
                 </label>
                 <Select
                   value={currentSurveyId}
@@ -211,7 +211,7 @@ export function SurveyTimeline({
                     id="survey-timeline-select"
                     className="h-10 w-full bg-background"
                   >
-                    <SelectValue placeholder="Select a dated survey" />
+                    <SelectValue placeholder="Select a survey" />
                   </SelectTrigger>
                   <SelectContent>
                     {timeline.entries.map((entry) => (
