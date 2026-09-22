@@ -81,6 +81,24 @@ Canonical routes:
   behavior, responsive layouts, clean console output, and that Dashboard makes
   no map or tile requests.
 
+### User-Assisted Smoke Result — 2026-09-22
+
+Status: partial pass on `feature/dashboard-survey-explorer` at `5bd3d5bf`.
+
+The user reported that checklist sections 1-5 and 7-12 passed, covering
+startup/navigation, Dashboard structure, client badge behavior, survey
+selection, selected-survey KPIs, account-wide readiness, infected-survey
+ranking, Survey Explorer, User App Preview, responsive/accessibility behavior,
+and browser console/network checks. This includes confirmation that Dashboard
+made no map or tile requests and that the prior icon serialization error did
+not recur.
+
+Crop-health panel validation (checklist section 6) is blocked by the absence of
+representative sample data. Treat its counts, segmented percentages,
+zero-count layout, and location/area fallback cases as unverified rather than
+failed. Re-run those cases after representative data migration before final
+integration sign-off.
+
 ## Deferred Work
 
 - Survey Edit, Copy, Favorite, Delete, and destructive asset operations.
