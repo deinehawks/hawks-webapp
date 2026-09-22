@@ -5,6 +5,12 @@ Date: 2026-09-17
 Status: passed through user-assisted application smoke on
 `feature/survey-timeline`.
 
+Historical scope note (2026-09-21): this evidence covers the original
+primary-farm grouping behavior. The later
+`refactor/survey-timeline-area-key` change groups by the exact raw
+`surveys.code` and `surveys.area_code` pair instead. That grouping change
+requires its own focused smoke before integration.
+
 ## Scope
 
 The smoke covered the normal survey route and User App Preview with

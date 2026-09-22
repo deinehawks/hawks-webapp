@@ -15,14 +15,14 @@ export type SurveyTimelineEntry = {
 };
 
 export type SurveyTimelineState =
-  | { status: "missing-primary-farm"; entries: [] }
+  | { status: "missing-area-identity"; entries: [] }
   | { status: "missing-flight-date"; entries: [] }
   | { status: "current-only"; entries: SurveyTimelineEntry[] }
   | { status: "ready"; entries: SurveyTimelineEntry[] };
 
 type TimelineSurveyRow = Pick<
   Tables<"surveys">,
-  "id" | "flight_date" | "location" | "tags"
+  "id" | "code" | "area_code" | "flight_date" | "location" | "tags"
 > & {
   orthos: Array<Pick<Tables<"orthos">, "is_current">>;
   point_clouds: Array<Pick<Tables<"point_clouds">, "is_current">>;
@@ -96,40 +96,22 @@ export async function getAccessibleSurveyTimeline(
   await getAuthenticatedUserContext();
   const supabase = await createClient();
 
-  const { data: currentLink, error: currentLinkError } = await supabase
-    .from("survey_farms")
-    .select("farm_id")
-    .eq("survey_id", currentSurvey.id)
-    .eq("is_primary", true)
+  const { data: currentSurveyRow, error: currentSurveyRowError } = await supabase
+    .from("surveys")
+    .select("code, area_code")
+    .eq("id", currentSurvey.id)
     .maybeSingle();
 
-  if (currentLinkError) {
-    throw new Error("Failed to load the survey timeline relationship.", {
-      cause: currentLinkError,
+  if (currentSurveyRowError) {
+    throw new Error("Failed to load the survey timeline identity.", {
+      cause: currentSurveyRowError,
     });
   }
-  if (!currentLink) {
-    return { status: "missing-primary-farm", entries: [] };
+  if (!currentSurveyRow?.code || !currentSurveyRow.area_code) {
+    return { status: "missing-area-identity", entries: [] };
   }
   if (!currentSurvey.flight_date) {
     return { status: "missing-flight-date", entries: [] };
-  }
-
-  const { data: siblingLinks, error: siblingLinksError } = await supabase
-    .from("survey_farms")
-    .select("survey_id")
-    .eq("farm_id", currentLink.farm_id)
-    .eq("is_primary", true);
-
-  if (siblingLinksError) {
-    throw new Error("Failed to load related timeline surveys.", {
-      cause: siblingLinksError,
-    });
-  }
-
-  const surveyIds = [...new Set((siblingLinks ?? []).map((link) => link.survey_id))];
-  if (surveyIds.length === 0) {
-    return finalizeTimeline(currentSurvey, []);
   }
 
   const { data: surveyRows, error: surveyRowsError } = await supabase
@@ -137,6 +119,8 @@ export async function getAccessibleSurveyTimeline(
     .select(
       `
         id,
+        code,
+        area_code,
         flight_date,
         location,
         tags,
@@ -144,7 +128,8 @@ export async function getAccessibleSurveyTimeline(
         point_clouds!point_clouds_survey_id_fkey(is_current)
       `,
     )
-    .in("id", surveyIds)
+    .eq("code", currentSurveyRow.code)
+    .eq("area_code", currentSurveyRow.area_code)
     .not("flight_date", "is", null);
 
   if (surveyRowsError) {
@@ -173,39 +158,49 @@ export async function getUserAppPreviewSurveyTimeline(
   const supabase = await createClient();
   const allowedSurveyIds = preview.surveys.map((survey) => survey.id);
   if (allowedSurveyIds.length === 0) {
-    return { status: "missing-primary-farm", entries: [] };
+    return { status: "missing-area-identity", entries: [] };
   }
 
-  const { data: primaryLinks, error: primaryLinksError } = await supabase
-    .from("survey_farms")
-    .select("survey_id, farm_id")
-    .in("survey_id", allowedSurveyIds)
-    .eq("is_primary", true);
+  const { data: surveyRows, error: surveyRowsError } = await supabase
+    .from("surveys")
+    .select(
+      `
+        id,
+        code,
+        area_code,
+        flight_date,
+        location,
+        tags,
+        orthos!orthos_survey_id_fkey(is_current),
+        point_clouds!point_clouds_survey_id_fkey(is_current)
+      `,
+    )
+    .in("id", allowedSurveyIds);
 
-  if (primaryLinksError) {
-    throw new Error("Failed to load preview timeline relationships.", {
-      cause: primaryLinksError,
+  if (surveyRowsError) {
+    throw new Error("Failed to load preview timeline survey details.", {
+      cause: surveyRowsError,
     });
   }
 
-  const currentLink = (primaryLinks ?? []).find(
-    (link) => link.survey_id === currentSurvey.id,
+  const typedSurveyRows = (surveyRows ?? []) as TimelineSurveyRow[];
+  const currentSurveyRow = typedSurveyRows.find(
+    (survey) => survey.id === currentSurvey.id,
   );
-  if (!currentLink) {
-    return { status: "missing-primary-farm", entries: [] };
+  if (!currentSurveyRow?.code || !currentSurveyRow.area_code) {
+    return { status: "missing-area-identity", entries: [] };
   }
   if (!currentSurvey.flight_date) {
     return { status: "missing-flight-date", entries: [] };
   }
 
-  const sameFarmSurveyIds = new Set(
-    (primaryLinks ?? [])
-      .filter((link) => link.farm_id === currentLink.farm_id)
-      .map((link) => link.survey_id),
-  );
-  const entries = preview.surveys
-    .filter((survey) => sameFarmSurveyIds.has(survey.id))
-    .map(entryFromSurvey)
+  const entries = typedSurveyRows
+    .filter(
+      (survey) =>
+        survey.code === currentSurveyRow.code &&
+        survey.area_code === currentSurveyRow.area_code,
+    )
+    .map(entryFromRow)
     .filter((entry): entry is SurveyTimelineEntry => entry !== null);
 
   return finalizeTimeline(currentSurvey, entries);
