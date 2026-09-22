@@ -20,13 +20,19 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  sidebarNavigationButtonClass,
+  SidebarNavLink,
+} from "@/components/sidebar-nav-link";
+import {
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 const navigation = [
@@ -41,11 +47,31 @@ const navigation = [
 
 export function OrgAdminNav({ organizationName }: { organizationName: string }) {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile, state } = useSidebar();
   const isOrgAdminPath =
     pathname === "/org-admin" || pathname.startsWith("/org-admin/");
+  const closeMobileNavigation = () => {
+    if (isMobile) setOpenMobile(false);
+  };
+
+  if (state === "collapsed" && !isMobile) {
+    return (
+      <SidebarGroup>
+        <SidebarGroupLabel>Administration</SidebarGroupLabel>
+        <SidebarMenu>
+          <SidebarNavLink
+            href="/org-admin"
+            icon={ShieldCheckIcon}
+            label="Organization Admin"
+          />
+        </SidebarMenu>
+      </SidebarGroup>
+    );
+  }
 
   return (
     <SidebarGroup>
+      <SidebarGroupLabel>Administration</SidebarGroupLabel>
       <SidebarMenu>
         <Collapsible
           asChild
@@ -54,7 +80,11 @@ export function OrgAdminNav({ organizationName }: { organizationName: string }) 
         >
           <SidebarMenuItem>
             <CollapsibleTrigger asChild>
-              <SidebarMenuButton tooltip="Organization Admin">
+              <SidebarMenuButton
+                className={sidebarNavigationButtonClass}
+                isActive={isOrgAdminPath}
+                tooltip="Organization Admin"
+              >
                 <ShieldCheckIcon />
                 <span>Organization Admin</span>
                 <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
@@ -76,7 +106,11 @@ export function OrgAdminNav({ organizationName }: { organizationName: string }) 
                   return (
                     <SidebarMenuSubItem key={href}>
                       <SidebarMenuSubButton isActive={isActive} asChild>
-                        <Link href={href}>
+                        <Link
+                          aria-current={isActive ? "page" : undefined}
+                          href={href}
+                          onClick={closeMobileNavigation}
+                        >
                           <Icon />
                           <span>{label}</span>
                         </Link>

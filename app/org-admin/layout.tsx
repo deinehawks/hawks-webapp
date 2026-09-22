@@ -8,15 +8,18 @@ import {
 } from "@/components/ui/sidebar";
 import { getAllUserSurveys } from "@/lib/actions/surveys";
 import { getOrgAdminContext } from "@/lib/org-admin/context";
+import { cookies } from "next/headers";
 
 export default async function OrgAdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const { user, profile, organization } = await getOrgAdminContext();
   const surveys = await getAllUserSurveys();
+  const sidebarOpen = (await cookies()).get("sidebar_state")?.value !== "false";
 
   return (
     <SidebarProvider
+      defaultOpen={sidebarOpen}
       style={
         {
           "--sidebar-width": "calc(var(--spacing) * 72)",

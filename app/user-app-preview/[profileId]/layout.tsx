@@ -11,6 +11,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { getUserAppPreviewData } from "@/lib/admin/user-app-preview";
+import { cookies } from "next/headers";
 
 function displayName(profile: {
   first_name: string | null;
@@ -30,9 +31,11 @@ export default async function UserAppPreviewLayout({
 }) {
   const { profileId } = await params;
   const preview = await getUserAppPreviewData(profileId);
+  const sidebarOpen = (await cookies()).get("sidebar_state")?.value !== "false";
 
   return (
     <SidebarProvider
+      defaultOpen={sidebarOpen}
       style={{
         "--sidebar-width": "calc(var(--spacing) * 72)",
         "--header-height": "calc(var(--spacing) * 16)",

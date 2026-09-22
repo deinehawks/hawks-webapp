@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { HeaderBreadcrumb } from "@/components/header-breadcrumb";
@@ -23,9 +24,11 @@ export default async function AdminLayout({
   if (profile.role !== "platform_admin") {
     redirect("/dashboard");
   }
+  const sidebarOpen = (await cookies()).get("sidebar_state")?.value !== "false";
 
   return (
     <SidebarProvider
+      defaultOpen={sidebarOpen}
       style={
         {
           "--sidebar-width": "calc(var(--spacing) * 72)",

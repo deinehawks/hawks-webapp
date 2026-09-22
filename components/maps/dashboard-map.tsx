@@ -23,6 +23,17 @@ function calculateCentroid(coordinates: number[][][]) {
   return [sumX / points.length, sumY / points.length];
 }
 
+function formatUtcDate(value: string): string {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return "Not available";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(timestamp));
+}
+
 function MapPopup({
   popupInfo,
   setPopupInfo,
@@ -68,7 +79,8 @@ function MapPopup({
                     Survey Area
                   </div>
                   <div className="text-lg font-semibold text-primary-foreground">
-                    {`${popupInfo.code}-${popupInfo.area_code}`}
+                    {[popupInfo.code, popupInfo.area_code].filter(Boolean).join("-") ||
+                      popupInfo.id}
                   </div>
                 </div>
                 <div className="text-xs px-2.5 py-1 bg-primary-foreground/20 text-primary-foreground rounded-md font-medium">
@@ -93,7 +105,9 @@ function MapPopup({
                     </span>
                   </div>
                   <span className="text-base font-bold text-foreground">
-                    {popupInfo.area.toFixed(2)} ha
+                    {typeof popupInfo.area === "number"
+                      ? popupInfo.area.toFixed(2) + " ha"
+                      : "Not available"}
                   </span>
                 </div>
               </motion.div>
@@ -116,7 +130,7 @@ function MapPopup({
                           Flight date
                         </span>
                         <span className="text-sm font-semibold text-foreground">
-                          {popupInfo.flight_date}
+                          {formatUtcDate(popupInfo.flight_date)}
                         </span>
                       </div>
                     )}
@@ -170,7 +184,17 @@ function MapPopup({
   );
 }
 
-function MapEvents({ data, setPopupInfo }: { data: any[]; setPopupInfo: (value: any) => void }) {
+function MapEvents({
+  data,
+  onSurveySelect,
+  selectedSurveyId,
+  setPopupInfo,
+}: {
+  data: any[];
+  onSurveySelect?: (surveyId: string) => void;
+  selectedSurveyId?: string | null;
+  setPopupInfo: (value: any) => void;
+}) {
   const { current: map } = useMap();
   const hoveredAreaIdRef = useRef<string | number | null>(null);
 
@@ -178,8 +202,9 @@ function MapEvents({ data, setPopupInfo }: { data: any[]; setPopupInfo: (value: 
     (e: any) => {
       if (!data || !e.features?.length) return;
 
+      const clickedSurveyId = String(e.features[0]?.properties.survey_id);
       const clickedAreaData = data.find(
-        (datum: any) => datum.id === e.features[0]?.properties.survey_id,
+        (datum: any) => String(datum.id) === clickedSurveyId,
       );
 
       if (clickedAreaData) {
@@ -199,16 +224,18 @@ function MapEvents({ data, setPopupInfo }: { data: any[]; setPopupInfo: (value: 
           opacity: 1,
         });
 
-        // Center the map on the polygon's centroid with proper padding
-        map?.flyTo({
-          center: [lng, lat],
-          zoom: Math.max(map.getZoom(), 16),
-          padding: { top: 300, bottom: 25, left: 50, right: 50 },
+        onSurveySelect?.(clickedSurveyId);
+
+        const extremePoints = findExtremeCoordinates(coordinates);
+        if (!extremePoints) return;
+        map?.fitBounds(extremePoints, {
+          padding: { top: 80, bottom: 50, left: 50, right: 50 },
+          maxZoom: 17,
           duration: 800,
         });
       }
     },
-    [data, setPopupInfo, map],
+    [data, map, onSurveySelect, setPopupInfo],
   );
 
   const handleMouseMove = useCallback(
@@ -262,7 +289,7 @@ function MapEvents({ data, setPopupInfo }: { data: any[]; setPopupInfo: (value: 
   }, [map, handleMapClick, handleMouseMove, handleMouseLeave]);
 
   useEffect(() => {
-    if (!map || !data.length) return;
+    if (!map || !data.length || selectedSurveyId) return;
 
     const bounds: LngLatLike[][] = data.map((area: any) =>
       area.geojson_boundaries.map((pair: string[]) => [
@@ -278,16 +305,44 @@ function MapEvents({ data, setPopupInfo }: { data: any[]; setPopupInfo: (value: 
       padding: { top: 50, bottom: 50, left: 50, right: 50 },
       duration: 1000,
     });
-  }, [map, data]);
+  }, [map, data, selectedSurveyId]);
+
+  useEffect(() => {
+    if (!map || !selectedSurveyId) return;
+
+    const selectedSurvey = data.find(
+      (survey) => String(survey.id) === selectedSurveyId,
+    );
+    if (!selectedSurvey?.geojson_boundaries) return;
+
+    const bounds: LngLatLike[][] = [
+      selectedSurvey.geojson_boundaries.map((pair: string[]) => [
+        parseFloat(pair[0]),
+        parseFloat(pair[1]),
+      ]),
+    ];
+    const extremePoints = findExtremeCoordinates(bounds);
+    if (!extremePoints) return;
+
+    map.fitBounds(extremePoints, {
+      padding: { top: 80, bottom: 50, left: 50, right: 50 },
+      maxZoom: 17,
+      duration: 800,
+    });
+  }, [data, map, selectedSurveyId]);
 
   return null;
 }
 
 export default function MapLibre({
   data: surveys,
+  onSurveySelect,
+  selectedSurveyId,
   surveyHrefBase = "/dashboard/surveys",
 }: {
   data: any[];
+  onSurveySelect?: (surveyId: string) => void;
+  selectedSurveyId?: string | null;
   surveyHrefBase?: string;
 }) {
   const [popupInfo, setPopupInfo] = useState<any>(null);
@@ -334,7 +389,9 @@ export default function MapLibre({
       type: "Feature",
       properties: {
         survey_id: survey.id,
-        label: `${survey.code}-${survey.area_code}`,
+        label:
+          [survey.code, survey.area_code].filter(Boolean).join("-") ||
+          String(survey.id),
       },
       geometry: {
         type: "Point",
@@ -397,12 +454,16 @@ export default function MapLibre({
                 "case",
                 ["boolean", ["feature-state", "hover"], false],
                 "#0ea5e9",
+                ["==", ["to-string", ["get", "survey_id"]], selectedSurveyId ?? ""],
+                "#2563eb",
                 "#06b6d4",
               ],
               "fill-opacity": [
                 "case",
                 ["boolean", ["feature-state", "hover"], false],
                 0.7,
+                ["==", ["to-string", ["get", "survey_id"]], selectedSurveyId ?? ""],
+                0.65,
                 0.4,
               ],
             },
@@ -416,11 +477,15 @@ export default function MapLibre({
                 "case",
                 ["boolean", ["feature-state", "hover"], false],
                 "#0284c7",
+                ["==", ["to-string", ["get", "survey_id"]], selectedSurveyId ?? ""],
+                "#1d4ed8",
                 "#0891b2",
               ],
               "line-width": [
                 "case",
                 ["boolean", ["feature-state", "hover"], false],
+                3,
+                ["==", ["to-string", ["get", "survey_id"]], selectedSurveyId ?? ""],
                 3,
                 1.5,
               ],
@@ -442,11 +507,15 @@ export default function MapLibre({
                 "case",
                 ["boolean", ["feature-state", "hover"], false],
                 6,
+                ["==", ["to-string", ["get", "survey_id"]], selectedSurveyId ?? ""],
+                6,
                 0,
               ],
               "line-blur": [
                 "case",
                 ["boolean", ["feature-state", "hover"], false],
+                4,
+                ["==", ["to-string", ["get", "survey_id"]], selectedSurveyId ?? ""],
                 4,
                 0,
               ],
@@ -454,6 +523,8 @@ export default function MapLibre({
                 "case",
                 ["boolean", ["feature-state", "hover"], false],
                 0.6,
+                ["==", ["to-string", ["get", "survey_id"]], selectedSurveyId ?? ""],
+                0.7,
                 0,
               ],
             },
@@ -487,7 +558,12 @@ export default function MapLibre({
         ],
       }}
     >
-      <MapEvents data={surveys} setPopupInfo={setPopupInfo} />
+      <MapEvents
+        data={surveys}
+        onSurveySelect={onSurveySelect}
+        selectedSurveyId={selectedSurveyId}
+        setPopupInfo={setPopupInfo}
+      />
       {popupInfo && (
         <MapPopup
           popupInfo={popupInfo}

@@ -1,15 +1,17 @@
-import { DashboardAnalytics } from "@/components/dashboard-analytics";
+import { DashboardSurveyExplorer } from "@/components/dashboard-survey-explorer";
 import { Badge } from "@/components/ui/badge";
 import type { ComputerVisionObject, Survey } from "@/lib/types";
 
-export function UserDashboardOverview({
-  surveys,
+export function UserSurveyExplorer({
   detectedObjects,
+  orthomapHrefBase = "/dashboard/orthomap",
   surveyHrefBase = "/dashboard/surveys",
+  surveys,
 }: {
-  surveys: Survey[];
   detectedObjects: ComputerVisionObject[];
+  orthomapHrefBase?: string;
   surveyHrefBase?: string;
+  surveys: Survey[];
 }) {
   const clients = new Map(
     surveys.map((survey) => [
@@ -28,12 +30,10 @@ export function UserDashboardOverview({
       <div className="flex flex-col gap-6 px-4 py-5 lg:px-6 lg:py-6">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-medium text-primary">Crop intelligence</p>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              Crop Analytics Dashboard
-            </h1>
+            <p className="text-sm font-medium text-primary">Survey workspace</p>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Surveys</h1>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Review crop findings and survey-output readiness across your accessible data.
+              Search all accessible surveys and inspect their boundaries and available outputs.
             </p>
           </div>
           {clientLabel ? (
@@ -43,8 +43,9 @@ export function UserDashboardOverview({
           ) : null}
         </header>
 
-        <DashboardAnalytics
+        <DashboardSurveyExplorer
           detectedObjects={detectedObjects}
+          orthomapHrefBase={orthomapHrefBase}
           surveyHrefBase={surveyHrefBase}
           surveys={surveys}
         />

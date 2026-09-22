@@ -73,6 +73,8 @@ Last updated: 2026-09-17
 - Org-admin farm/survey responsive tables, scoped farm detail editing, survey
   View Data action, integration into `development` at `49355d2e`, and
   successful post-merge smoke.
+- Survey Timeline implementation, complete responsive/authenticated smoke, and
+  integration into `development` at `db137c74`.
 
 ## P1
 
@@ -86,15 +88,11 @@ Last updated: 2026-09-17
 
 ## P2
 
-- Review and integrate `feature/survey-timeline`, whose automated gates and
-  complete user-assisted post-refinement smoke now pass. Follow with a short
-  post-merge smoke from `development`; staging relationship assignment remains
-  a separate gated data operation.
-- After timeline integration, implement the approved Orthomap client-level
-  Survey dates filter on `feature/orthomap-date-filter`. Preserve All dates by
-  default; filter rasters, boundaries, labels, detections, events, and popups
-  consistently; keep normal and preview authorization fail-closed. See
-  `docs/orthomap-date-filter-plan.md`.
+- The Orthomap client-level Survey dates filter is merged locally into
+  `development` at `5f941ce2`. Complete authenticated responsive smoke when
+  representative multi-date surveys are available; preserve All dates by
+  default and normal/preview authorization fail-closed. See
+  `docs/orthomap-date-filter-local-validation-2026-09-17.md`.
 - Add no-organization signup approval and grant-derived dashboard client
   selection so supported individual accounts can consume the private assets.
 

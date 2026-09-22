@@ -9,6 +9,7 @@ import {
 import { getAllUserSurveys } from "@/lib/actions/surveys";
 import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
 import { resolveOrgAdminAccess } from "@/lib/org-admin/access";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({
@@ -26,9 +27,11 @@ export default async function DashboardLayout({
       ? resolveOrgAdminAccess(user.id)
       : Promise.resolve({ status: "none" } as const),
   ]);
+  const sidebarOpen = (await cookies()).get("sidebar_state")?.value !== "false";
 
   return (
     <SidebarProvider
+      defaultOpen={sidebarOpen}
       style={
         {
           "--sidebar-width": "calc(var(--spacing) * 72)",

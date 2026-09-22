@@ -2,10 +2,11 @@
 
 Date: 2026-09-17
 
-Status: approved follow-up plan; not implemented.
+Status: merged locally into `development`; authenticated responsive smoke
+pending until representative multi-date survey data is available.
 
-Recommended branch: `feature/orthomap-date-filter`, created only after
-`feature/survey-timeline` is integrated into `development`.
+Implementation branch: `feature/orthomap-date-filter`, based on
+`development` after Survey Timeline integration.
 
 ## Decision
 
