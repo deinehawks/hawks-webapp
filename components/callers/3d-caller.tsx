@@ -4,12 +4,19 @@ import dynamic from "next/dynamic";
 import Lottie from "lottie-react";
 import loadingAnimation from "@/public/loading_dots_white.json";
 
-export default function ThreeDimensionalModelCaller(props) {
+type ThreeDimensionalModelCallerProps = {
+  survey: {
+    id: string;
+    code?: string | null;
+    flight_date?: string | number | Date | null;
+  };
+};
+
+export default function ThreeDimensionalModelCaller(
+  props: ThreeDimensionalModelCallerProps,
+) {
   const ThreeDimensionalModel = dynamic(
-    () =>
-      import("@/components/threejs/3d-model").then(
-        (mod) => mod.ThreeDimensionalModel
-      ),
+    () => import("@/components/threejs/3d-model").then((mod) => mod.ThreeDimensionalModel),
     {
       ssr: false,
       loading: () => (
@@ -21,7 +28,7 @@ export default function ThreeDimensionalModelCaller(props) {
           />
         </div>
       ),
-    }
+    },
   );
 
   return <ThreeDimensionalModel {...props} />;

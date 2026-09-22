@@ -1,7 +1,6 @@
 import { vegetationIndices } from "@/data/vegetation-indices";
 import { useSurveyMapStore } from "@/providers/survey-map-store-provider";
 import {
-  Card,
   CardContent,
   CardDescription,
   CardHeader,
@@ -12,7 +11,6 @@ import {
   TableBody,
   TableCaption,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -36,7 +34,7 @@ export function VegetationIndexCard() {
   const { selectedVegetationIndex } = useSurveyMapStore((state) => state);
 
   const index = vegetationIndices.find(
-    (index) => index.code.toLowerCase() === selectedVegetationIndex
+    (index) => index.code.toLowerCase() === selectedVegetationIndex,
   );
 
   if (!index) return null;
@@ -50,16 +48,12 @@ export function VegetationIndexCard() {
       <CardContent>
         <div className="flex flex-col gap-4">
           <div>{index.description}</div>
-          {/* <div>{index.formula_description}</div> */}
 
           <Table className="w-full table-auto text-left">
             <TableCaption>{index.formula}</TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead colSpan={2}>
-                  {" "}
-                  Calculated {index.code} Values
-                </TableHead>
+                <TableHead colSpan={2}> Calculated {index.code} Values</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

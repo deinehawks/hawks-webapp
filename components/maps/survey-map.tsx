@@ -1,6 +1,7 @@
 // survey-map.tsx
 "use client";
 
+import { buildTileAssetUrl } from "@/lib/assets/asset-urls";
 import {
   Card,
   CardContent,
@@ -292,8 +293,9 @@ const useMapCenter = (survey: any, fallbackCenter: MapCenter) => {
           survey.geojson_boundaries as any,
         );
         if (extremes) {
-          const centerLng = (extremes.minLng + extremes.maxLng) / 2;
-          const centerLat = (extremes.minLat + extremes.maxLat) / 2;
+          const [minLng, minLat, maxLng, maxLat] = extremes as [number, number, number, number];
+          const centerLng = (minLng + maxLng) / 2;
+          const centerLat = (minLat + maxLat) / 2;
 
           if (isValidCoordinate(centerLng, centerLat)) {
             return { lng: centerLng, lat: centerLat, zoom: 17 };
@@ -321,7 +323,7 @@ const useMapBounds = (survey: any) => {
       const extremes = findExtremeCoordinates(survey.geojson_boundaries as any);
       if (!extremes) return undefined;
 
-      const { minLng, minLat, maxLng, maxLat } = extremes;
+      const [minLng, minLat, maxLng, maxLat] = extremes as [number, number, number, number];
 
       if (
         !isValidCoordinate(minLng, minLat) ||
@@ -518,7 +520,6 @@ function FeaturesOfInterest({
   const { surveyMode } = useSurveyModeStore();
 
   const id = survey?.id;
-  if (!id) return null;
 
   // --- Inventory mode: merge everything into one collection ---
   const allBananas = useMemo(
@@ -622,6 +623,8 @@ function FeaturesOfInterest({
     () => calculateOptimalZoomLevels(allBananasFC.features as any),
     [allBananasFC.features],
   );
+
+  if (!id) return null;
 
   const showHealthy = selectedFoi === "healthy" || selectedFoi === "all";
   const showUnhealthy = selectedFoi === "unhealthy" || selectedFoi === "all";
@@ -901,9 +904,9 @@ function SurveyBoundaries({ survey }: { survey: any }) {
     type: "Feature",
     properties: {
       survey_id: survey.id,
-      label: `${survey.access_code ?? ""}-${survey.area_code ?? ""}`,
+      label: `${survey.code ?? ""}-${survey.area_code ?? ""}`,
     },
-    geometry: { type: "Point", coordinates: centroid },
+    geometry: { type: "Point", coordinates: [...centroid] as [number, number] },
   };
 
   const polygonFC: FeatureCollection<Polygon, GeoJsonProperties> = {
@@ -1038,9 +1041,12 @@ function SurveyBoundaryEvents() {
         );
       }
 
-      hoveredFeatureIdRef.current = e.features[0].id;
+      const featureId = e.features[0]?.id;
+      if (featureId == null) return;
+
+      hoveredFeatureIdRef.current = featureId;
       map.setFeatureState(
-        { source: "survey-boundary", id: hoveredFeatureIdRef.current },
+        { source: "survey-boundary", id: featureId },
         { hover: true },
       );
     },
@@ -1105,11 +1111,11 @@ function MapView({
 
   // Show legend ONLY when a crop status is selected (not none/empty)
   const shouldShowLegend =
+    surveyMode === "analysis" &&
     hasOrthoTiles &&
     selectedFoi != null &&
     selectedFoi !== "" &&
     selectedFoi !== "none";
-  surveyMode === "analysis";
 
   const mapStyle = useMemo<StyleSpecification>(
     () => ({
@@ -1223,6 +1229,8 @@ function MapView({
   }, [survey.id]);
 
   const codeLower = String(survey.code ?? "").toLowerCase();
+
+  const tileFolder = survey.ortho?.tile_folder ?? "round-corners";
   const flightYear =
     survey.flight_date != null
       ? getYear(new Date(survey.flight_date as any))
@@ -1258,7 +1266,12 @@ function MapView({
               id="ortho"
               type="raster"
               tiles={[
-                `/asimov-hawks/tiles/${codeLower}/${flightYear}/${survey.id}/ortho/sharp-corners/{z}/{x}/{y}.png`,
+                buildTileAssetUrl({
+                  clientCode: codeLower,
+                  surveyId: survey.id,
+                  tileFolder,
+                  year: flightYear,
+                }),
               ]}
               tileSize={MAP_CONFIG.tileSize}
               scheme="tms"
@@ -1447,6 +1460,9 @@ export default function SurveyMap({
   const [activeTab, setActiveTab] = useState("ortho");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const hasSurveyObject = Boolean(survey && typeof survey === "object");
+  const safeSurvey = hasSurveyObject ? survey : {};
+
   const globalCenter: MapCenter = {
     ...(fallbackCenter
       ? { ...DEFAULT_CENTER, ...fallbackCenter }
@@ -1467,7 +1483,13 @@ export default function SurveyMap({
     }
   }, [activeTab, setSelectedFoi]);
 
-  if (!survey || typeof survey !== "object") {
+  const mapCenter = useMapCenter(safeSurvey, globalCenter);
+  const mapBounds = useMapBounds(safeSurvey);
+
+  const { hasValidCoordinates, hasOrthoTiles, shouldShowMap } =
+    useValidationState(safeSurvey);
+
+  if (!hasSurveyObject) {
     return (
       <div className="flex flex-1 flex-col h-full items-center justify-center p-8">
         <Card className="max-w-md">
@@ -1506,12 +1528,6 @@ export default function SurveyMap({
       </div>
     );
   }
-
-  const mapCenter = useMapCenter(survey, globalCenter);
-  const mapBounds = useMapBounds(survey);
-
-  const { hasValidCoordinates, hasOrthoTiles, shouldShowMap } =
-    useValidationState(survey);
 
   const tagsLower = String(survey.tags ?? "").toLowerCase();
 
@@ -1569,7 +1585,7 @@ export default function SurveyMap({
             )}
             {is3D && survey.code && (
               <ThreeDimensionalModelSelector
-                code={String(survey.code)}
+                
                 hasPointCloud={hasPointCloud}
                 hasPhotogrammetryModel={hasPhotogrammetryModel}
                 hasLidarModel={hasLidarModel}
@@ -1672,3 +1688,4 @@ export default function SurveyMap({
     </div>
   );
 }
+

@@ -1,19 +1,25 @@
 "use client";
 
+import type { ComputerVisionObject } from "@/lib/types";
 import dynamic from "next/dynamic";
-import maplibregl from "maplibre-gl";
-import { useEffect } from "react";
-import { Protocol } from "pmtiles";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Lottie from "lottie-react";
 import loadingAnimation from "@/public/loading_blue_dots.json";
 
-const queryClient = new QueryClient();
+type OrthoSurvey = {
+  id: string | number;
+  code?: string | null;
+  flight_date?: string | Date | null;
+};
 
-export default function OrthoMapCaller(props) {
-  const { surveys, detectedObjects, userProfile } = props;
+type OrthoMapCallerProps = {
+  userProfile: unknown;
+  surveys: OrthoSurvey[];
+  detectedObjects: ComputerVisionObject[];
+} & Record<string, unknown>;
 
-  // Add validation checks
+export default function OrthoMapCaller(props: OrthoMapCallerProps) {
+  const { surveys, detectedObjects } = props;
+
   if (!surveys || !Array.isArray(surveys) || surveys.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center h-full py-10">

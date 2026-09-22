@@ -1,27 +1,53 @@
 "use client";
 
+import { Skeleton } from "@/components/ui/skeleton";
 import dynamic from "next/dynamic";
-import maplibregl from "maplibre-gl";
-import { Protocol } from "pmtiles";
-import Lottie from "lottie-react";
-import loadingAnimation from "@/public/loading_blue_dots.json";
 
-export default function DashboardMapCaller(props) {
-  // ADD: Validate data before passing to map
-  const { data, ...otherProps } = props;
+type DashboardSurvey = {
+  id: string | number;
+  geojson_boundaries: unknown;
+  boundaries: unknown;
+  min_x: number | null;
+  max_x: number | null;
+  min_y: number | null;
+  max_y: number | null;
+};
 
-  // Check if data is valid
-  if (!data || !Array.isArray(data) || data.length === 0) {
+type DashboardMapCallerProps = {
+  data: DashboardSurvey[];
+  onSurveySelect?: (surveyId: string) => void;
+  selectedSurveyId?: string | null;
+  surveyHrefBase?: string;
+};
+
+const DashboardMap = dynamic(() => import("@/components/maps/dashboard-map"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full min-h-72 items-center justify-center p-6">
+      <div className="w-full space-y-3" aria-label="Loading survey map">
+        <Skeleton className="mx-auto h-8 w-40" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    </div>
+  ),
+});
+
+export default function DashboardMapCaller({
+  data,
+  onSurveySelect,
+  selectedSurveyId,
+  surveyHrefBase = "/dashboard/surveys",
+}: DashboardMapCallerProps) {
+  if (!Array.isArray(data) || data.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center h-full py-10">
-        <div className="text-center text-muted-foreground">
-          <p className="text-sm font-medium">No map data available</p>
-        </div>
+      <div className="flex h-full min-h-72 items-center justify-center p-6">
+        <p className="text-center text-sm font-medium text-muted-foreground">
+          No map data available
+        </p>
       </div>
     );
   }
 
-  // ADD: Filter out invalid surveys
   const validData = data.filter(
     (survey) =>
       survey &&
@@ -30,35 +56,28 @@ export default function DashboardMapCaller(props) {
       survey.min_x != null &&
       survey.max_x != null &&
       survey.min_y != null &&
-      survey.max_y != null
+      survey.max_y != null,
   );
 
   if (validData.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center h-full py-10">
+      <div className="flex h-full min-h-72 items-center justify-center p-6">
         <div className="text-center text-muted-foreground">
-          <p className="text-sm font-medium">No valid surveys to display</p>
-          <p className="text-xs mt-1">Surveys need complete boundary data</p>
+          <p className="text-sm font-medium">No mapped boundaries available</p>
+          <p className="mt-1 text-xs">
+            These surveys remain available in the list.
+          </p>
         </div>
       </div>
     );
   }
 
-  const DashboardMap = dynamic(
-    () => import("@/components/maps/dashboard-map"),
-    {
-      ssr: false,
-      loading: () => (
-        <div className="flex flex-1 items-center justify-center h-full py-10">
-          <Lottie
-            animationData={loadingAnimation}
-            loop={true}
-            style={{ width: 200, height: 200 }}
-          />
-        </div>
-      ),
-    }
+  return (
+    <DashboardMap
+      data={validData}
+      onSurveySelect={onSurveySelect}
+      selectedSurveyId={selectedSurveyId}
+      surveyHrefBase={surveyHrefBase}
+    />
   );
-
-  return <DashboardMap data={validData} {...otherProps} />;
 }

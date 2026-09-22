@@ -24,6 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { signup } from "@/lib/actions/auth";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
 
@@ -42,6 +43,10 @@ export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const [signupMessage, setSignupMessage] = useState<{
+    kind: "error" | "success";
+    text: string;
+  } | null>(null);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -51,8 +56,22 @@ export function SignupForm({
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    signup(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setSignupMessage(null);
+    const result = await signup(values);
+
+    if (result.error) {
+      setSignupMessage({
+        kind: "error",
+        text: result.error.message,
+      });
+      return;
+    }
+
+    setSignupMessage({
+      kind: "success",
+      text: "Account created. Check your email to confirm it, then wait for platform-admin approval.",
+    });
   }
 
   return (
@@ -123,8 +142,25 @@ export function SignupForm({
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full">
-                  Sign up
+                {signupMessage ? (
+                  <p
+                    className={cn(
+                      "text-sm",
+                      signupMessage.kind === "error"
+                        ? "text-destructive"
+                        : "text-emerald-700 dark:text-emerald-400",
+                    )}
+                    role={signupMessage.kind === "error" ? "alert" : "status"}
+                  >
+                    {signupMessage.text}
+                  </p>
+                ) : null}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={form.formState.isSubmitting}
+                >
+                  {form.formState.isSubmitting ? "Creating account..." : "Sign up"}
                 </Button>
                 <div className="text-center text-sm">
                   Already have an account?{" "}

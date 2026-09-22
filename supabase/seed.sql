@@ -1,0 +1,1 @@
+-- Intentionally empty. Authorization fixtures live in tests and roll back.

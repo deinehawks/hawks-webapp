@@ -1,0 +1,74 @@
+{
+  "manifest_id": "workshop-2026-example",
+  "manifest_version": "0.1.0",
+  "status": "draft",
+  "prepared_date": "2026-07-30",
+  "target_environment": "staging",
+  "deployment_window": "2026-09-28/2026-09-30",
+  "stabilization_window": "2026-10-01/2026-10-09",
+  "final_completion_deadline": "2026-10-09",
+  "approval_roles": {
+    "product_owner": "required",
+    "technical_owner": "required",
+    "database_owner": "required",
+    "deployment_owner": "required"
+  },
+  "rollback_authority_role": "technical_owner_or_project_lead",
+  "scope_rules": {
+    "include_only_manifest_records": true,
+    "full_historical_dataset_deferred": true,
+    "preserve_existing_routes_and_assets_until_verified": true,
+    "no_secrets_or_unnecessary_personal_data_in_git": true
+  },
+  "invited_accounts": [],
+  "organizations": [],
+  "legacy_clients": [],
+  "surveys": [],
+  "farms": [],
+  "assets": [],
+  "outputs": [],
+  "access_tests": [
+    {
+      "name": "anonymous_denial",
+      "required": true,
+      "status": "not_run"
+    },
+    {
+      "name": "removed_or_suspended_member_denial",
+      "required": true,
+      "status": "not_run"
+    },
+    {
+      "name": "cross_organization_denial",
+      "required": true,
+      "status": "not_run"
+    },
+    {
+      "name": "invited_member_allowed_surveys_and_outputs",
+      "required": true,
+      "status": "not_run"
+    },
+    {
+      "name": "external_internet_application_and_asset_smoke_test",
+      "required": true,
+      "status": "not_run"
+    }
+  ],
+  "rollback": {
+    "previous_app_image_or_commit": "required_before_cutover",
+    "previous_asset_source": "required_before_cutover",
+    "database_backup_or_restore_point": "required_before_cutover",
+    "cloudflare_cache_invalidation_scope": "required_before_cutover",
+    "nginx_reversal_step": "required_before_cutover",
+    "rollback_triggers": [
+      "authorization_leakage",
+      "manifest_mismatch",
+      "checksum_failure",
+      "broken_maps_or_assets",
+      "unacceptable_error_rate_or_latency",
+      "failed_backup_or_restore_verification",
+      "missing_audit_records"
+    ]
+  },
+  "notes": "Example shape only. Do not populate this checked-in file with real names, emails, secrets, private URLs, or full dataset listings."
+}

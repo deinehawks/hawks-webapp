@@ -12,11 +12,10 @@ import {
 } from "./selectors/dem-selectors";
 
 export function ElevationModelCard() {
-  const { selectedDemType, selectedDemColor, selectedDemShading } =
-    useSurveyMapStore((state) => state);
+  const { selectedDemType } = useSurveyMapStore((state) => state);
 
   const dem = digital_elevation_models.find(
-    (model) => model.code.toLocaleLowerCase() === selectedDemType
+    (model) => model.code.toLocaleLowerCase() === selectedDemType,
   );
 
   if (!dem) return null;

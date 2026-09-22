@@ -1,15 +1,27 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+
+import { resolveAuthenticatedHomePath } from "@/lib/auth/post-auth-redirect";
+import { createClient } from "@/utils/supabase/server";
 
 export async function signup(form_data: { email: string; password: string }) {
   const supabase = await createClient();
+  const requestHeaders = await headers();
+  const origin = requestHeaders.get("origin");
+
+  if (!origin) {
+    return { error: new Error("Unable to resolve the signup confirmation URL.") };
+  }
 
   const { error, data } = await supabase.auth.signUp({
     email: form_data.email,
     password: form_data.password,
+    options: {
+      emailRedirectTo: new URL("/asimov-hawks/auth/confirm", origin).toString(),
+    },
   });
 
   if (error) {
@@ -33,11 +45,8 @@ export async function login(form_data: { email: string; password: string }) {
     return { error: error.message };
   }
 
-  // Revalidate all routes to clear any cached data
   revalidatePath("/", "layout");
-
-  // Server-side redirect after successful login
-  redirect("/dashboard");
+  redirect(await resolveAuthenticatedHomePath());
 }
 
 export async function logout() {

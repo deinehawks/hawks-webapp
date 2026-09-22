@@ -4,7 +4,14 @@ import { parseISO, isBefore, isAfter, getYear } from "date-fns";
 import { LngLatBoundsLike, LngLatLike } from "maplibre-gl";
 import { ComputerVisionObject } from "./types";
 
-export type AnyObject = { [key: string]: any };
+export type AnyObject = Record<string, unknown>;
+
+type MinMaxCoordinateLike = {
+  min_x: number | string;
+  max_x: number | string;
+  min_y: number | string;
+  max_y: number | string;
+};
 
 export function filterNonEmpty(
   obj: AnyObject,
@@ -23,20 +30,23 @@ export function filterNonEmpty(
   }, {} as AnyObject);
 }
 
-export function transformNullToEmptyString<T>(obj: T): T {
-  const transformedObj = {} as T;
+export function transformNullToEmptyString<T extends Record<string, unknown>>(
+  obj: T,
+): T {
+  const transformedObj = {} as Record<keyof T, unknown>;
 
   for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      const value = obj[key];
-      transformedObj[key] = value === null ? "" : value;
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const typedKey = key as keyof T;
+      const value = obj[typedKey];
+      transformedObj[typedKey] = value === null ? "" : value;
     }
   }
 
-  return transformedObj;
+  return transformedObj as T;
 }
 
-export function calculateGlobalCenters(data): {
+export function calculateGlobalCenters<T extends MinMaxCoordinateLike>(data: T[]): {
   global_x: number;
   global_y: number;
 } {
@@ -48,8 +58,8 @@ export function calculateGlobalCenters(data): {
   let sum_y = 0;
 
   data.forEach((obj) => {
-    const center_x = (parseFloat(obj.min_x) + parseFloat(obj.max_x)) / 2;
-    const center_y = (parseFloat(obj.min_y) + parseFloat(obj.max_y)) / 2;
+    const center_x = (Number(obj.min_x) + Number(obj.max_x)) / 2;
+    const center_y = (Number(obj.min_y) + Number(obj.max_y)) / 2;
 
     sum_x += center_x;
     sum_y += center_y;
@@ -67,22 +77,26 @@ export function transformCoordinatesToLonLatFormat(
   return coordinates.map((pair) => [parseFloat(pair[1]), parseFloat(pair[0])]);
 }
 
-export function getEarliestandLatestDates(data, dateField) {
+export function getEarliestandLatestDates<
+  T extends Record<string, unknown>,
+>(data: T[], dateField: keyof T & string) {
   if (!data || !Array.isArray(data) || data.length === 0) {
     return { earliest: null, latest: null };
   }
 
-  if (!data[0]?.[dateField]) {
+  const firstValue = data[0]?.[dateField];
+  if (typeof firstValue !== "string" || !firstValue) {
     return { earliest: null, latest: null };
   }
 
-  let earliest = parseISO(data[0][dateField]);
-  let latest = parseISO(data[0][dateField]);
+  let earliest = parseISO(firstValue);
+  let latest = parseISO(firstValue);
 
   data.forEach((item) => {
-    if (!item?.[dateField]) return;
+    const value = item?.[dateField];
+    if (typeof value !== "string" || !value) return;
 
-    const currentDate = parseISO(item[dateField]);
+    const currentDate = parseISO(value);
 
     if (isNaN(currentDate.getTime())) return;
 
@@ -101,8 +115,7 @@ export function getEarliestandLatestDates(data, dateField) {
   };
 }
 
-// Helper function to extract lng/lat from various coordinate formats
-function extractLngLat(coordinate: any): [number, number] | null {
+function extractLngLat(coordinate: unknown): [number, number] | null {
   if (Array.isArray(coordinate)) {
     const lon =
       typeof coordinate[0] === "string"
@@ -113,15 +126,15 @@ function extractLngLat(coordinate: any): [number, number] | null {
         ? parseFloat(coordinate[1])
         : coordinate[1];
 
-    if (isNaN(lon) || isNaN(lat)) {
+    if (typeof lon !== "number" || typeof lat !== "number" || isNaN(lon) || isNaN(lat)) {
       return null;
     }
     return [lon, lat];
   } else if (typeof coordinate === "object" && coordinate !== null) {
     if ("lng" in coordinate && "lat" in coordinate) {
-      return [coordinate.lng, coordinate.lat];
+      return [Number(coordinate.lng), Number(coordinate.lat)];
     } else if ("lon" in coordinate && "lat" in coordinate) {
-      return [coordinate.lon, coordinate.lat];
+      return [Number(coordinate.lon), Number(coordinate.lat)];
     }
   }
   return null;
@@ -139,7 +152,6 @@ export function findExtremeCoordinates(
   let minLat: number | null = null;
   let maxLat: number | null = null;
 
-  // Normalize data to array of arrays
   const normalizedData: LngLatLike[][] =
     data[0] && Array.isArray(data[0]) && Array.isArray(data[0][0])
       ? (data as LngLatLike[][])
@@ -176,7 +188,6 @@ export function findExtremeCoordinates(
     return null;
   }
 
-  // Return bounds in [west, south, east, north] format
   return [minLng, minLat, maxLng, maxLat];
 }
 
@@ -194,11 +205,11 @@ export function getGeoJsonPolygon(
 
   return [
     [
-      [minLon, minLat], // Bottom-left corner
-      [minLon, maxLat], // Top-left corner
-      [maxLon, maxLat], // Top-right corner
-      [maxLon, minLat], // Bottom-right corner
-      [minLon, minLat], // Closing the polygon
+      [minLon, minLat],
+      [minLon, maxLat],
+      [maxLon, maxLat],
+      [maxLon, minLat],
+      [minLon, minLat],
     ],
   ];
 }
@@ -213,7 +224,7 @@ export function generateFeatureCollectionByFoi(
       type: "Feature",
       properties: {
         pairId: foi.pairId,
-        areaId: foi.areaId,
+        areaId: foi.areaPairId,
         areaCode: foi.areaCode,
       },
       geometry: {

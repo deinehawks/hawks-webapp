@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "sourceRoot": "Z:\\surveys\\2026",
+  "datasetYear": 2026,
+  "batchKey": "example",
+  "maxSurveysPerWave": 3,
+  "pilotSurveyIds": [],
+  "approvedSurveys": [],
+  "approvedPointClouds": [],
+  "ignoredPointClouds": []
+}

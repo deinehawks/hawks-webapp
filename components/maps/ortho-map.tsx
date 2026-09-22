@@ -1,14 +1,19 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { buildTileAssetUrl, getAssetBaseUrl } from "@/lib/assets/asset-urls";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
-  calculateGlobalCenters,
-  findExtremeCoordinates,
   transformCoordinatesToLonLatFormat,
 } from "@/lib/helpers";
 import {
   Layer,
-  Map,
+  Map as MapLibreMap,
   MapMouseEvent,
   MapProvider,
   Popup,
@@ -17,10 +22,7 @@ import {
 } from "@vis.gl/react-maplibre";
 import type { MapProps } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type {
-  StyleSpecification,
-  GeoJSONSourceSpecification,
-} from "maplibre-gl";
+import type { StyleSpecification } from "maplibre-gl";
 import type {
   Feature,
   FeatureCollection,
@@ -55,11 +57,14 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateFeatureCollection } from "@/lib/helpers/geometry";
 import { GeometryType, type ComputerVisionObject } from "@/lib/types";
 import { useOrthoMapStore } from "@/providers/ortho-map-store-provider";
-import { getYear } from "date-fns";
 import Link from "next/link";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
 import MapLegend from "@/components/maps/shared/map-legend";
 import { SurveyModeToggle } from "@/components/maps/shared/survey-mode-toggle";
+import {
+  OrthomapSurveyDateFilter,
+  type OrthomapDateOption,
+} from "@/components/maps/orthomap-survey-date-filter";
 
 // constants
 import { PIN_ANIMATION_STYLES } from "@/lib/constants/map-animation";
@@ -74,12 +79,15 @@ import { createPinLayout } from "@/lib/constants/map-layers";
 
 type SurveyLike = {
   id: string | number;
+  client?: { id?: string; code?: string | null; name?: string | null } | null;
   code?: string | null;
   flight_date?: string | Date | null;
-  boundaries?: unknown[];
-  min_y?: number;
-  max_y?: number;
-  access_code?: string;
+  ortho?: { tile_folder?: string | null } | null;
+  boundaries?: unknown[] | null;
+  min_x?: number | null;
+  max_x?: number | null;
+  min_y?: number | null;
+  max_y?: number | null;
   area_code?: string;
   area?: number;
   location?: string;
@@ -90,12 +98,33 @@ type PopupInfo = {
   id: string | number;
   lng: number;
   lat: number;
-  access_code?: string;
+  code?: string;
   area_code?: string;
   area?: number;
   flight_date?: string | Date;
   location?: string;
   tags?: string;
+};
+
+type SurveyBounds = [number, number, number, number];
+
+const ALL_DATES_VALUE = "all";
+const DEFAULT_MAP_CENTER = {
+  latitude: 7.0763840759644,
+  longitude: 125.58147596772221,
+};
+
+const ORTHOMAP_BASE_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {
+    osm: {
+      type: "raster",
+      tiles: ["https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      attribution: "&copy; OpenStreetMap Contributors",
+    },
+  },
+  layers: [{ id: "osm", type: "raster", source: "osm" }],
 };
 
 // ============================================================================
@@ -121,6 +150,97 @@ function calculateCentersWithOffset(
     centerLng: (min_lon + max_lon) / 2,
     centerLat: (min_lat + max_lat) / 2,
   };
+}
+
+function normalizeFlightDate(value: string | Date | null | undefined) {
+  if (!value) return null;
+
+  const date =
+    value instanceof Date
+      ? value
+      : new Date(value.includes("T") ? value : `${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toISOString().slice(0, 10);
+}
+
+function formatFlightDate(value: string) {
+  return new Intl.DateTimeFormat("en-PH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T00:00:00Z`));
+}
+
+function getSurveyBounds(surveys: SurveyLike[]): SurveyBounds | undefined {
+  const transformedBoundaries = surveys
+    .filter(
+      (survey) =>
+        Array.isArray(survey.boundaries) && survey.boundaries.length > 0,
+    )
+    .map((survey) => {
+      try {
+        return transformCoordinatesToLonLatFormat(
+          survey.boundaries as string[][],
+        );
+      } catch {
+        return null;
+      }
+    })
+    .filter((boundary): boundary is number[][] => boundary !== null);
+
+  const boundaryCoordinates = transformedBoundaries
+    .flat()
+    .filter(
+      (coordinate) =>
+        coordinate.length >= 2 &&
+        Number.isFinite(coordinate[0]) &&
+        Number.isFinite(coordinate[1]),
+    );
+  if (boundaryCoordinates.length > 0) {
+    const longitudes = boundaryCoordinates.map((coordinate) => coordinate[0]);
+    const latitudes = boundaryCoordinates.map((coordinate) => coordinate[1]);
+
+    return [
+      Math.min(...longitudes),
+      Math.min(...latitudes),
+      Math.max(...longitudes),
+      Math.max(...latitudes),
+    ];
+  }
+
+  const extents = surveys
+    .flatMap((survey) => {
+      const values = [
+        survey.max_x,
+        survey.max_y,
+        survey.min_x,
+        survey.min_y,
+      ];
+      if (
+        !values.every(
+          (value): value is number =>
+            typeof value === "number" && Number.isFinite(value),
+        )
+      ) {
+        return [];
+      }
+
+      const [maxX, maxY, minX, minY] = values;
+      if (minX > maxX || minY > maxY) return [];
+
+      return [{ maxX, maxY, minX, minY }];
+    });
+
+  if (extents.length === 0) return undefined;
+
+  return [
+    Math.min(...extents.map(({ minX }) => minX)),
+    Math.min(...extents.map(({ minY }) => minY)),
+    Math.max(...extents.map(({ maxX }) => maxX)),
+    Math.max(...extents.map(({ maxY }) => maxY)),
+  ];
 }
 
 // ============================================================================
@@ -348,7 +468,7 @@ const MapPopup = React.memo(() => {
                   Survey Area
                 </div>
                 <div className="text-lg font-semibold text-primary-foreground">
-                  {`${info.access_code ?? ""}-${info.area_code ?? ""}`}
+                  {`${info.code ?? ""}-${info.area_code ?? ""}`}
                 </div>
               </div>
               <div className="text-xs px-2.5 py-1 bg-primary-foreground/20 text-primary-foreground rounded-md font-medium">
@@ -430,7 +550,7 @@ const MapPopup = React.memo(() => {
             >
               <Link href={`/dashboard/surveys/${info.id}`}>
                 <button className="w-full px-4 py-2.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold shadow-sm">
-                  View Details →
+                  View Details ?
                 </button>
               </Link>
             </motion.div>
@@ -447,11 +567,11 @@ const PlantPopup = React.memo(() => {
   const { plantPopupInfo, setPlantPopupInfo } = useOrthoMapStore(
     (state) => state,
   );
-  const { surveyMode } = useSurveyModeStore(); // ← add
+  const { surveyMode } = useSurveyModeStore(); // ? add
 
   if (!plantPopupInfo) return null;
 
-  const { centerLng, centerLat, label } = plantPopupInfo; // ← destructure label
+  const { centerLng, centerLat, label } = plantPopupInfo; // ? destructure label
   const isHealthy = String(label ?? "").includes("Healthy");
 
   return (
@@ -507,7 +627,7 @@ const PlantPopup = React.memo(() => {
 PlantPopup.displayName = "PlantPopup";
 
 const SourceLoadingStatus = React.memo(
-  ({ idList }: { idList: Array<string | number> }) => {
+  () => {
     const { areAllSourcesLoaded, setAreAllSourcesLoaded } = useOrthoMapStore(
       (state) => state,
     );
@@ -609,20 +729,164 @@ const OrthomapFoiSelector = React.memo(
 
 OrthomapFoiSelector.displayName = "OrthomapFoiSelector";
 
+const SurveyAreaLayers = React.memo(
+  ({ surveys }: { surveys: SurveyLike[] }) => {
+    const { areasData, labelsData } = useMemo(() => {
+      const areaFeatures: Feature<Polygon, GeoJsonProperties>[] =
+        surveys.flatMap((survey) => {
+          if (
+            !Array.isArray(survey.boundaries) ||
+            survey.boundaries.length === 0
+          ) {
+            return [];
+          }
+
+          try {
+            const coordinates = transformCoordinatesToLonLatFormat(
+              survey.boundaries as string[][],
+            ).filter(
+              (coordinate) =>
+                coordinate.length >= 2 &&
+                Number.isFinite(coordinate[0]) &&
+                Number.isFinite(coordinate[1]),
+            );
+            if (coordinates.length < 3) return [];
+
+            return [
+              {
+                type: "Feature" as const,
+                properties: {
+                  survey_id: String(survey.id),
+                  latitude: Number(
+                    ((survey.max_y ?? 0) + (survey.min_y ?? 0)) / 2,
+                  ),
+                  label: `${survey.code ?? ""}-${survey.area_code ?? ""}`,
+                },
+                geometry: {
+                  type: "Polygon" as const,
+                  coordinates: [coordinates],
+                },
+              },
+            ];
+          } catch {
+            return [];
+          }
+        });
+
+      const labelFeatures: Feature[] = areaFeatures.map((feature) => ({
+        type: "Feature",
+        properties: {
+          survey_id: feature.properties?.survey_id,
+          label: feature.properties?.label,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: [...calculateCentroid(feature.geometry.coordinates)],
+        },
+      }));
+
+      return {
+        areasData: {
+          type: "FeatureCollection" as const,
+          features: areaFeatures,
+        },
+        labelsData: {
+          type: "FeatureCollection" as const,
+          features: labelFeatures,
+        },
+      };
+    }, [surveys]);
+
+    return (
+      <>
+        <Source id="areas" type="geojson" data={areasData} generateId>
+          <Layer
+            id="area-fills"
+            type="fill"
+            paint={{
+              "fill-color": [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                MAP_COLORS.boundary,
+                MAP_COLORS.hover,
+              ],
+              "fill-opacity": [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                0.7,
+                0.4,
+              ],
+            }}
+          />
+        </Source>
+        <Source id="area-labels" type="geojson" data={labelsData}>
+          <Layer
+            id="area-labels"
+            type="symbol"
+            layout={{
+              "text-field": ["get", "label"],
+              "text-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                13,
+                10,
+                16,
+                14,
+                20,
+                18,
+              ],
+              "text-anchor": "center",
+              "text-allow-overlap": true,
+              "text-ignore-placement": true,
+              visibility: "none",
+            }}
+            paint={{
+              "text-color": "#ffffff",
+              "text-halo-color": MAP_COLORS.boundary,
+              "text-halo-width": 2,
+              "text-halo-blur": 1,
+            }}
+          />
+        </Source>
+      </>
+    );
+  },
+);
+
+SurveyAreaLayers.displayName = "SurveyAreaLayers";
+
 const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
   const surveyTiles = useMemo(() => {
     return surveys
-      .filter((survey) => survey.code && survey.flight_date)
       .map((survey) => ({
-        id: survey.id,
-        code: String(survey.code).toLowerCase(),
-        year: getYear(new Date(survey.flight_date as any)),
-        tileUrl: `/asimov-hawks/tiles/${String(
-          survey.code,
-        ).toLowerCase()}/${getYear(new Date(survey.flight_date as any))}/${
-          survey.id
-        }/ortho/sharp-corners/{z}/{x}/{y}.png`,
-      }));
+        date: normalizeFlightDate(survey.flight_date),
+        survey,
+      }))
+      .filter(
+        (
+          entry,
+        ): entry is {
+          date: string;
+          survey: SurveyLike & {
+            code: string;
+            ortho: NonNullable<SurveyLike["ortho"]>;
+          };
+        } => Boolean(entry.date && entry.survey.code && entry.survey.ortho),
+      )
+      .map(({ date, survey }) => {
+        const year = Number(date.slice(0, 4));
+
+        return {
+          id: survey.id,
+          tileUrl: buildTileAssetUrl({
+            clientCode: survey.code,
+            surveyId: String(survey.id),
+            tileFolder: survey.ortho.tile_folder ?? "round-corners",
+            year,
+          }),
+        };
+      });
   }, [surveys]);
 
   return (
@@ -638,7 +902,6 @@ const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
           minzoom={10}
           maxzoom={24}
           // PERFORMANCE: Increase tile cache to reduce reloading
-          maxzoom={24}
         >
           <Layer
             id={String(tile.id)}
@@ -647,10 +910,8 @@ const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
             minzoom={10}
             maxzoom={24}
             paint={{
-              // PERFORMANCE: Fade in tiles faster for snappier feel
-              "raster-fade-duration": 150, // Default is 300ms
-              // Optional: Reduce resampling for sharper tiles at non-integer zooms
-              "raster-resampling": "nearest", // or "linear" for smoother
+              "raster-fade-duration": 150,
+              "raster-resampling": "linear",
             }}
           />
         </Source>
@@ -660,6 +921,43 @@ const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
 });
 
 RasterTiles.displayName = "RasterTiles";
+
+const MapViewportSync = React.memo(
+  ({
+    bounds,
+    selectionKey,
+  }: {
+    bounds: SurveyBounds | undefined;
+    selectionKey: string;
+  }) => {
+    const { orthomap } = useMap();
+    const previousSelection = useRef(selectionKey);
+
+    useEffect(() => {
+      if (!orthomap || previousSelection.current === selectionKey) return;
+
+      previousSelection.current = selectionKey;
+      if (!bounds) return;
+
+      orthomap.fitBounds(
+        [
+          [bounds[0], bounds[1]],
+          [bounds[2], bounds[3]],
+        ],
+        {
+          duration: 600,
+          essential: true,
+          maxZoom: 18,
+          padding: 32,
+        },
+      );
+    }, [bounds, orthomap, selectionKey]);
+
+    return null;
+  },
+);
+
+MapViewportSync.displayName = "MapViewportSync";
 
 // FIXED: Memoized FeaturesOfInterest component with proper layer ordering
 const FeaturesOfInterest = React.memo(
@@ -673,7 +971,7 @@ const FeaturesOfInterest = React.memo(
     const { selectedFoi, hoveredPairId, plantPopupInfo } = useOrthoMapStore(
       (state) => state,
     );
-    const { surveyMode } = useSurveyModeStore(); // ← add
+    const { surveyMode } = useSurveyModeStore(); // ? add
 
     const { healthyBananas, unhealthyBananas } = useMemo(() => {
       if (!detectedObjects || !Array.isArray(detectedObjects))
@@ -747,7 +1045,7 @@ const FeaturesOfInterest = React.memo(
         "Healthy",
       );
 
-    // ← inventory always uses inventory color
+    // ? inventory always uses inventory color
     const selectedColor =
       surveyMode === "inventory"
         ? MAP_COLORS.inventory.base
@@ -771,7 +1069,7 @@ const FeaturesOfInterest = React.memo(
       [allBananasFC],
     );
 
-    // ── INVENTORY MODE ────────────────────────────────────────────────────────
+    // -- INVENTORY MODE --------------------------------------------------------
     if (surveyMode === "inventory") {
       const showInventoryPins = selectedFoi !== "none" && selectedFoi !== "";
       return (
@@ -833,7 +1131,7 @@ const FeaturesOfInterest = React.memo(
       );
     }
 
-    // ── ANALYSIS MODE (existing behavior) ─────────────────────────────────────
+    // -- ANALYSIS MODE (existing behavior) -------------------------------------
     return (
       <>
         {selectedPlantBbox && (
@@ -991,15 +1289,146 @@ BoundaryLayers.displayName = "BoundaryLayers";
 // ============================================================================
 
 export default function OrthoMap({
-  userProfile,
   surveys,
   detectedObjects,
 }: {
-  userProfile: any;
+  userProfile: unknown;
   surveys: SurveyLike[];
   detectedObjects: ComputerVisionObject[] | null | undefined;
 }) {
-  if (!surveys || !Array.isArray(surveys) || surveys.length === 0) {
+  const hasSurveyData = Array.isArray(surveys) && surveys.length > 0;
+  const normalizedSurveys = useMemo(
+    () => (hasSurveyData ? surveys : []),
+    [hasSurveyData, surveys],
+  );
+
+  const safeDetectedObjects = useMemo(
+    () => detectedObjects ?? [],
+    [detectedObjects],
+  );
+  const mapClient = normalizedSurveys[0]?.client ?? null;
+
+  const [selectedDate, setSelectedDate] = useState(ALL_DATES_VALUE);
+  const [showBoundaries, setShowBoundaries] = useState(false);
+
+  const eligibleSurveyEntries = useMemo(
+    () =>
+      normalizedSurveys
+        .map((survey) => ({
+          date: normalizeFlightDate(survey.flight_date),
+          survey,
+        }))
+        .filter(
+          (
+            entry,
+          ): entry is {
+            date: string;
+            survey: SurveyLike & {
+              code: string;
+              ortho: NonNullable<SurveyLike["ortho"]>;
+            };
+          } => Boolean(entry.date && entry.survey.code && entry.survey.ortho),
+        ),
+    [normalizedSurveys],
+  );
+
+  const eligibleSurveys = useMemo(
+    () => eligibleSurveyEntries.map(({ survey }) => survey),
+    [eligibleSurveyEntries],
+  );
+
+  const dateOptions = useMemo<OrthomapDateOption[]>(() => {
+    const counts = new Map<string, number>();
+    eligibleSurveyEntries.forEach(({ date }) => {
+      counts.set(date, (counts.get(date) ?? 0) + 1);
+    });
+
+    return [...counts.entries()]
+      .sort(([left], [right]) => right.localeCompare(left))
+      .map(([value, count]) => ({
+        count,
+        label: formatFlightDate(value),
+        value,
+      }));
+  }, [eligibleSurveyEntries]);
+
+  useEffect(() => {
+    if (
+      selectedDate !== ALL_DATES_VALUE &&
+      !dateOptions.some((option) => option.value === selectedDate)
+    ) {
+      setSelectedDate(ALL_DATES_VALUE);
+    }
+  }, [dateOptions, selectedDate]);
+
+  const visibleSurveys = useMemo(
+    () =>
+      selectedDate === ALL_DATES_VALUE
+        ? eligibleSurveys
+        : eligibleSurveyEntries
+            .filter(({ date }) => date === selectedDate)
+            .map(({ survey }) => survey),
+    [eligibleSurveyEntries, eligibleSurveys, selectedDate],
+  );
+
+  const visibleSurveyIds = useMemo(
+    () => new Set(visibleSurveys.map((survey) => String(survey.id))),
+    [visibleSurveys],
+  );
+
+  const visibleDetectedObjects = useMemo(
+    () =>
+      safeDetectedObjects.filter((object) =>
+        visibleSurveyIds.has(String(object.areaCode)),
+      ),
+    [safeDetectedObjects, visibleSurveyIds],
+  );
+
+  const initialBounds = useMemo(
+    () => getSurveyBounds(eligibleSurveys),
+    [eligibleSurveys],
+  );
+  const visibleBounds = useMemo(
+    () => getSurveyBounds(visibleSurveys),
+    [visibleSurveys],
+  );
+
+  const initialViewState = useMemo<MapProps["initialViewState"]>(
+    () => ({
+      ...DEFAULT_MAP_CENTER,
+      bounds: initialBounds,
+      fitBoundsOptions: { maxZoom: 18, padding: 32 },
+    }),
+    [initialBounds],
+  );
+
+  const {
+    selectedFoi,
+    setAreAllSourcesLoaded,
+    setHoveredPairId,
+    setPlantPopupInfo,
+    setPopupInfo,
+  } = useOrthoMapStore((state) => state);
+  const { surveyMode } = useSurveyModeStore();
+
+  useEffect(() => {
+    setPopupInfo(null);
+    setPlantPopupInfo(null);
+    setHoveredPairId(null);
+    setAreAllSourcesLoaded(false);
+  }, [
+    selectedDate,
+    setAreAllSourcesLoaded,
+    setHoveredPairId,
+    setPlantPopupInfo,
+    setPopupInfo,
+  ]);
+
+  useEffect(() => {
+    if (!showBoundaries) setPopupInfo(null);
+  }, [showBoundaries, setPopupInfo]);
+
+  if (!hasSurveyData) {
     return (
       <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
         <div className="flex flex-1 h-full px-4 lg:px-6">
@@ -1018,190 +1447,25 @@ export default function OrthoMap({
     );
   }
 
-  const safeDetectedObjects = useMemo(
-    () => detectedObjects ?? [],
-    [detectedObjects],
-  );
-
-  const [showBoundaries, setShowBoundaries] = useState(false);
-  const { selectedFoi, setPopupInfo } = useOrthoMapStore((state) => state);
-
-  const surveyIds = useMemo(() => surveys.map((s) => s.id), [surveys]);
-
-  const { global_x, global_y } = useMemo(
-    () =>
-      surveys
-        ? calculateGlobalCenters(surveys as any)
-        : { global_x: 125.58147596772221, global_y: 7.0763840759644 },
-    [surveys],
-  );
-
-  const bounds = useMemo(() => {
-    try {
-      const validSurveys = surveys.filter(
-        (s) =>
-          s.boundaries &&
-          Array.isArray(s.boundaries) &&
-          s.boundaries.length > 0,
-      );
-      if (validSurveys.length === 0) return undefined;
-
-      const transformedBoundaries = validSurveys
-        .map((s) => {
-          try {
-            return transformCoordinatesToLonLatFormat(s.boundaries as any);
-          } catch (error) {
-            console.warn(
-              `Failed to transform boundaries for survey ${s.id}:`,
-              error,
-            );
-            return null;
-          }
-        })
-        .filter((b): b is any => b !== null);
-
-      if (transformedBoundaries.length === 0) return undefined;
-      return findExtremeCoordinates(transformedBoundaries as any);
-    } catch (error) {
-      console.error("Error calculating bounds:", error);
-      return undefined;
-    }
-  }, [surveys]);
-
-  const mapStyle = useMemo<StyleSpecification>(() => {
-    const areaFeatures: Feature<Polygon, GeoJsonProperties>[] = surveys
-      .filter((survey) => survey.boundaries && Array.isArray(survey.boundaries))
-      .map((survey) => {
-        const coords = transformCoordinatesToLonLatFormat(
-          survey.boundaries as any,
-        );
-
-        return {
-          type: "Feature",
-          properties: {
-            survey_id: survey.id,
-            latitude: Number(((survey.max_y ?? 0) + (survey.min_y ?? 0)) / 2),
-            label: `${survey.access_code ?? ""}-${survey.area_code ?? ""}`,
-          },
-          geometry: {
-            type: "Polygon",
-            coordinates: [coords],
-          },
-        };
-      });
-
-    const areasData: FeatureCollection<Polygon, GeoJsonProperties> = {
-      type: "FeatureCollection",
-      features: areaFeatures,
-    };
-
-    const labelFeatures: Feature[] = areaFeatures.map((f) => {
-      const centroid = calculateCentroid(f.geometry.coordinates as any);
-      return {
-        type: "Feature",
-        properties: {
-          survey_id: (f.properties as any)?.survey_id,
-          label: (f.properties as any)?.label,
-        },
-        geometry: {
-          type: "Point",
-          coordinates: [...centroid] as [number, number],
-        },
-      };
-    });
-
-    const labelsData: FeatureCollection = {
-      type: "FeatureCollection",
-      features: labelFeatures,
-    };
-
-    return {
-      version: 8,
-      sources: {
-        osm: {
-          type: "raster",
-          tiles: ["https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"],
-          tileSize: 256,
-          attribution: "&copy; OpenStreetMap Contributors",
-        },
-        areas: {
-          type: "geojson",
-          data: areasData,
-          generateId: true,
-        } satisfies GeoJSONSourceSpecification,
-        "area-labels": {
-          type: "geojson",
-          data: labelsData,
-        } satisfies GeoJSONSourceSpecification,
-      },
-      layers: [
-        { id: "osm", type: "raster", source: "osm" },
-        {
-          id: "area-fills",
-          type: "fill",
-          source: "areas",
-          paint: {
-            "fill-color": [
-              "case",
-              ["boolean", ["feature-state", "hover"], false],
-              MAP_COLORS.boundary,
-              MAP_COLORS.hover,
-            ],
-            "fill-opacity": [
-              "case",
-              ["boolean", ["feature-state", "hover"], false],
-              0.7,
-              0.4,
-            ],
-          },
-        },
-        {
-          id: "area-labels",
-          type: "symbol",
-          source: "area-labels",
-          layout: {
-            "text-field": ["get", "label"],
-            "text-size": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              13,
-              10,
-              16,
-              14,
-              20,
-              18,
-            ],
-            "text-anchor": "center",
-            "text-allow-overlap": true,
-            "text-ignore-placement": true,
-            visibility: "none",
-          },
-          paint: {
-            "text-color": "#ffffff",
-            "text-halo-color": MAP_COLORS.boundary,
-            "text-halo-width": 2,
-            "text-halo-blur": 1,
-          },
-        },
-      ],
-    };
-  }, [surveys]);
-
-  const initialViewState = useMemo<MapProps["initialViewState"]>(
-    () => ({
-      latitude: global_y,
-      longitude: global_x,
-      bounds: bounds ?? undefined,
-      fitBoundsOptions: { padding: 20 },
-    }),
-    [global_x, global_y, bounds],
-  );
-  const { surveyMode } = useSurveyModeStore();
-
-  useEffect(() => {
-    if (!showBoundaries) setPopupInfo(null);
-  }, [showBoundaries, setPopupInfo]);
+  if (eligibleSurveys.length === 0) {
+    return (
+      <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
+        <div className="flex flex-1 h-full px-4 lg:px-6">
+          <Card className="flex flex-1 flex-col h-full items-center justify-center">
+            <CardContent className="max-w-md py-10 text-center">
+              <h3 className="mb-2 text-lg font-semibold">
+                No orthomosaics available
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Accessible surveys need a valid flight date and a current
+                orthomosaic before they can appear on this map.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
@@ -1218,7 +1482,7 @@ export default function OrthoMap({
           <div className="flex items-center gap-2">
             <SurveyModeToggle />
             <div>
-              <OrthomapFoiSelector detectedObjects={safeDetectedObjects} />
+              <OrthomapFoiSelector detectedObjects={visibleDetectedObjects} />
             </div>
             <Button
               size="sm"
@@ -1234,23 +1498,29 @@ export default function OrthoMap({
       <MapProvider>
         <div className="flex flex-1 h-full px-4 lg:px-6">
           <Card className="@container/card flex flex-1 flex-col h-full relative">
-            <CardHeader>
-              <CardTitle>
-                {userProfile?.organization?.code || "Organization"}
-              </CardTitle>
-              <CardDescription>
-                {userProfile?.organization?.name || "Loading..."}
-              </CardDescription>
+            <CardHeader className="gap-4">
+              <div>
+                <CardTitle>{mapClient?.code || "Organization"}</CardTitle>
+                <CardDescription>
+                  {mapClient?.name || "Loading..."}
+                </CardDescription>
+              </div>
+              <OrthomapSurveyDateFilter
+                onValueChange={setSelectedDate}
+                options={dateOptions}
+                totalCount={eligibleSurveys.length}
+                value={selectedDate}
+              />
             </CardHeader>
 
             <CardContent className="flex-1 relative">
               <div className="h-full flex">
-                <Map
+                <MapLibreMap
                   id="orthomap"
                   initialViewState={initialViewState}
                   minZoom={13}
                   maxZoom={23}
-                  mapStyle={mapStyle}
+                  mapStyle={ORTHOMAP_BASE_STYLE}
                   // PERFORMANCE: Optimize map rendering
                   renderWorldCopies={false} // Disable world duplication
                   maxTileCacheSize={500} // Increase tile cache (default ~50)
@@ -1258,7 +1528,7 @@ export default function OrthoMap({
                     // Add cache headers for better browser caching
                     if (
                       resourceType === "Tile" &&
-                      url.includes("/asimov-hawks/tiles/")
+                      url.includes(`${getAssetBaseUrl()}/tiles/`)
                     ) {
                       return {
                         url: url,
@@ -1270,56 +1540,32 @@ export default function OrthoMap({
                 >
                   <InitializeMapImages />
 
-                  {surveys
-                    .filter((survey) => survey.code && survey.flight_date)
-                    .map((survey) => (
-                      <Source
-                        key={survey.id}
-                        id={String(survey.id)}
-                        type="raster"
-                        tiles={[
-                          `/asimov-hawks/tiles/${String(
-                            survey.code,
-                          ).toLowerCase()}/${getYear(
-                            new Date(survey.flight_date as any),
-                          )}/${survey.id}/ortho/sharp-corners/{z}/{x}/{y}.png`,
-                        ]}
-                        scheme="tms"
-                        tileSize={256}
-                        minzoom={10}
-                        maxzoom={24}
-                      >
-                        <Layer
-                          id={String(survey.id)}
-                          type="raster"
-                          source={String(survey.id)}
-                          minzoom={10}
-                          maxzoom={24}
-                          paint={{
-                            "raster-fade-duration": 150,
-                            "raster-resampling": "linear",
-                          }}
-                        />
-                      </Source>
-                    ))}
+                  <SurveyAreaLayers surveys={visibleSurveys} />
+                  <RasterTiles surveys={visibleSurveys} />
+                  <MapViewportSync
+                    bounds={visibleBounds}
+                    selectionKey={selectedDate}
+                  />
 
-                  {surveys.length > 0 && surveys[0].code && (
+                  {visibleSurveys.length > 0 && visibleSurveys[0].code && (
                     <FeaturesOfInterest
                       key={surveyMode}
-                      code={String(surveys[0].code)}
-                      detectedObjects={safeDetectedObjects}
+                      code={String(visibleSurveys[0].code)}
+                      detectedObjects={visibleDetectedObjects}
                     />
                   )}
 
                   <BoundaryLayers showBoundaries={showBoundaries} />
 
                   <MapEvents
-                    surveys={surveys}
+                    surveys={visibleSurveys}
                     showBoundaries={showBoundaries}
                     code={
-                      surveys[0]?.code ? String(surveys[0].code) : undefined
+                      visibleSurveys[0]?.code
+                        ? String(visibleSurveys[0].code)
+                        : undefined
                     }
-                    detectedObjects={safeDetectedObjects}
+                    detectedObjects={visibleDetectedObjects}
                   />
 
                   <MapPopup />
@@ -1332,16 +1578,16 @@ export default function OrthoMap({
                         exit={{ opacity: 0, y: 10 }}
                         transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
                       >
-                        <MapLegend selectedFoi={selectedFoi} />
+                        <MapLegend />
                       </motion.div>
                     )}
                   </AnimatePresence>
-                </Map>
+                </MapLibreMap>
               </div>
             </CardContent>
 
             <CardFooter>
-              <SourceLoadingStatus idList={surveyIds} />
+              <SourceLoadingStatus />
             </CardFooter>
           </Card>
         </div>
@@ -1349,3 +1595,7 @@ export default function OrthoMap({
     </div>
   );
 }
+
+
+
+
