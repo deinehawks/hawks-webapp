@@ -286,14 +286,20 @@ WebODM, `AH-026095`, and Wave 3 remain stopped.
 
 Next sequence:
 
-1. Correct the NGINX internal health probe and contain direct MinIO 9000/9001
-   access plus anonymous bucket listing before external acceptance.
-2. Only after those gates pass, regenerate/review/freeze the same Wave 3 scope
-   and obtain separate approval. The user, not Codex, will run and monitor the
-   upload. Do not activate a partial manifest or delete rollback data.
+1. Finalize and integrate `fix/minio-edge-hardening` after its passed smoke.
+2. Regenerate/review/freeze the same Wave 3 scope and obtain separate upload
+   approval. The user, not Codex, will run and monitor the upload. Do not
+   activate a partial manifest or delete rollback data.
 
 The user passed the final signed-in post-restart Survey, 3D, Orthomap,
 authorized/cross-scope, five-bucket, and clean console/network smoke. The NGINX
-failure is now isolated to `localhost` resolving to IPv6 `::1`; IPv4
-`127.0.0.1/health` succeeds. MinIO 9000/9001 still bind all host interfaces and
-anonymous `tiles` listing still returns 200.
+failure was isolated to `localhost` resolving to IPv6 `::1`; the machine-local
+healthcheck now uses `127.0.0.1` and NGINX is healthy. MinIO 9000/9001 now bind
+only to loopback, LAN connection attempts fail, and anonymous listing of both
+asset buckets returns 403. Exact anonymous GetObject is retained on the
+loopback/internal origin because the existing NGINX proxy is unsigned; public
+authorization remains enforced by NGINX `auth_request`. The guarded helper
+requires the exact single loopback bindings and passes idempotently. The user
+passed the final signed-in Survey orthomosaic, 3D, BARBCO2026 Orthomap,
+authorized/cross-scope, and clean console/network smoke after the policy
+change. Edge-hardening acceptance is complete.

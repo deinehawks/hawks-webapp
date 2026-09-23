@@ -2,7 +2,8 @@
 
 Last updated: 2026-09-23
 
-Current branch: `fix/minio-host-capacity`.
+Current branch: `fix/minio-edge-hardening` (stacked on the pushed
+`fix/minio-host-capacity` commit `bf53ddfb`).
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -485,6 +486,24 @@ five buckets, HTTP 200 health, the 766-byte representative tile, and the
 58,328,382-byte point cloud. Workshop regression is 21/21; PowerShell/JSON and
 whitespace checks pass. The user passed final signed-in Survey, 3D, Orthomap,
 authorized/cross-scope, five-bucket, and clean console/network smoke. Storage
-restart acceptance is complete. The NGINX health probe and direct-port
-containment remain open. WebODM, `AH-026095`, and Wave 3 remain stopped; the
-user will run and monitor any later approved Wave 3 upload.
+restart acceptance is complete. WebODM, `AH-026095`, and Wave 3 remain stopped;
+the user will run and monitor any later approved Wave 3 upload.
+
+NGINX and MinIO edge hardening is implemented on the separate stacked branch
+`fix/minio-edge-hardening`. The machine-local NGINX healthcheck now uses
+`127.0.0.1` and is healthy. MinIO publishes 9000/9001 only on
+`127.0.0.1`; the host LAN address cannot connect. Anonymous ListBucket is
+denied for `tiles` and `pointclouds`, while exact GetObject remains available
+only through loopback/internal Docker networking so the existing unsigned
+NGINX upstream can serve assets after `auth_request`. Anonymous protected
+NGINX tile and point-cloud requests still return 401. The startup helper now
+requires exactly one configured loopback binding per port and passes a true
+idempotent rerun without changing container identity or start time. MinIO is
+healthy on XFS with five buckets and verified representative tile/point-cloud
+objects; WebODM remains stopped. TypeScript, workshop regression 21/21,
+PowerShell/JSON parsing, Compose validation, and whitespace pass. The user
+passed the final signed-in post-hardening smoke: Survey orthomosaic, 3D point
+cloud, BARBCO2026 Orthomap, authorized access, cross-scope denial, and clean
+console/network behavior. NGINX/MinIO edge-hardening acceptance is complete.
+Wave 3 remains stopped and requires regenerated configuration, review, freeze,
+and separate upload approval; the user will run and monitor that upload.
