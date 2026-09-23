@@ -361,13 +361,33 @@ function Assert-MinIOContainerConfiguration {
   }
 
   foreach ($portProperty in $script:StorageConfig.expectedHostPorts.PSObject.Properties) {
+    $expectedBinding = $portProperty.Value
+    if (
+      $null -eq $expectedBinding -or
+      [string]::IsNullOrWhiteSpace([string]$expectedBinding.hostIp) -or
+      [string]::IsNullOrWhiteSpace([string]$expectedBinding.hostPort)
+    ) {
+      throw ('Invalid expected MinIO host binding for ' + $portProperty.Name)
+    }
     $bindingProperty = $ContainerInfo.HostConfig.PortBindings.PSObject.Properties |
       Where-Object { $_.Name -eq $portProperty.Name } |
       Select-Object -First 1
-    $bindings = if ($null -eq $bindingProperty) { @() } else { @($bindingProperty.Value) }
-    $hostPorts = @($bindings | ForEach-Object { [string]$_.HostPort })
-    if ($hostPorts -notcontains [string]$portProperty.Value) {
-      throw ('Missing expected MinIO port binding ' + $portProperty.Name + ' -> ' + $portProperty.Value)
+    $bindings = @()
+    if ($null -ne $bindingProperty) {
+      $bindings = @($bindingProperty.Value)
+    }
+    $matchingBinding = $bindings |
+      Where-Object {
+        [string]$_.HostIp -eq [string]$expectedBinding.hostIp -and
+        [string]$_.HostPort -eq [string]$expectedBinding.hostPort
+      } |
+      Select-Object -First 1
+    if ($null -eq $matchingBinding -or $bindings.Count -ne 1) {
+      throw (
+        'MinIO port binding must be exactly ' +
+        $expectedBinding.hostIp + ':' + $expectedBinding.hostPort +
+        ' -> ' + $portProperty.Name
+      )
     }
   }
 

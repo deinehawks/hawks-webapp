@@ -545,7 +545,21 @@ later exposes the underlying ext4 path. The accepted container is healthy on
 XFS with all five buckets and matching representative tile/point-cloud bytes.
 Workshop regression 21/21, PowerShell/JSON parsing, and whitespace pass. The
 user passed final signed-in Survey, 3D, Orthomap, authorized/cross-scope,
-five-bucket, and clean console/network smoke. Do not start WebODM,
-`AH-026095`, or Wave 3. Next, fix NGINX health and contain direct MinIO ports
-before reconsidering Wave 3. The user will run and monitor any separately
-approved upload.
+five-bucket, and clean console/network smoke.
+
+Branch `fix/minio-host-capacity` was finalized as `bf53ddfb` and pushed. The
+separate stacked branch `fix/minio-edge-hardening` fixes the machine-local
+NGINX health probe to IPv4 loopback and publishes MinIO 9000/9001 only on
+`127.0.0.1`. Both asset buckets deny anonymous listing while retaining exact
+GetObject access needed by the existing unsigned internal NGINX upstream after
+`auth_request`. NGINX and MinIO are healthy, `/data` is XFS, all five buckets
+exist, LAN port checks fail, exact representative assets return 200, and
+anonymous protected NGINX paths return 401. The helper enforces exactly one
+loopback binding per port and a true second run preserves container ID/start
+time. TypeScript, workshop 21/21, PowerShell/JSON, Compose, and whitespace
+checks pass. The user passed the final signed-in Survey orthomosaic, 3D point
+cloud, BARBCO2026 Orthomap, authorized/cross-scope, and clean console/network
+smoke. Edge-hardening acceptance is complete. WebODM, `AH-026095`, and Wave 3
+remain stopped. Next, regenerate/review/freeze and checksum the same Wave 3
+scope, then obtain separate upload approval. The user will run and monitor the
+upload.

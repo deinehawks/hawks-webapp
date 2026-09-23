@@ -19,8 +19,14 @@
   "composeService": "minio",
   "expectedNetwork": "asimov-hawks-infra_hawks-network",
   "expectedHostPorts": {
-    "9000/tcp": "9000",
-    "9001/tcp": "9001"
+    "9000/tcp": {
+      "hostIp": "127.0.0.1",
+      "hostPort": "9000"
+    },
+    "9001/tcp": {
+      "hostIp": "127.0.0.1",
+      "hostPort": "9001"
+    }
   },
   "requiredBuckets": [
     "exports",
@@ -29,19 +35,19 @@
     "temp",
     "tiles"
   ],
-  "healthUrl": "http://localhost:9000/minio/health/live",
+  "healthUrl": "http://127.0.0.1:9000/minio/health/live",
   "representativeAssets": [
     {
       "label": "representative tile",
       "method": "GET",
-      "url": "http://localhost:9000/tiles/REPLACE-WITH-TILE-OBJECT-PATH",
+      "url": "http://127.0.0.1:9000/tiles/REPLACE-WITH-TILE-OBJECT-PATH",
       "contentType": "image/png",
       "expectedBytes": 0
     },
     {
       "label": "representative point cloud",
       "method": "HEAD",
-      "url": "http://localhost:9000/pointclouds/REPLACE-WITH-POINT-CLOUD-OBJECT-PATH",
+      "url": "http://127.0.0.1:9000/pointclouds/REPLACE-WITH-POINT-CLOUD-OBJECT-PATH",
       "contentType": "application/octet-stream",
       "expectedBytes": 0
     }

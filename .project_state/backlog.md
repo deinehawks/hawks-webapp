@@ -75,22 +75,18 @@ Last updated: 2026-09-23
   successful post-merge smoke.
 - Survey Timeline implementation, complete responsive/authenticated smoke, and
   integration into `development` at `db137c74`.
+- MinIO relocation to the 1 TB XFS VHDX, stronger manual mount ordering,
+  repeat cold-start acceptance, healthy IPv4 NGINX probe, loopback-only direct
+  ports, denied anonymous bucket listing, retained protected exact-object
+  delivery, and final signed-in Survey/3D/Orthomap smoke.
 
 ## P1
 
-- Recheck the refined single-survey timeline date and responsive divider on
-  desktop, tablet, mobile, and User App Preview. The prior complete flattened
-  workspace smoke and this final refinement pass; multi-survey behavior is
-  unchanged.
-- MinIO's approved 1 TB decimal XFS VHDX relocation to `D:` and stronger manual
-  startup ordering are operational; repeat cold-start storage acceptance
-  plus final signed-in application smoke pass, and the original ext4 backend
-  remains rollback. Correct the NGINX localhost health probe and contain direct
-  MinIO ports/anonymous listing. Then
-  regenerate/review/freeze the stale Wave 3 configuration for the same three
-  surveys. Upload still requires separate explicit approval and will be
-  run/monitored by the user; production and rollback deletion remain out of
-  scope.
+- Regenerate, review, freeze, and checksum the stale Wave 3 configuration for
+  `AH-026023`, `AH-026024`, and `AH-026028` under the current capacity policy.
+  Upload still requires separate explicit approval and will be run/monitored
+  by the user; production, partial-manifest activation, and rollback deletion
+  remain out of scope.
 
 ## P2
 

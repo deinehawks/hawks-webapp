@@ -162,19 +162,51 @@ orthomosaic, 3D point cloud, BARBCO2026 Orthomap, authorized access,
 cross-scope denial, all five MinIO buckets, and clean browser console/network
 checks. Storage relocation and mount-order restart acceptance are complete.
 
+## NGINX and MinIO edge hardening on 2026-09-23
+
+The machine-local NGINX healthcheck now probes
+`http://127.0.0.1/health`, avoiding the prior IPv6 `localhost` resolution.
+Only the NGINX service was recreated from authoritative Compose configuration;
+it is healthy and its app/protected-asset routes remain operational.
+
+The machine-local MinIO service now publishes API and console ports only as
+`127.0.0.1:9000` and `127.0.0.1:9001`. Windows shows only loopback listeners,
+and connection attempts to the host LAN address on both ports fail. The pinned
+image, restart policy `no`, network, service identity, bind source, healthcheck,
+and XFS-backed `/data` contract remain intact.
+
+Anonymous policies for `tiles` and `pointclouds` were narrowed from bucket
+download/listing to exact GetObject only. Direct anonymous ListBucket requests
+now return 403 for both buckets, while the representative PNG and point cloud
+still return 200. This limited origin behavior is required by the current
+unsigned MinIO upstream: NGINX authorizes each public asset request through
+`auth_request` and then proxies the exact object over the internal Docker
+network. Anonymous protected requests through NGINX continue to return 401.
+Fully private buckets would require a separately designed signed S3 upstream.
+
+The checked-in startup helper/config example now require exactly one expected
+host IP and port binding for each MinIO port. A PowerShell single-element array
+edge case found by the first fail-closed run was corrected; the recovery run
+passed and a true second run preserved container ID, start time, running state,
+and health. The helper reverified XFS, both capacity reserves, all five buckets,
+and both representative objects. TypeScript, workshop regression 21/21,
+PowerShell/JSON parsing, machine-local Compose validation, and
+`git diff --check` pass. WebODM remains stopped.
+
+The user completed the final signed-in browser smoke after the policy and port
+changes. Survey `AH-0260001` rendered its orthomosaic and point cloud,
+BARBCO2026 Orthomap rendered its tiles, authorized access succeeded,
+cross-scope access remained denied, and the browser console/network showed no
+new storage errors. NGINX/MinIO edge-hardening acceptance is complete.
+
 ## Remaining acceptance and risks
 
-- The `hawks-nginx` Docker health flag remains unhealthy because its internal
-  `wget http://localhost/health` probe resolves to IPv6 `::1`, while NGINX
-  listens on IPv4 port 80. `http://127.0.0.1/health` returns `healthy`. Change
-  only the machine-local probe and verify the recreated NGINX service.
-- MinIO ports 9000/9001 bind on all host interfaces, and a direct local request
-  can anonymously list the `tiles` bucket. The relocation preserved this
-  existing configuration. Confirm firewall/Cloudflare isolation and correct
-  the exposure before treating public-internet delivery as accepted.
 - Continue manual startup exclusively through the guarded helper. Do not
   re-enable Docker Desktop automatic startup until a separately tested
   mechanism can guarantee the same ordering and retained-bridge checks.
+- Exact-object origin reads remain intentionally possible from the local host
+  loopback and internal Docker network. They are not reachable through the
+  host LAN bindings; NGINX remains the public authorization boundary.
 - The rollback copy is a pre-upload snapshot. Do not delete it or write new
   Wave 3 objects until final acceptance and the separate upload approval.
 

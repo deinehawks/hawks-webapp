@@ -110,6 +110,13 @@ Last updated: 2026-09-23
   retained Docker Desktop bind bridge only when that exact UUID is mounted as
   XFS under the Ubuntu bridge, the configured bind source is unchanged, and
   container `/data` reports XFS. Any missing or conflicting proof fails closed.
+- Publish MinIO API and console ports only on `127.0.0.1` for the workshop
+  host. Deny anonymous bucket listing for `tiles` and `pointclouds`, but retain
+  anonymous exact GetObject on the loopback/internal origin because the
+  current NGINX proxy performs authorization with `auth_request` and does not
+  sign S3 upstream requests. NGINX remains the public authorization boundary;
+  moving to fully private buckets requires a separately designed signed S3
+  upstream and must not break existing protected asset URLs.
 - Defer platform-created Auth accounts, automated invitation delivery, platform-admin role changes, true impersonation, hard deletion, broad asset/infrastructure administration, and full-history migration.
 
 ## Superseded Decisions
