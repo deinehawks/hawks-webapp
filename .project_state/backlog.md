@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated: 2026-09-17
+Last updated: 2026-09-23
 
 ## Completed
 
@@ -78,13 +78,19 @@ Last updated: 2026-09-17
 
 ## P1
 
-- Organization Waves 1 and 2 are complete. Host capacity now passes with
-  230.94 GiB free on `C:` after Docker VHD reclamation, and Docker, MinIO,
-  Supabase, NGINX, and WebODM recovered with existing data intact. Wave 3
-  remains paused pending approval for a dedicated 4 TB MinIO drive. Preserve
-  the frozen checksum and zero-byte state. Storage relocation, regeneration,
-  upload, and manifest work require separate plans and explicit approval;
-  production remains out of scope.
+- Recheck the refined single-survey timeline date and responsive divider on
+  desktop, tablet, mobile, and User App Preview. The prior complete flattened
+  workspace smoke and this final refinement pass; multi-survey behavior is
+  unchanged.
+- MinIO's approved 1 TB decimal XFS VHDX relocation to `D:` and stronger manual
+  startup ordering are operational; repeat cold-start storage acceptance
+  plus final signed-in application smoke pass, and the original ext4 backend
+  remains rollback. Correct the NGINX localhost health probe and contain direct
+  MinIO ports/anonymous listing. Then
+  regenerate/review/freeze the stale Wave 3 configuration for the same three
+  surveys. Upload still requires separate explicit approval and will be
+  run/monitored by the user; production and rollback deletion remain out of
+  scope.
 
 ## P2
 

@@ -10,9 +10,12 @@ const dotenv = require("dotenv");
 
 const {
   evaluateCapacity,
+  evaluateHostCapacity,
   isTemporaryDirectoryName,
   parseDfOutput,
+  readHostVolumeCapacity,
   validateCapacityGuard,
+  validateHostCapacityGuard,
   validateJobManifestScope,
 } = require("./lib/workshop-assets");
 
@@ -173,13 +176,21 @@ async function mapConcurrent(items, concurrency, worker) {
   return results;
 }
 
-async function checkCapacity(remainingBytes, capacityGuard) {
+async function checkCapacity(remainingBytes, capacityGuard, hostCapacityGuard) {
   const container = process.env.MINIO_DOCKER_CONTAINER ?? "hawks-minio";
   const dataPath = process.env.MINIO_DATA_PATH ?? "/data";
-  const { stdout } = await execFileAsync("docker", ["exec", container, "df", "-B1", dataPath], { windowsHide: true });
-  const result = evaluateCapacity({ ...parseDfOutput(stdout), remainingBytes, ...capacityGuard });
-  if (!result.allowed) throw new Error(`Capacity guard blocked the next batch: projected free bytes ${result.projectedAvailableBytes}, required reserve ${result.reserveBytes}.`);
-  return result;
+  const [{ stdout: capacityOutput }, { stdout: filesystemOutput }, hostCapacity] = await Promise.all([
+    execFileAsync("docker", ["exec", container, "df", "-B1", dataPath], { windowsHide: true }),
+    execFileAsync("docker", ["exec", container, "stat", "-f", "-c", "%T", dataPath], { windowsHide: true }),
+    readHostVolumeCapacity(hostCapacityGuard.volumeRoot),
+  ]);
+  const filesystemType = filesystemOutput.trim();
+  if (filesystemType !== "xfs") throw new Error(`MinIO data path must be XFS; found ${filesystemType || "an unknown filesystem"}.`);
+  const minio = evaluateCapacity({ ...parseDfOutput(capacityOutput), remainingBytes, ...capacityGuard });
+  if (!minio.allowed) throw new Error(`MinIO capacity guard blocked the next batch: projected free bytes ${minio.projectedAvailableBytes}, required reserve ${minio.reserveBytes}.`);
+  const host = evaluateHostCapacity({ ...hostCapacity, remainingBytes, ...hostCapacityGuard });
+  if (!host.allowed) throw new Error(`Host capacity guard blocked the next batch: projected free bytes ${host.projectedAvailableBytes}, required reserve ${host.reserveBytes}.`);
+  return { allowed: true, filesystemType, volumeRoot: hostCapacityGuard.volumeRoot, minio, host };
 }
 
 function validateConfig(config) {
@@ -189,6 +200,8 @@ function validateConfig(config) {
   if (!Array.isArray(config.jobs) || !config.jobs.length || config.jobs.length > 3) throw new Error("A reviewed wave must contain one through three survey jobs.");
   const capacityError = validateCapacityGuard(config.capacityGuard);
   if (capacityError) throw new Error(capacityError);
+  const hostCapacityError = validateHostCapacityGuard(config.hostCapacityGuard);
+  if (hostCapacityError) throw new Error(hostCapacityError);
   for (const job of config.jobs) {
     const scopeError = validateJobManifestScope(job);
     if (scopeError) throw new Error(scopeError);
@@ -275,7 +288,7 @@ async function main() {
           if (error.code !== "ENOENT") throw error;
         }
       }
-      const capacity = await checkCapacity(remainingBytes, config.capacityGuard);
+      const capacity = await checkCapacity(remainingBytes, config.capacityGuard, config.hostCapacityGuard);
       report.capacityChecks.push({ groupId: group.id, ...capacity });
       const concurrency = group.kind === "tiles" ? Number(config.defaults?.uploadConcurrency ?? 3) : Number(config.defaults?.pointCloudQueueSize ?? 2);
       const results = await mapConcurrent(group.objects, concurrency, async (object) => {

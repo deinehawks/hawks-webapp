@@ -1,0 +1,49 @@
+{
+  "vhdPath": "D:/MinIO/minio-data.vhdx",
+  "distro": "Ubuntu-22.04",
+  "filesystemUuid": "REPLACE-WITH-XFS-UUID",
+  "mountPoint": "/home/deine/asimov-hawks-storage/minio-data",
+  "container": "hawks-minio",
+  "expectedImageId": "sha256:REPLACE-WITH-PINNED-MINIO-IMAGE-ID",
+  "hostVolumeRoot": "D:/",
+  "expectedVirtualSizeBytes": 1000000000000,
+  "pipelineReserveBytes": 500000000000,
+  "reserveRatio": 0.05,
+  "minimumReserveBytes": 21474836480,
+  "dockerDesktopExecutable": "C:/Program Files/Docker/Docker/Docker Desktop.exe",
+  "dockerSettingsPath": "C:/Users/REPLACE-WITH-WINDOWS-USER/AppData/Roaming/Docker/settings-store.json",
+  "dockerAutoStartRunValue": "Docker Desktop",
+  "dockerStartupTimeoutSeconds": 180,
+  "wslKeepAliveLockPath": "/run/asimov-minio-storage-keepalive.lock",
+  "composeFile": "/home/deine/asimov-hawks-infra/docker-compose.yml",
+  "composeService": "minio",
+  "expectedNetwork": "asimov-hawks-infra_hawks-network",
+  "expectedHostPorts": {
+    "9000/tcp": "9000",
+    "9001/tcp": "9001"
+  },
+  "requiredBuckets": [
+    "exports",
+    "hawks-assets",
+    "pointclouds",
+    "temp",
+    "tiles"
+  ],
+  "healthUrl": "http://localhost:9000/minio/health/live",
+  "representativeAssets": [
+    {
+      "label": "representative tile",
+      "method": "GET",
+      "url": "http://localhost:9000/tiles/REPLACE-WITH-TILE-OBJECT-PATH",
+      "contentType": "image/png",
+      "expectedBytes": 0
+    },
+    {
+      "label": "representative point cloud",
+      "method": "HEAD",
+      "url": "http://localhost:9000/pointclouds/REPLACE-WITH-POINT-CLOUD-OBJECT-PATH",
+      "contentType": "application/octet-stream",
+      "expectedBytes": 0
+    }
+  ]
+}

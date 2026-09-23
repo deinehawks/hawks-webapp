@@ -1,6 +1,6 @@
 ﻿# Decisions
 
-Last updated: 2026-09-17
+Last updated: 2026-09-23
 
 ## Current Decisions
 
@@ -95,6 +95,21 @@ Last updated: 2026-09-17
   Select. Do not reuse the primary-farm route-switching timeline, broaden
   authorization, add a processing-date field, or include comparison/playback
   in the first slice.
+- Store MinIO on a dedicated 1 TB decimal dynamic XFS VHDX backed by `D:` while
+  retaining 500 GB for the geospatial pipeline plus the larger of 5% of the
+  host volume or 20 GiB. Enforce that host reserve independently from MinIO's
+  own larger-of-5%-or-20-GiB reserve, including remaining transfer plus 10%.
+  Keep automatic container restart disabled and start MinIO only through the
+  UUID-, mount-, image-, bind-, health-, and capacity-checking helper. Preserve
+  the original ext4 directory as rollback until a separate retention decision.
+  Keep both the live container and its machine-local Compose service on restart
+  policy `no`; Compose must not silently restore automatic restart on recreate.
+- Keep Docker Desktop automatic sign-in startup disabled. Workshop MinIO starts
+  only through the elevated npm helper. A cold start must attach and validate
+  the exact XFS UUID before MinIO recreation; an idempotent run may accept the
+  retained Docker Desktop bind bridge only when that exact UUID is mounted as
+  XFS under the Ubuntu bridge, the configured bind source is unchanged, and
+  container `/data` reports XFS. Any missing or conflicting proof fails closed.
 - Defer platform-created Auth accounts, automated invitation delivery, platform-admin role changes, true impersonation, hard deletion, broad asset/infrastructure administration, and full-history migration.
 
 ## Superseded Decisions

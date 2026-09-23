@@ -106,8 +106,9 @@ const MAP_CONFIG = {
   minZoom: 13,
   maxZoom: 23,
   tileSize: 256,
-  orthoMinZoom: 15,
+  orthoMinZoom: 11,
   orthoMaxZoom: 24,
+  orthoFallbackZoom: 15,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -308,7 +309,7 @@ const useMapCenter = (survey: any, fallbackCenter: MapCenter) => {
 
     // ortho but no coords -> reasonable zoom
     if (hasOrthoTilesAvailable(survey)) {
-      return { ...fallbackCenter, zoom: MAP_CONFIG.orthoMinZoom };
+      return { ...fallbackCenter, zoom: MAP_CONFIG.orthoFallbackZoom };
     }
 
     return { ...fallbackCenter, zoom: fallbackCenter.zoom ?? 12 };
@@ -1124,7 +1125,7 @@ function MapView({
       sources: {
         osm: {
           type: "raster",
-          tiles: ["https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"],
+          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
           tileSize: MAP_CONFIG.tileSize,
           attribution: "&copy; OpenStreetMap Contributors",
         },
@@ -1138,7 +1139,7 @@ function MapView({
     if (hasValidCoordinates && mapBounds) {
       return {
         bounds: mapBounds,
-        fitBoundsOptions: { padding: 20 },
+        fitBoundsOptions: { padding: 48, maxZoom: 18 },
       };
     }
 
@@ -1545,99 +1546,97 @@ export default function SurveyMap({
   const is3D = activeTab === "3d";
 
   return (
-    <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
+    <div className="flex h-full flex-1 flex-col px-4 pb-4 lg:px-6 lg:pb-6">
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="flex flex-1 h-full w-full flex-col gap-6"
+        className="flex h-full w-full flex-1 flex-col"
       >
-        {/* HEADER */}
-        <div className="flex items-center justify-between px-4 lg:px-6">
-          <Label htmlFor="view-selector" className="sr-only">
-            View
-          </Label>
-
-          <Select value={activeTab} onValueChange={setActiveTab}>
-            <SelectTrigger
-              className="@4xl/main:hidden flex w-fit"
-              id="view-selector"
-            >
-              <SelectValue placeholder="Select view" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ortho">Orthomosaic</SelectItem>
-              {has3DModel && <SelectItem value="3d">3D Model</SelectItem>}
-            </SelectContent>
-          </Select>
-
-          <TabsList className="@4xl/main:flex hidden">
-            <TabsTrigger value="ortho">Orthomosaic</TabsTrigger>
-            {has3DModel && <TabsTrigger value="3d">3D Model</TabsTrigger>}
-          </TabsList>
-
-          {/* RIGHT-SIDE SELECTORS + SIDEBAR TOGGLE */}
-          <div className="flex items-center gap-3">
-            {isOrtho && <SurveyModeToggle />}
-            {isOrtho && (
-              <div>
-                <FoiSelector detectedObjects={safeDetectedObjects} />
-              </div>
-            )}
-            {is3D && survey.code && (
-              <ThreeDimensionalModelSelector
-                
-                hasPointCloud={hasPointCloud}
-                hasPhotogrammetryModel={hasPhotogrammetryModel}
-                hasLidarModel={hasLidarModel}
-              />
-            )}
-
-            {/* SIDEBAR TOGGLE */}
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="hidden lg:flex items-center gap-2 h-9 px-3 rounded-md border bg-background shadow-sm hover:bg-accent hover:text-accent-foreground transition-all"
-              aria-label={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
-            >
-              <Info className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                {isSidebarOpen ? "Hide" : "Info"}
-              </span>
-              <svg
-                className={`h-4 w-4 transition-transform duration-200 ${
-                  isSidebarOpen ? "rotate-0" : "rotate-180"
-                }`}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-
         {/* MAIN CONTENT */}
-        <div className="flex flex-1 h-full px-4 lg:px-6 gap-4">
-          <div className="flex flex-1 h-full min-w-0">
-            <Card className="container/card flex flex-1 flex-col h-full relative">
-              <CardHeader>
-                <SurveyInfo
-                  survey={survey}
-                  detectedObjects={safeDetectedObjects}
-                  activeTab={activeTab}
-                />
-              </CardHeader>
+        <div className="flex h-full flex-1 gap-4">
+          <div className="flex h-full min-w-0 flex-1 flex-col">
+            <div className="py-4">
+              <SurveyInfo
+                survey={survey}
+                detectedObjects={safeDetectedObjects}
+                activeTab={activeTab}
+              />
+            </div>
 
-              <CardContent className="flex-1 relative">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-background">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/20 p-2">
+                <Label htmlFor="view-selector" className="sr-only">
+                  View
+                </Label>
+
+                <Select value={activeTab} onValueChange={setActiveTab}>
+                  <SelectTrigger
+                    className="@4xl/main:hidden flex w-fit bg-background"
+                    id="view-selector"
+                  >
+                    <SelectValue placeholder="Select view" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ortho">Orthomosaic</SelectItem>
+                    {has3DModel && (
+                      <SelectItem value="3d">3D Model</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+
+                <TabsList className="@4xl/main:flex hidden">
+                  <TabsTrigger value="ortho">Orthomosaic</TabsTrigger>
+                  {has3DModel && (
+                    <TabsTrigger value="3d">3D Model</TabsTrigger>
+                  )}
+                </TabsList>
+
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {isOrtho && <SurveyModeToggle />}
+                  {isOrtho && (
+                    <FoiSelector detectedObjects={safeDetectedObjects} />
+                  )}
+                  {is3D && survey.code && (
+                    <ThreeDimensionalModelSelector
+                      hasPointCloud={hasPointCloud}
+                      hasPhotogrammetryModel={hasPhotogrammetryModel}
+                      hasLidarModel={hasLidarModel}
+                    />
+                  )}
+
+                  <button
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    className="hidden h-9 items-center gap-2 rounded-md border bg-background px-3 transition-colors hover:bg-accent hover:text-accent-foreground lg:flex"
+                    aria-label={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
+                  >
+                    <Info className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      {isSidebarOpen ? "Hide" : "Info"}
+                    </span>
+                    <svg
+                      className={`h-4 w-4 transition-transform duration-200 ${
+                        isSidebarOpen ? "rotate-0" : "rotate-180"
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative flex-1">
                 {!shouldShowMap ? (
                   <NoMapDataFallback />
                 ) : (
-                  <div className="flex h-96 lg:h-full">
+                  <div className="flex h-96 lg:h-full lg:min-h-[28rem]">
                     {is3D ? (
                       <div className="flex h-full w-full min-w-0 bg-primary">
                         <ThreeDimensionalModelCaller survey={survey} />
@@ -1657,8 +1656,8 @@ export default function SurveyMap({
                     )}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
           {/* SIDEBAR */}
@@ -1688,4 +1687,3 @@ export default function SurveyMap({
     </div>
   );
 }
-

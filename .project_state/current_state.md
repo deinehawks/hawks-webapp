@@ -1,9 +1,8 @@
 # Current State
 
-Last updated: 2026-09-17
+Last updated: 2026-09-23
 
-Current branch: `development`. The Orthomap date-filter feature is merged
-locally at `5f941ce2`; `origin/development` remains at `db137c74`.
+Current branch: `fix/minio-host-capacity`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -406,3 +405,86 @@ checks pass. Authenticated multi-date interaction smoke remains pending because
 the current local dataset does not contain enough surveys for different flight
 dates to exercise the filter meaningfully. Evidence and the deferred checklist
 are in `docs/orthomap-date-filter-local-validation-2026-09-17.md`.
+
+MinIO storage was relocated on 2026-09-22 to the approved 1 TB decimal dynamic
+XFS VHDX on `D:`. The stopped source/destination inventories match, the
+1,235,773-file content-tree SHA-256 is identical, the original ext4 backend is
+retained at the dated rollback path, and the container still uses its pinned
+image with restart policy `no`. The guarded helper passes real startup and
+stop/start tests, verifies both capacity reserves and in-container XFS, and
+fails closed for an absent configured VHDX. Wave 1-2 verification hashes,
+counts, byte totals, and 14 authenticated object samples remain valid.
+
+Cutover is operational but final acceptance is pending signed-in application
+smoke, correction of the stale NGINX container healthcheck, confirmation that
+direct MinIO ports and anonymous bucket listing are not externally exposed,
+and a coordinated Windows/WSL/Docker restart test. With Next running,
+anonymous protected tile, point-cloud, and malformed routes correctly return
+401. Wave 3 remains paused; its
+old config is stale and must be regenerated only after these checks and then
+separately approved. Evidence is in
+`docs/minio-storage-relocation-signoff-2026-09-22.md`.
+
+The signed-in relocation smoke exposed two survey-viewer presentation issues,
+now corrected locally on `fix/minio-host-capacity`: survey orthomosaics use
+their available z11 tiles instead of disappearing below z15, and both survey
+and client Orthomap views use the reachable standard OpenStreetMap raster
+endpoint. The user confirmed the imagery, basemap, and zoom-out behavior.
+
+The survey detail UI is now flattened into a lightweight timeline rail, plain
+survey heading, and one bordered viewer surface with its controls attached.
+Timeline data, normal and preview routing, authorization, map/3D behavior, and
+asset contracts are unchanged. Focused ESLint has zero errors (37 existing map
+warnings), TypeScript and whitespace checks pass, and local login/anonymous
+redirect smoke passes. The user passed the complete authenticated responsive
+smoke checklist for the flattened workspace on normal and User App Preview
+routes. A final single-survey polish now uses a compact `text-xs` date and a
+responsive separator between the date and survey details; only this focused
+visual recheck remained and now passes on desktop, mobile/tablet, normal and
+User App Preview routes, with multi-survey navigation unchanged and no new
+console/network errors. Post-polish TypeScript, PowerShell parsing, whitespace,
+and workshop regression 21/21 pass. Targeted ESLint has zero errors; its 54
+warnings are the existing 17 Orthomap and 37 survey-map warnings.
+
+On 2026-09-23 an uncontrolled Windows/WSL/Docker restart resumed MinIO against
+the empty underlying Ubuntu ext4 directory while the XFS VHDX was detached.
+MinIO was stopped, the intact XFS UUID was remounted, its stale Docker Desktop
+bridge was cleared, and only the MinIO Compose service was recreated from its
+authoritative configuration with restart policy `no`. Recovery verification
+passes: healthy container, in-container XFS, five buckets, HTTP 200 health,
+and an HTTP 200 representative `AH-0260001` tile. The helper now starts the
+required Hyper-V service, handles a detached UUID correctly, and immediately
+stops any already-running non-XFS MinIO. The planned coordinated restart test
+and final storage/security acceptance remain pending; Wave 3 stays paused. The
+machine-local Compose `minio` service now also declares restart policy `no`,
+matching the live container and manual-start contract. The coordinated test is
+deferred until the active `AH-026095` pipeline run and WebODM processing finish.
+
+The coordinated Windows/WSL/Docker restart test then ran after `AH-026095` was
+paused and WebODM was stopped. MinIO correctly stayed stopped, but guarded
+startup detected the recurring stale Docker Desktop ext4 bind bridge and
+stopped MinIO; restart acceptance therefore failed. Recovery mounted the
+intact XFS UUID, removed only the stopped MinIO definition and its verified
+stale bridge, recreated only the service, and passed guarded startup. MinIO is
+healthy on XFS with restart `no`; all five buckets, representative tile and
+point cloud, capacity checks, and anonymous protected-route denials pass. The
+helper's Windows PowerShell default-config path was corrected and the exact
+elevated npm startup command passes idempotently. Signed-in post-recovery
+Survey/Orthomap browser confirmation remains pending because browser control
+did not reconnect. Wave 3 remains blocked pending stronger mount ordering,
+NGINX health, and direct-port containment.
+
+Stronger mount ordering is now implemented and repeat restart storage
+acceptance passes. Docker Desktop sign-in startup and its Windows Run entry are
+disabled; MinIO remains restart `no`. The elevated
+`npm run minio-storage:start` command attaches and validates the exact XFS
+VHDX before Docker/MinIO creation, verifies both Docker clients, and recognizes
+only the exact retained Docker XFS bridge on idempotent runs. The accepted cold
+start produced a healthy pinned-image MinIO container with `/data` on XFS, all
+five buckets, HTTP 200 health, the 766-byte representative tile, and the
+58,328,382-byte point cloud. Workshop regression is 21/21; PowerShell/JSON and
+whitespace checks pass. The user passed final signed-in Survey, 3D, Orthomap,
+authorized/cross-scope, five-bucket, and clean console/network smoke. Storage
+restart acceptance is complete. The NGINX health probe and direct-port
+containment remain open. WebODM, `AH-026095`, and Wave 3 remain stopped; the
+user will run and monitor any later approved Wave 3 upload.

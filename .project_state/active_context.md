@@ -1,8 +1,8 @@
 # Active Context
 
-Last updated: 2026-09-17
+Last updated: 2026-09-23
 
-Current epic: Validate and integrate the Orthomap Survey date filter.
+Current epic: Close MinIO workshop storage and exposure gates before Wave 3.
 
 Completed:
 
@@ -216,3 +216,84 @@ Constraints:
 - The first timeline release switches between dated survey orthomosaics and
   point clouds. It does not group survey IDs, add a processing-date column,
   version detections, or provide side-by-side comparison.
+
+## 2026-09-22 MinIO relocation override
+
+The earlier next-sequence items that kept relocation pending a drive decision
+are superseded. The approved 1 TB decimal dynamic XFS VHDX cutover on `D:` is
+operational, the ext4 source is preserved as rollback, and MinIO starts only
+through the guarded helper with automatic restart disabled. Content-tree,
+Wave 1-2 evidence, authenticated object samples, service restart, capacity, and
+absent-VHD fail-closed checks pass.
+
+Next sequence:
+
+1. Recheck the compact single-survey date and responsive divider on desktop,
+   tablet, mobile, and User App Preview. The preceding full authenticated UI
+   smoke and this final refinement now pass.
+2. Correct the NGINX container's failing localhost health probe and explicitly
+   contain the direct MinIO 9000/9001 all-interface plus anonymous-listing
+   exposure before external acceptance. Anonymous protected routes correctly
+   return 401 when the Next auth upstream is running.
+3. After `AH-026095` and WebODM finish, schedule the coordinated
+   Windows/WSL/Docker restart and recovery test and obtain explicit approval
+   immediately before restarting Windows.
+4. Only after acceptance, regenerate/review/freeze Wave 3 for `AH-026023`,
+   `AH-026024`, and `AH-026028`; obtain separate upload approval before running
+   one uploader. Do not activate a partial manifest or delete rollback data.
+
+The relocation application smoke also produced a focused survey-viewer UI
+follow-up on the current branch. Tile zoom coverage and the OSM endpoint are
+fixed and user-confirmed. The card-heavy detail layout is now a flatter survey
+workspace: compact timeline rail, plain heading, and a single bordered viewer
+with an attached toolbar. Preserve timeline grouping, normal/preview links,
+RLS, asset authorization, and map/3D behavior. The complete authenticated
+desktop/tablet/mobile smoke passed. A compact `text-xs` date plus vertical
+desktop/horizontal mobile separator is implemented only for the single-survey
+row and needs one focused visual recheck; multi-survey behavior is unchanged.
+
+On 2026-09-23 MinIO was recovered from an uncontrolled restart that exposed
+the empty ext4 directory beneath the detached XFS mount. It is healthy on XFS
+again with all five buckets and the representative tile verified. Preserve the
+new early non-XFS stop, detached-device attach, and Hyper-V service handling in
+the startup helper. The machine-local Compose service now also pins restart
+policy `no`, consistent with the live container and guarded manual startup.
+Treat restart ordering as unresolved until a deliberately coordinated
+Windows/WSL/Docker test passes after active `AH-026095` and WebODM work is
+finished; do not begin Wave 3.
+
+The coordinated restart was executed after the pipeline was paused and WebODM
+was stopped. MinIO did not auto-start, but the stale Docker Desktop ext4 bridge
+recurred during guarded startup, so acceptance failed as designed. The helper
+stopped MinIO and recovery succeeded by mounting the intact XFS UUID, clearing
+only the verified stale bridge, recreating only MinIO, and rerunning the guard.
+Five buckets, health, capacity, representative tile/point-cloud access, and
+anonymous denial paths pass. Default config resolution in the PowerShell
+helper is fixed and the exact npm startup command is idempotent. Next, manually
+confirm signed-in Survey/Orthomap rendering and console/network health, then
+design stronger mount-order orchestration. Keep Wave 3 blocked; the user will
+run and monitor any later approved upload themselves.
+
+## 2026-09-23 stronger mount-ordering result
+
+The preceding failed restart is superseded for storage ordering by the repeat
+accepted cold start. Docker Desktop auto-start and its Windows Run entry are
+disabled. The elevated npm helper owns XFS attach/mount, Docker startup, MinIO
+recreation, exact retained-XFS bridge validation, both reserves, buckets,
+health, and representative assets. MinIO is healthy on the pinned image with
+restart `no`, `/data` on XFS, five buckets, and matching tile/point-cloud bytes.
+WebODM, `AH-026095`, and Wave 3 remain stopped.
+
+Next sequence:
+
+1. Correct the NGINX internal health probe and contain direct MinIO 9000/9001
+   access plus anonymous bucket listing before external acceptance.
+2. Only after those gates pass, regenerate/review/freeze the same Wave 3 scope
+   and obtain separate approval. The user, not Codex, will run and monitor the
+   upload. Do not activate a partial manifest or delete rollback data.
+
+The user passed the final signed-in post-restart Survey, 3D, Orthomap,
+authorized/cross-scope, five-bucket, and clean console/network smoke. The NGINX
+failure is now isolated to `localhost` resolving to IPv6 `::1`; IPv4
+`127.0.0.1/health` succeeds. MinIO 9000/9001 still bind all host interfaces and
+anonymous `tiles` listing still returns 200.
