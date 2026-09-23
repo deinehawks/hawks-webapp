@@ -8,15 +8,19 @@ const test = require("node:test");
 const {
   CAPACITY_RESERVE_RATIO,
   MIN_CAPACITY_RESERVE_BYTES,
+  PIPELINE_HOST_RESERVE_BYTES,
   TRANSFER_OVERHEAD_RATIO,
   createWaves,
   discoverSurveySource,
   evaluateCapacity,
+  evaluateHostCapacity,
   isTemporaryDirectoryName,
   parseDfOutput,
+  readHostVolumeCapacity,
   resolveDatasetScope,
   validateAllowlist,
   validateCapacityGuard,
+  validateHostCapacityGuard,
   validateJobManifestScope,
 } = require("../lib/workshop-assets");
 const {
@@ -151,12 +155,21 @@ test("reviewed upload configs accept only consistent explicit scopes", () => {
       minimumReserveBytes: MIN_CAPACITY_RESERVE_BYTES,
       transferOverheadRatio: TRANSFER_OVERHEAD_RATIO,
     },
+    hostCapacityGuard: {
+      enabled: true,
+      volumeRoot: 'D:\\',
+      pipelineReserveBytes: PIPELINE_HOST_RESERVE_BYTES,
+      reserveRatio: CAPACITY_RESERVE_RATIO,
+      minimumReserveBytes: MIN_CAPACITY_RESERVE_BYTES,
+      transferOverheadRatio: TRANSFER_OVERHEAD_RATIO,
+    },
   };
   const organizationJob = { surveyId: "AH-1", manifest: { clientId: "client", organizationId: "org", protectionLevel: "organization" } };
   const privateJob = { surveyId: "AH-2", manifest: { clientId: "client", organizationId: null, protectionLevel: "private" } };
   assert.equal(validateJobManifestScope(organizationJob), null);
   assert.equal(validateJobManifestScope(privateJob), null);
   assert.doesNotThrow(() => validateConfig({ ...base, jobs: [organizationJob, privateJob] }));
+  assert.throws(() => validateConfig({ ...base, hostCapacityGuard: undefined, jobs: [organizationJob] }), /Host capacity guard must be enabled/);
   assert.throws(() => validateConfig({ ...base, jobs: [{ ...privateJob, manifest: { ...privateJob.manifest, organizationId: "org" } }] }), /null organizationId/);
 });
 
@@ -282,6 +295,46 @@ test("capacity preserves reserve and transfer overhead", () => {
     minimumReserveBytes: MIN_CAPACITY_RESERVE_BYTES,
     transferOverheadRatio: TRANSFER_OVERHEAD_RATIO,
   }), null);
+});
+
+test('host capacity preserves pipeline workspace plus filesystem reserve', () => {
+  const totalBytes = 1_853_301_452_800;
+  const filesystemReserveBytes = Math.ceil(totalBytes * CAPACITY_RESERVE_RATIO);
+  const remainingBytes = 100_000_000_000;
+  const plannedBytesWithOverhead = Math.ceil(remainingBytes * (1 + TRANSFER_OVERHEAD_RATIO));
+  const requiredAvailable = PIPELINE_HOST_RESERVE_BYTES + filesystemReserveBytes + plannedBytesWithOverhead;
+  const allowed = evaluateHostCapacity({ totalBytes, availableBytes: requiredAvailable, remainingBytes });
+  const blocked = evaluateHostCapacity({ totalBytes, availableBytes: requiredAvailable - 1, remainingBytes });
+  assert.equal(allowed.allowed, true);
+  assert.equal(allowed.pipelineReserveBytes, 500_000_000_000);
+  assert.equal(allowed.filesystemReserveBytes, filesystemReserveBytes);
+  assert.equal(blocked.allowed, false);
+});
+
+test('host capacity guard rejects missing, disabled, and stale policies', () => {
+  const valid = {
+    enabled: true,
+    volumeRoot: 'D:\\',
+    pipelineReserveBytes: PIPELINE_HOST_RESERVE_BYTES,
+    reserveRatio: CAPACITY_RESERVE_RATIO,
+    minimumReserveBytes: MIN_CAPACITY_RESERVE_BYTES,
+    transferOverheadRatio: TRANSFER_OVERHEAD_RATIO,
+  };
+  assert.equal(validateHostCapacityGuard(valid), null);
+  assert.match(validateHostCapacityGuard(null), /must be enabled/);
+  assert.match(validateHostCapacityGuard({ ...valid, volumeRoot: '' }), /volume root/);
+  assert.match(validateHostCapacityGuard({ ...valid, pipelineReserveBytes: 1 }), /pipeline reserve is stale/);
+});
+
+test('host capacity reader converts bigint filesystem statistics', async () => {
+  const result = await readHostVolumeCapacity('D:\\', async () => ({ blocks: 1000n, bavail: 600n, bsize: 4096n }));
+  assert.deepEqual(result, { totalBytes: 4_096_000, availableBytes: 2_457_600 });
+  await assert.rejects(
+    readHostVolumeCapacity('D:\\', async () => {
+      throw new Error('host metrics unavailable');
+    }),
+    /host metrics unavailable/,
+  );
 });
 
 test("df output is parsed as bytes", () => {

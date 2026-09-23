@@ -7,6 +7,7 @@ const MAX_SURVEYS_PER_WAVE = 3;
 const MIN_CAPACITY_RESERVE_BYTES = 20 * 1024 ** 3;
 const CAPACITY_RESERVE_RATIO = 0.05;
 const TRANSFER_OVERHEAD_RATIO = 0.1;
+const PIPELINE_HOST_RESERVE_BYTES = 500_000_000_000;
 const DATASET_SCOPES = Object.freeze(["organization", "private"]);
 
 function normalizeSurveyId(value) {
@@ -204,6 +205,32 @@ function evaluateCapacity({
   return { allowed: projectedAvailableBytes >= reserveBytes, totalBytes, availableBytes, remainingBytes, plannedBytesWithOverhead, reserveBytes, projectedAvailableBytes };
 }
 
+function evaluateHostCapacity({
+  totalBytes,
+  availableBytes,
+  remainingBytes,
+  pipelineReserveBytes = PIPELINE_HOST_RESERVE_BYTES,
+  reserveRatio = CAPACITY_RESERVE_RATIO,
+  minimumReserveBytes = MIN_CAPACITY_RESERVE_BYTES,
+  transferOverheadRatio = TRANSFER_OVERHEAD_RATIO,
+}) {
+  const filesystemReserveBytes = Math.max(Math.ceil(totalBytes * reserveRatio), minimumReserveBytes);
+  const reserveBytes = pipelineReserveBytes + filesystemReserveBytes;
+  const plannedBytesWithOverhead = Math.ceil(remainingBytes * (1 + transferOverheadRatio));
+  const projectedAvailableBytes = availableBytes - plannedBytesWithOverhead;
+  return {
+    allowed: projectedAvailableBytes >= reserveBytes,
+    totalBytes,
+    availableBytes,
+    remainingBytes,
+    plannedBytesWithOverhead,
+    pipelineReserveBytes,
+    filesystemReserveBytes,
+    reserveBytes,
+    projectedAvailableBytes,
+  };
+}
+
 function validateCapacityGuard(guard) {
   if (!guard) return 'Capacity guard must be enabled.';
   if (!guard.enabled) return 'Capacity guard must be enabled.';
@@ -211,6 +238,26 @@ function validateCapacityGuard(guard) {
   if (guard.minimumReserveBytes !== MIN_CAPACITY_RESERVE_BYTES) return 'Capacity guard minimum reserve is stale.';
   if (guard.transferOverheadRatio !== TRANSFER_OVERHEAD_RATIO) return 'Capacity guard transfer overhead is stale.';
   return null;
+}
+
+function validateHostCapacityGuard(guard) {
+  if (!guard?.enabled) return 'Host capacity guard must be enabled.';
+  if (!String(guard.volumeRoot ?? '').trim()) return 'Host capacity guard volume root is missing.';
+  if (guard.pipelineReserveBytes !== PIPELINE_HOST_RESERVE_BYTES) return 'Host capacity guard pipeline reserve is stale.';
+  if (guard.reserveRatio !== CAPACITY_RESERVE_RATIO) return 'Host capacity guard reserve ratio is stale.';
+  if (guard.minimumReserveBytes !== MIN_CAPACITY_RESERVE_BYTES) return 'Host capacity guard minimum reserve is stale.';
+  if (guard.transferOverheadRatio !== TRANSFER_OVERHEAD_RATIO) return 'Host capacity guard transfer overhead is stale.';
+  return null;
+}
+
+async function readHostVolumeCapacity(volumeRoot, statfs = fs.statfs) {
+  const stats = await statfs(volumeRoot, { bigint: true });
+  const totalBytes = stats.blocks * stats.bsize;
+  const availableBytes = stats.bavail * stats.bsize;
+  if (totalBytes > BigInt(Number.MAX_SAFE_INTEGER) || availableBytes > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error('Host volume capacity exceeds the safe numeric range.');
+  }
+  return { totalBytes: Number(totalBytes), availableBytes: Number(availableBytes) };
 }
 
 function parseDfOutput(output) {
@@ -223,4 +270,4 @@ function parseDfOutput(output) {
   return { totalBytes, availableBytes };
 }
 
-module.exports = { CAPACITY_RESERVE_RATIO, DATASET_SCOPES, DEFAULT_SOURCE_ROOT, MAX_SURVEYS_PER_WAVE, MIN_CAPACITY_RESERVE_BYTES, TRANSFER_OVERHEAD_RATIO, createWaves, discoverSurveySource, evaluateCapacity, findRgbRoots, isTemporaryDirectoryName, normalizeSurveyId, parseDfOutput, resolveDatasetScope, validateAllowlist, validateCapacityGuard, validateJobManifestScope };
+module.exports = { CAPACITY_RESERVE_RATIO, DATASET_SCOPES, DEFAULT_SOURCE_ROOT, MAX_SURVEYS_PER_WAVE, MIN_CAPACITY_RESERVE_BYTES, PIPELINE_HOST_RESERVE_BYTES, TRANSFER_OVERHEAD_RATIO, createWaves, discoverSurveySource, evaluateCapacity, evaluateHostCapacity, findRgbRoots, isTemporaryDirectoryName, normalizeSurveyId, parseDfOutput, readHostVolumeCapacity, resolveDatasetScope, validateAllowlist, validateCapacityGuard, validateHostCapacityGuard, validateJobManifestScope };

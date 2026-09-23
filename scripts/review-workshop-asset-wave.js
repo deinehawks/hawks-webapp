@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports, no-console */
-const { validateCapacityGuard } = require('./lib/workshop-assets');
+const { validateCapacityGuard, validateHostCapacityGuard } = require('./lib/workshop-assets');
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
@@ -30,6 +30,8 @@ async function main() {
   if (!config.capacityGuard?.enabled) throw new Error("Generated wave must enable the capacity guard.");
   const capacityError = validateCapacityGuard(config.capacityGuard);
   if (capacityError) throw new Error(capacityError);
+  const hostCapacityError = validateHostCapacityGuard(config.hostCapacityGuard);
+  if (hostCapacityError) throw new Error(hostCapacityError);
   for (const job of config.jobs) {
     const scopeError = validateJobManifestScope(job);
     if (scopeError) throw new Error(scopeError);

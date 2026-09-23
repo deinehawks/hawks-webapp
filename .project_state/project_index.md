@@ -1,11 +1,16 @@
 ﻿# Project Index
 
-Last updated: 2026-09-17
+Last updated: 2026-09-22
 
 Use this index after the compressed startup files. Document classifications prevent historical plans from being mistaken for current instructions.
 
 ## Authoritative And Current
 
+- `docs/minio-storage-relocation-signoff-2026-09-22.md`: operational XFS
+  cutover evidence, verification results, rollback boundary, remaining
+  application/external acceptance checks, and Wave 3 gate.
+- `docs/minio-storage-relocation-runbook.md`: guarded MinIO relocation,
+  startup, capacity, rollback, and Wave 3 handoff procedure.
 - docs/dataset-onboarding-local-smoke-2026-09-11.md: local-only signed-in
   Dataset Onboarding success, conflict, authorization, console, and network
   smoke evidence.

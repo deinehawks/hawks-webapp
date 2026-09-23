@@ -11,13 +11,6 @@ import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -154,50 +147,58 @@ export function SurveyTimeline({
   return (
     <section
       aria-labelledby="survey-timeline-title"
-      className="px-4 pt-4 lg:px-6"
+      className="border-b px-4 py-3 lg:px-6"
     >
-      <Card className="h-auto gap-0 overflow-hidden py-0">
-        <CardHeader className="flex flex-row items-start gap-3 px-4 py-4 sm:px-5">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <CalendarDays className="size-4" aria-hidden="true" />
+      <div className="flex items-start gap-3">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+          <CalendarDays className="size-4" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 id="survey-timeline-title" className="text-sm font-semibold">
+              Survey timeline
+            </h2>
+            {timeline.entries.length > 0 ? (
+              <span className="text-xs text-muted-foreground">
+                {timeline.entries.length}{" "}
+                {timeline.entries.length === 1 ? "survey" : "surveys"}
+              </span>
+            ) : null}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <CardTitle id="survey-timeline-title" className="text-base">
-                Survey timeline
-              </CardTitle>
-              {timeline.entries.length > 0 ? (
-                <Badge
-                  className="font-normal text-muted-foreground"
-                  variant="secondary"
-                >
-                  {timeline.entries.length}{" "}
-                  {timeline.entries.length === 1 ? "survey" : "surveys"}
-                </Badge>
-              ) : null}
-            </div>
-            <CardDescription className="mt-1 max-w-2xl leading-relaxed">
-              {statusDescription(timeline)}
-            </CardDescription>
-          </div>
-        </CardHeader>
+          <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+            {statusDescription(timeline)}
+          </p>
 
-        <CardContent className="px-4 pb-4 sm:px-5 sm:pb-5">
           {emptyLabel ? (
-            <div className="flex items-center gap-3 rounded-lg border border-dashed bg-muted/30 px-3.5 py-3">
-              <CalendarDays
-                className="size-4 shrink-0 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <p className="text-sm font-medium">{emptyLabel}</p>
+            <div className="mt-3 flex items-center gap-2 border-l-2 border-muted-foreground/30 pl-3">
+              <p className="text-sm font-medium text-muted-foreground">
+                {emptyLabel}
+              </p>
             </div>
           ) : null}
 
-          {timeline.entries.length > 0 ? (
+          {timeline.entries.length === 1 && currentEntry ? (
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-0">
+              <time
+                className="shrink-0 text-xs font-medium text-muted-foreground sm:w-24"
+                dateTime={currentEntry.flightDate}
+              >
+                {formatFlightDate(currentEntry.flightDate)}
+              </time>
+              <div className="flex min-w-0 flex-1 flex-col gap-2 border-t pt-2 sm:flex-row sm:items-center sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+                <SurveyContext entry={currentEntry} />
+                <div className="sm:ml-auto sm:pl-4">
+                  <TimelineAvailability entry={currentEntry} />
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {timeline.entries.length > 1 ? (
             <>
               <div className="@3xl/main:hidden">
                 <label
-                  className="mb-2 block text-xs font-medium text-muted-foreground"
+                  className="mb-2 mt-3 block text-xs font-medium text-muted-foreground"
                   htmlFor="survey-timeline-select"
                 >
                   Select survey
@@ -223,7 +224,7 @@ export function SurveyTimeline({
                 </Select>
 
                 {currentEntry ? (
-                  <div className="mt-3 rounded-lg border bg-muted/20 p-3.5">
+                  <div className="mt-3 border-l-2 border-primary pl-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <time
@@ -238,7 +239,7 @@ export function SurveyTimeline({
                       </div>
                       <Badge className="shrink-0">Current</Badge>
                     </div>
-                    <div className="mt-3 border-t pt-3">
+                    <div className="mt-2">
                       <TimelineAvailability entry={currentEntry} />
                     </div>
                   </div>
@@ -247,7 +248,7 @@ export function SurveyTimeline({
 
               <nav
                 aria-label="Dated surveys"
-                className="@3xl/main:flex hidden snap-x snap-mandatory gap-2.5 overflow-x-auto pb-2 [scrollbar-width:thin]"
+                className="@3xl/main:flex mt-3 hidden snap-x snap-mandatory gap-1 overflow-x-auto border-b [scrollbar-width:thin]"
               >
                 {timeline.entries.map((entry) => {
                   const isCurrent = entry.id === currentSurveyId;
@@ -258,12 +259,11 @@ export function SurveyTimeline({
                       aria-current={isCurrent ? "page" : undefined}
                       aria-label={`${isCurrent ? "Current survey, " : ""}${entry.id}, flown ${formatFlightDate(entry.flightDate)}`}
                       className={cn(
-                        "group min-w-64 snap-start rounded-lg border bg-background p-3.5",
-                        "transition-[border-color,background-color,box-shadow]",
-                        "hover:border-primary/40 hover:bg-accent/40 hover:shadow-sm",
+                        "group relative min-w-56 snap-start rounded-t-md px-3 py-2.5",
+                        "transition-colors hover:bg-accent/50",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                         isCurrent &&
-                          "border-primary/50 bg-primary/5 shadow-xs ring-1 ring-primary/10",
+                          "bg-accent after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary",
                       )}
                       href={hrefFor(entry.id)}
                     >
@@ -281,7 +281,7 @@ export function SurveyTimeline({
                       <div className="mt-2">
                         <SurveyContext entry={entry} />
                       </div>
-                      <div className="mt-3 border-t pt-3">
+                      <div className="mt-2">
                         <TimelineAvailability entry={entry} />
                       </div>
                     </Link>
@@ -290,8 +290,8 @@ export function SurveyTimeline({
               </nav>
             </>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </section>
   );
 }

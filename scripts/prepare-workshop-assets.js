@@ -9,12 +9,15 @@ const dotenv = require("dotenv");
 const {
   CAPACITY_RESERVE_RATIO,
   MIN_CAPACITY_RESERVE_BYTES,
+  PIPELINE_HOST_RESERVE_BYTES,
   TRANSFER_OVERHEAD_RATIO,
   createWaves,
   discoverSurveySource,
   evaluateCapacity,
+  evaluateHostCapacity,
   isTemporaryDirectoryName,
   parseDfOutput,
+  readHostVolumeCapacity,
   resolveDatasetScope,
   validateAllowlist,
 } = require("./lib/workshop-assets");
@@ -149,11 +152,25 @@ async function inventoryStaging(surveyIds) {
 async function readCapacity(remainingBytes) {
   const container = process.env.MINIO_DOCKER_CONTAINER ?? "hawks-minio";
   const dataPath = process.env.MINIO_DATA_PATH ?? "/data";
+  const volumeRoot = process.env.WORKSHOP_HOST_VOLUME_ROOT;
+  if (!volumeRoot) {
+    return { status: "blocked", allowed: false, reason: "WORKSHOP_HOST_VOLUME_ROOT is required for the physical host capacity check." };
+  }
   try {
-    const { stdout } = await execFileAsync("docker", ["exec", container, "df", "-B1", dataPath], { windowsHide: true });
-    return { status: "checked", ...evaluateCapacity({ ...parseDfOutput(stdout), remainingBytes }) };
+    const [{ stdout: capacityOutput }, { stdout: filesystemOutput }, hostCapacity] = await Promise.all([
+      execFileAsync("docker", ["exec", container, "df", "-B1", dataPath], { windowsHide: true }),
+      execFileAsync("docker", ["exec", container, "stat", "-f", "-c", "%T", dataPath], { windowsHide: true }),
+      readHostVolumeCapacity(volumeRoot),
+    ]);
+    const filesystemType = filesystemOutput.trim();
+    if (filesystemType !== "xfs") {
+      return { status: "blocked", allowed: false, reason: `MinIO data path must be XFS; found ${filesystemType || "an unknown filesystem"}.` };
+    }
+    const minio = evaluateCapacity({ ...parseDfOutput(capacityOutput), remainingBytes });
+    const host = evaluateHostCapacity({ ...hostCapacity, remainingBytes });
+    return { status: "checked", allowed: minio.allowed && host.allowed, filesystemType, volumeRoot, minio, host };
   } catch (error) {
-    return { status: "blocked", allowed: false, reason: `Could not read MinIO capacity: ${error.message}` };
+    return { status: "blocked", allowed: false, reason: `Could not verify MinIO and host capacity: ${error.message}` };
   }
 }
 
@@ -273,6 +290,14 @@ async function main() {
         waveId,
         capacityGuard: {
           enabled: true,
+          reserveRatio: CAPACITY_RESERVE_RATIO,
+          minimumReserveBytes: MIN_CAPACITY_RESERVE_BYTES,
+          transferOverheadRatio: TRANSFER_OVERHEAD_RATIO,
+        },
+        hostCapacityGuard: {
+          enabled: true,
+          volumeRoot: report.capacity.volumeRoot,
+          pipelineReserveBytes: PIPELINE_HOST_RESERVE_BYTES,
           reserveRatio: CAPACITY_RESERVE_RATIO,
           minimumReserveBytes: MIN_CAPACITY_RESERVE_BYTES,
           transferOverheadRatio: TRANSFER_OVERHEAD_RATIO,
