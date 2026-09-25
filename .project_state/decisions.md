@@ -117,6 +117,11 @@ Last updated: 2026-09-23
   sign S3 upstream requests. NGINX remains the public authorization boundary;
   moving to fully private buckets requires a separately designed signed S3
   upstream and must not break existing protected asset URLs.
+- Treat mapped workshop-source disappearance during scanning as transient only
+  for an explicit bounded set of filesystem/network error codes. Retry
+  directory reads and file-size reads with visible backoff for approximately
+  60 seconds; after that, fail closed. Do not silently skip a directory that
+  disappears after source discovery, and do not retry non-transient errors.
 - Defer platform-created Auth accounts, automated invitation delivery, platform-admin role changes, true impersonation, hard deletion, broad asset/infrastructure administration, and full-history migration.
 
 ## Superseded Decisions

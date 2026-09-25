@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated: 2026-09-23
+Last updated: 2026-09-25
 
 ## Completed
 
@@ -82,11 +82,14 @@ Last updated: 2026-09-23
 
 ## P1
 
-- Regenerate, review, freeze, and checksum the stale Wave 3 configuration for
-  `AH-026023`, `AH-026024`, and `AH-026028` under the current capacity policy.
-  Upload still requires separate explicit approval and will be run/monitored
-  by the user; production, partial-manifest activation, and rollback deletion
-  remain out of scope.
+- Review and finalize the uncommitted `fix/workshop-share-retries` change. The
+  live organization/private preparation and all 11 uploads validated the
+  workflow; the focused workshop suite passes 24/24.
+- Review the generated combined 30-survey manifest SQL and JSON hash inventory.
+  Before any non-production manifest write, capture staging inventory and a
+  checksummed backup, rehearse draft/rollback in an isolated clone, and obtain
+  explicit approval. Approval, activation, supersession, production mutation,
+  and rollback deletion remain out of scope.
 
 ## P2
 

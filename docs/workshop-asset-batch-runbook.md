@@ -106,6 +106,15 @@ form the first wave in the listed order. The pilot cannot exceed
    allowlist. Prepare the private split separately with:
    `npm run workshop-assets:prepare -- --allowlist .tmp/workshop-assets/allowlist-private.json --output-root .tmp/workshop-assets/private`.
    The command reports per-survey progress and uses bounded file-metadata concurrency (default 16, configurable with `WORKSHOP_ASSET_STAT_CONCURRENCY` from 1 through 64).
+   Mapped/network source directories can temporarily disappear during a large
+   traversal. Recognized transient directory-read and file-stat errors retry
+   with visible bounded backoff for approximately 60 seconds. Persistent
+   transient errors and non-transient errors fail closed; preparation must not
+   silently omit a directory that disappears after discovery. Run preparation
+   from the same normal Windows session that can access the mapped source
+   drive. For the relocated workshop host, set
+   `WORKSHOP_HOST_VOLUME_ROOT=D:\` so the independent physical-volume reserve
+   is measured.
 4. Review `inventory.json`, `capacity-assessment.json`, `blocked-items.json`, and every generated wave job under `.tmp/workshop-assets`.
 5. Freeze one reviewed wave with `npm run workshop-assets:review -- --config .tmp/workshop-assets/generated/workshop-organization-wave-001.jobs.json`.
 6. Do not edit the reviewed JSON or its SHA-256 sidecar.

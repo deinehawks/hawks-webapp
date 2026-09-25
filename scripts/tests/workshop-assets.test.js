@@ -18,6 +18,7 @@ const {
   parseDfOutput,
   readHostVolumeCapacity,
   resolveDatasetScope,
+  retryTransientFilesystemOperation,
   validateAllowlist,
   validateCapacityGuard,
   validateHostCapacityGuard,
@@ -257,6 +258,67 @@ test("onboarding intake rejects an invalid expected existing client ID", () => {
 test("temporary directories are recognized", () => {
   assert.equal(isTemporaryDirectoryName(".round-corners.tmp-abc"), true);
   assert.equal(isTemporaryDirectoryName("round-corners"), false);
+});
+
+test("transient filesystem operations retry and recover", async () => {
+  const delays = [];
+  const retries = [];
+  let calls = 0;
+  const result = await retryTransientFilesystemOperation(
+    async () => {
+      calls += 1;
+      if (calls < 3) {
+        const error = new Error("share temporarily unavailable");
+        error.code = calls === 1 ? "UNKNOWN" : "ENOENT";
+        throw error;
+      }
+      return "ready";
+    },
+    {
+      delaysMs: [10, 20],
+      sleep: async (delayMs) => delays.push(delayMs),
+      onRetry: ({ retry }) => retries.push(retry),
+    },
+  );
+
+  assert.equal(result, "ready");
+  assert.equal(calls, 3);
+  assert.deepEqual(delays, [10, 20]);
+  assert.deepEqual(retries, [1, 2]);
+});
+
+test("persistent transient filesystem failures remain fail closed", async () => {
+  let calls = 0;
+  await assert.rejects(
+    retryTransientFilesystemOperation(
+      async () => {
+        calls += 1;
+        const error = new Error("share unavailable");
+        error.code = "UNKNOWN";
+        throw error;
+      },
+      { delaysMs: [0, 0], sleep: async () => {} },
+    ),
+    /share unavailable/,
+  );
+  assert.equal(calls, 3);
+});
+
+test("non-transient filesystem failures do not retry", async () => {
+  let calls = 0;
+  await assert.rejects(
+    retryTransientFilesystemOperation(
+      async () => {
+        calls += 1;
+        const error = new Error("invalid source");
+        error.code = "EINVAL";
+        throw error;
+      },
+      { delaysMs: [0, 0], sleep: async () => {} },
+    ),
+    /invalid source/,
+  );
+  assert.equal(calls, 1);
 });
 
 test("zero-byte resume state recovers and the next write is valid", async (context) => {

@@ -1,11 +1,15 @@
 ﻿# Project Index
 
-Last updated: 2026-09-22
+Last updated: 2026-09-25
 
 Use this index after the compressed startup files. Document classifications prevent historical plans from being mistaken for current instructions.
 
 ## Authoritative And Current
 
+- `docs/workshop-asset-migration-completion-2026-09-25.md`: verified completion
+  of all 11 organization/private waves, exact 30-survey coverage, combined
+  object/byte totals, review-only manifest hashes, and the remaining staging
+  approval/activation gates.
 - `docs/minio-storage-relocation-signoff-2026-09-22.md`: operational XFS
   cutover evidence, verification results, rollback boundary, remaining
   application/external acceptance checks, and Wave 3 gate.

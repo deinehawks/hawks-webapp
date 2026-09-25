@@ -8,6 +8,19 @@ const MIN_CAPACITY_RESERVE_BYTES = 20 * 1024 ** 3;
 const CAPACITY_RESERVE_RATIO = 0.05;
 const TRANSFER_OVERHEAD_RATIO = 0.1;
 const PIPELINE_HOST_RESERVE_BYTES = 500_000_000_000;
+const FILESYSTEM_RETRY_DELAYS_MS = Object.freeze([1_000, 2_000, 4_000, 8_000, 15_000, 30_000]);
+const TRANSIENT_FILESYSTEM_ERROR_CODES = new Set([
+  'EBUSY',
+  'ECONNRESET',
+  'EHOSTUNREACH',
+  'EIO',
+  'ENETUNREACH',
+  'ENOENT',
+  'ENOTCONN',
+  'EPERM',
+  'ETIMEDOUT',
+  'UNKNOWN',
+]);
 const DATASET_SCOPES = Object.freeze(["organization", "private"]);
 
 function normalizeSurveyId(value) {
@@ -16,6 +29,26 @@ function normalizeSurveyId(value) {
 
 function isTemporaryDirectoryName(name) {
   return /^\./.test(name) || /\.tmp(?:-|$)/i.test(name) || /temporary/i.test(name);
+}
+
+async function retryTransientFilesystemOperation(operation, options = {}) {
+  const delaysMs = options.delaysMs ?? FILESYSTEM_RETRY_DELAYS_MS;
+  const sleep = options.sleep ?? ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)));
+  let retryIndex = 0;
+
+  while (true) {
+    try {
+      return await operation();
+    } catch (error) {
+      const code = String(error?.code ?? '').toUpperCase();
+      if (!TRANSIENT_FILESYSTEM_ERROR_CODES.has(code) || retryIndex >= delaysMs.length) throw error;
+
+      const delayMs = delaysMs[retryIndex];
+      retryIndex += 1;
+      options.onRetry?.({ error, delayMs, retry: retryIndex, maxRetries: delaysMs.length });
+      await sleep(delayMs);
+    }
+  }
 }
 
 function validateAllowlist(value) {
@@ -270,4 +303,4 @@ function parseDfOutput(output) {
   return { totalBytes, availableBytes };
 }
 
-module.exports = { CAPACITY_RESERVE_RATIO, DATASET_SCOPES, DEFAULT_SOURCE_ROOT, MAX_SURVEYS_PER_WAVE, MIN_CAPACITY_RESERVE_BYTES, PIPELINE_HOST_RESERVE_BYTES, TRANSFER_OVERHEAD_RATIO, createWaves, discoverSurveySource, evaluateCapacity, evaluateHostCapacity, findRgbRoots, isTemporaryDirectoryName, normalizeSurveyId, parseDfOutput, readHostVolumeCapacity, resolveDatasetScope, validateAllowlist, validateCapacityGuard, validateHostCapacityGuard, validateJobManifestScope };
+module.exports = { CAPACITY_RESERVE_RATIO, DATASET_SCOPES, DEFAULT_SOURCE_ROOT, MAX_SURVEYS_PER_WAVE, MIN_CAPACITY_RESERVE_BYTES, PIPELINE_HOST_RESERVE_BYTES, TRANSFER_OVERHEAD_RATIO, createWaves, discoverSurveySource, evaluateCapacity, evaluateHostCapacity, findRgbRoots, isTemporaryDirectoryName, normalizeSurveyId, parseDfOutput, readHostVolumeCapacity, resolveDatasetScope, retryTransientFilesystemOperation, validateAllowlist, validateCapacityGuard, validateHostCapacityGuard, validateJobManifestScope };
