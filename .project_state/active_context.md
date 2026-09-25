@@ -1,8 +1,9 @@
 # Active Context
 
-Last updated: 2026-09-23
+Last updated: 2026-09-25
 
-Current epic: Close MinIO workshop storage and exposure gates before Wave 3.
+Current epic: Finalize the workshop share-retry branch and prepare the verified
+30-survey manifest for separately approved non-production staging review.
 
 Completed:
 
@@ -303,3 +304,57 @@ requires the exact single loopback bindings and passes idempotently. The user
 passed the final signed-in Survey orthomosaic, 3D, BARBCO2026 Orthomap,
 authorized/cross-scope, and clean console/network smoke after the policy
 change. Edge-hardening acceptance is complete.
+
+## 2026-09-23 Wave 3 regeneration handoff
+
+Storage relocation and edge hardening are integrated into `development` at
+merge commits `193a4500` and `8af15a59`. Wave 3 regeneration remains the next
+gate, with no upload approval implied.
+
+Two preparation runs failed safely on transient Z-drive directory enumeration
+for different surveys. The directories appeared absent during the error and
+became readable again shortly afterward. No regeneration output exists. The
+historical reviewed file/checksum and zero-byte state are unchanged.
+
+The uncommitted branch `fix/workshop-share-retries` retries only recognized
+transient directory and file-stat failures with visible bounded backoff for up
+to approximately 60 seconds, then fails closed. Regression is 24/24 and
+targeted ESLint, TypeScript, and whitespace pass. WebODM is stopped and MinIO
+is healthy on XFS.
+
+Next sequence:
+
+1. From the user's normal PowerShell where `Z:` is visible, run preparation
+   once with `WORKSHOP_HOST_VOLUME_ROOT=D:\`, stat concurrency 8, and output
+   root `.tmp/workshop-assets/regenerated-20260923`.
+2. Review the new inventory, blockers, capacity evidence, five generated
+   waves, and exact Wave 3 scope before freezing anything.
+3. If live preparation validates the retry fix, finalize the retry branch.
+   Freeze/checksum Wave 3 only after review. Do not start the runner, upload,
+   build a manifest, or delete rollback evidence.
+
+## 2026-09-25 verified migration outcome
+
+The preceding Wave 3 preparation/upload sequence is complete and superseded.
+All five organization and six private waves have complete verification reports.
+The expected staging/2026 set contains 30 surveys, all 30 appear in exactly one
+wave report, and there are no missing, unexpected, or cross-report duplicate
+surveys. All report completion and capacity gates pass. Totals are 1,944,728
+objects and 109,695,980,633 bytes. The runner is stopped after Private Wave
+006 with empty stderr.
+
+The combined review-only manifest draft was generated locally with 41 artifact
+entries and verified hashes recorded in
+`docs/workshop-asset-migration-completion-2026-09-25.md`. No manifest database
+write, approval, activation, or supersession occurred.
+
+Next sequence:
+
+1. Review and finalize the uncommitted `fix/workshop-share-retries` diff; its
+   focused suite passes 24/24.
+2. Review the combined SQL/JSON and embedded verification hashes.
+3. Capture staging inventory and checksummed backup, rehearse the draft and
+   rollback in an isolated clone, and request explicit approval before any
+   non-production manifest write.
+4. Run staging authorization and external asset smoke before separately
+   considering activation. Production remains out of scope.

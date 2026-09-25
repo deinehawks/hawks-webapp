@@ -1,9 +1,9 @@
 # Current State
 
-Last updated: 2026-09-23
+Last updated: 2026-09-25
 
-Current branch: `fix/minio-edge-hardening` (stacked on the pushed
-`fix/minio-host-capacity` commit `bf53ddfb`).
+Current branch: `fix/workshop-share-retries`, based on updated `development`
+after storage merge commits `193a4500` and `8af15a59`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -507,3 +507,44 @@ cloud, BARBCO2026 Orthomap, authorized access, cross-scope denial, and clean
 console/network behavior. NGINX/MinIO edge-hardening acceptance is complete.
 Wave 3 remains stopped and requires regenerated configuration, review, freeze,
 and separate upload approval; the user will run and monitor that upload.
+
+Both storage branches are merged into `development`. Wave 3 preparation then
+started from a clean tree with the historical reviewed checksum still matching
+`374734d07c67b7a5bcf48c7c924f7b958e51064127cda764139c64e59caa932c`
+and its historical state still zero bytes. Two read-only preparation attempts
+failed safely while traversing different Z-drive tile directories: Windows and
+Node temporarily reported the directory absent, then both could enumerate it
+again about a minute later. No refresh output, upload, frozen config, manifest,
+database change, or Git change was produced by either attempt.
+
+Branch `fix/workshop-share-retries` adds visible bounded backoff for transient
+directory-read and file-stat errors, including `UNKNOWN` and temporary
+`ENOENT`, for a maximum approximately 60-second retry window. Persistent
+transient errors and all non-transient errors remain fail closed. Workshop
+regression passes 24/24; targeted ESLint, TypeScript, and whitespace pass. The
+code is uncommitted and needs one live preparation run from the user's normal
+PowerShell because the elevated agent context cannot inherit mapped `Z:`.
+WebODM is stopped; MinIO remains healthy with restart `no` and `/data` on XFS.
+
+## 2026-09-25 workshop asset verification completion
+
+The user completed all five organization waves and all six private waves. The
+11 verification reports cover the exact 30-survey staging/2026 expected set:
+13 organization surveys plus 17 private surveys, with no missing, unexpected,
+or cross-report duplicate survey and no denied capacity check. Combined totals
+are 1,944,728 objects and 109,695,980,633 bytes. The supported runner is
+stopped after Private Wave 006, its process has exited, and its stderr is empty.
+
+`npm run workshop-assets:manifest` generated the local review-only combined
+draft and JSON inventory with 41 artifact entries. The SQL SHA-256 is
+`f56db2d90a276d3ab7b2f70095f1be390f737a4b3fc063f6bbfc44429091dd36`;
+the JSON SHA-256 is
+`581afc0b858c5eb9760594926e9240c1e984542877359d2f17775ae84999c313`.
+The draft contains only two inserts, retains manifest ID/key placeholders, and
+has not been applied, approved, activated, or used to supersede staging.
+
+The filesystem retry suite passes 24/24. Branch
+`fix/workshop-share-retries` remains uncommitted. Next: review/finalize that
+focused branch, then perform the separately approved staging manifest
+inventory, backup, isolated rehearsal, and authorization/external asset smoke.
+See `docs/workshop-asset-migration-completion-2026-09-25.md`.

@@ -1,8 +1,8 @@
 # Session Handoff
 
-Last updated: 2026-09-23
+Last updated: 2026-09-25
 
-Current branch: `fix/minio-host-capacity`.
+Current branch: `fix/workshop-share-retries` (uncommitted).
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -563,3 +563,54 @@ smoke. Edge-hardening acceptance is complete. WebODM, `AH-026095`, and Wave 3
 remain stopped. Next, regenerate/review/freeze and checksum the same Wave 3
 scope, then obtain separate upload approval. The user will run and monitor the
 upload.
+
+Both MinIO branches are merged into updated `development` (`193a4500` and
+`8af15a59`). The historical Wave 3 reviewed config still matches checksum
+`374734d07c67b7a5bcf48c7c924f7b958e51064127cda764139c64e59caa932c`,
+and its resume state remains zero bytes. WebODM is stopped; MinIO is healthy
+with restart `no` and `/data` on XFS.
+
+Two read-only organization preparation attempts failed before writing output.
+The first stopped while scanning an AH-026022 Z-drive tile directory; after it
+became readable again, a second attempt reached AH-026023 and failed the same
+way on another directory. PowerShell and Node both observed the temporary
+absence and later successful enumeration, indicating a transient mapped-share
+availability issue rather than a bad tile tree. No upload, reviewed config,
+manifest, database mutation, or refresh artifact exists.
+
+Current branch `fix/workshop-share-retries` has uncommitted changes in
+`scripts/lib/workshop-assets.js`, `scripts/prepare-workshop-assets.js`, and
+`scripts/tests/workshop-assets.test.js`. Recognized transient directory-read
+and file-stat failures now retry visibly with bounded backoff for approximately
+60 seconds; persistent transient and non-transient failures still stop safely.
+Workshop regression passes 24/24; targeted ESLint, TypeScript, and whitespace
+pass. The elevated agent context cannot see mapped `Z:`, so the first next
+action is one preparation run from the user's normal PowerShell with
+`WORKSHOP_HOST_VOLUME_ROOT=D:\`, `WORKSHOP_ASSET_STAT_CONCURRENCY=8`, and
+output root `.tmp/workshop-assets/regenerated-20260923`. Review all output and
+the exact three-survey Wave 3 before freezing; do not start upload or manifest
+work.
+
+## 2026-09-25 workshop migration handoff
+
+The preceding preparation handoff is complete. The user ran all five
+organization waves and all six private waves sequentially. Read-only audit
+confirms 11 completed reports, 30/30 unique expected surveys, no missing,
+unexpected, or cross-report duplicate survey, no denied capacity check,
+1,944,728 objects, and 109,695,980,633 bytes. The runner is stopped after
+Private Wave 006; its process exited and stderr is empty.
+
+The combined review-only draft now exists at
+`.tmp/workshop-assets/verification/combined-manifest-draft.sql`, with matching
+JSON inventory beside it. It contains 41 artifact entries and has not been
+applied. SQL SHA-256:
+`f56db2d90a276d3ab7b2f70095f1be390f737a4b3fc063f6bbfc44429091dd36`.
+JSON SHA-256:
+`581afc0b858c5eb9760594926e9240c1e984542877359d2f17775ae84999c313`.
+
+The retry branch is still uncommitted and its focused suite passes 24/24. Next
+review/finalize that diff, then follow the staging inventory, checksummed
+backup, isolated draft/rollback rehearsal, explicit approval, authorization
+smoke, and external asset smoke gates. Do not approve, activate, supersede, or
+touch production automatically. Full evidence is in
+`docs/workshop-asset-migration-completion-2026-09-25.md`.

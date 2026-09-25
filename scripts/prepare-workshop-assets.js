@@ -19,6 +19,7 @@ const {
   parseDfOutput,
   readHostVolumeCapacity,
   resolveDatasetScope,
+  retryTransientFilesystemOperation,
   validateAllowlist,
 } = require("./lib/workshop-assets");
 const { resolveStagingDbConfig } = require("./lib/staging-db");
@@ -56,13 +57,14 @@ async function collectFiles(root, predicate = () => true) {
   const queue = [root];
   while (queue.length) {
     const directory = queue.shift();
-    let entries = [];
-    try {
-      entries = await fs.readdir(directory, { withFileTypes: true });
-    } catch (error) {
-      if (error.code === "ENOENT") continue;
-      throw error;
-    }
+    const entries = await retryTransientFilesystemOperation(
+      () => fs.readdir(directory, { withFileTypes: true }),
+      {
+        onRetry: ({ error, delayMs, retry, maxRetries }) => {
+          console.warn(`[filesystem retry ${retry}/${maxRetries}] ${error.code ?? "UNKNOWN"} while scanning ${directory}; retrying in ${delayMs}ms.`);
+        },
+      },
+    );
     for (const entry of entries) {
       if (isTemporaryDirectoryName(entry.name)) continue;
       const fullPath = path.join(directory, entry.name);
@@ -76,7 +78,15 @@ async function collectFiles(root, predicate = () => true) {
     while (cursor < sourceFiles.length) {
       const index = cursor;
       cursor += 1;
-      const stats = await fs.stat(sourceFiles[index]);
+      const sourceFile = sourceFiles[index];
+      const stats = await retryTransientFilesystemOperation(
+        () => fs.stat(sourceFile),
+        {
+          onRetry: ({ error, delayMs, retry, maxRetries }) => {
+            console.warn(`[filesystem retry ${retry}/${maxRetries}] ${error.code ?? "UNKNOWN"} while reading ${sourceFile}; retrying in ${delayMs}ms.`);
+          },
+        },
+      );
       files[index] = { sourceFile: sourceFiles[index], size: stats.size };
     }
   }));
