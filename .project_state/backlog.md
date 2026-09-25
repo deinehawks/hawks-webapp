@@ -79,17 +79,20 @@ Last updated: 2026-09-25
   repeat cold-start acceptance, healthy IPv4 NGINX probe, loopback-only direct
   ports, denied anonymous bucket listing, retained protected exact-object
   delivery, and final signed-in Survey/3D/Orthomap smoke.
+- Workshop filesystem retry fix committed/pushed as `92dabf5a`; all 11 asset
+  waves and the combined 30-survey verification are complete.
+- Checksummed workshop manifest staging backup and ignored rollout package,
+  53-table isolated restore parity, exact draft/containment/cutover rehearsal,
+  forward-recovery rehearsal, focused tests, and targeted ESLint.
 
 ## P1
 
-- Review and finalize the uncommitted `fix/workshop-share-retries` change. The
-  live organization/private preparation and all 11 uploads validated the
-  workflow; the focused workshop suite passes 24/24.
-- Review the generated combined 30-survey manifest SQL and JSON hash inventory.
-  Before any non-production manifest write, capture staging inventory and a
-  checksummed backup, rehearse draft/rollback in an isolated clone, and obtain
-  explicit approval. Approval, activation, supersession, production mutation,
-  and rollback deletion remain out of scope.
+- Review and commit the tracked `ops/workshop-manifest-rollout` tooling and
+  rehearsal evidence.
+- Obtain explicit approval before applying only the inactive draft to
+  non-production staging. Verify authorization and external assets while it
+  remains inactive. Approval/activation requires a second explicit decision;
+  production remains out of scope.
 
 ## P2
 

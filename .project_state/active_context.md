@@ -350,11 +350,22 @@ write, approval, activation, or supersession occurred.
 
 Next sequence:
 
-1. Review and finalize the uncommitted `fix/workshop-share-retries` diff; its
-   focused suite passes 24/24.
-2. Review the combined SQL/JSON and embedded verification hashes.
-3. Capture staging inventory and checksummed backup, rehearse the draft and
-   rollback in an isolated clone, and request explicit approval before any
-   non-production manifest write.
-4. Run staging authorization and external asset smoke before separately
-   considering activation. Production remains out of scope.
+1. Review and commit the tracked `ops/workshop-manifest-rollout` packager and
+   rehearsal evidence.
+2. Obtain explicit approval before running the checksummed
+   `01-draft-apply.sql` against non-production staging.
+3. Verify the inactive draft and run authorization/external asset smoke.
+4. Mark reviewed only after acceptance, then obtain separate explicit approval
+   before atomic cutover. Production remains out of scope.
+
+## 2026-09-25 manifest rollout rehearsal
+
+The ignored package for `manifest-2026-09-25` is generated from the exact
+combined SQL/JSON hashes and pins the active predecessor. Optional backup alias
+fields stay null. A fresh ACL-complete staging backup is checksummed and
+restored cleanly into `workshop_manifest_rehearsal_20260925`; all 53
+Auth/Public table counts match staging. Exact draft verification,
+pre-cutover containment, reapply, reviewed promotion, atomic cutover,
+post-cutover verification, forward recovery, and missing-confirmation denial
+pass. No staging mutation occurred. Full evidence is in
+`docs/workshop-manifest-staging-rehearsal-2026-09-25.md`.

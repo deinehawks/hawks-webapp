@@ -122,6 +122,11 @@ Last updated: 2026-09-23
   directory reads and file-size reads with visible backoff for approximately
   60 seconds; after that, fail closed. Do not silently skip a directory that
   disappears after source discovery, and do not retry non-transient errors.
+- Keep optional manifest backup alias/timestamp fields null for the current
+  staging rollout. Recovery uses the checksummed Auth/Public/application
+  database backup, immutable manifest history, guarded draft containment, and
+  forward supersession. Never fabricate an export timestamp or edit an
+  approved/superseded manifest backward.
 - Defer platform-created Auth accounts, automated invitation delivery, platform-admin role changes, true impersonation, hard deletion, broad asset/infrastructure administration, and full-history migration.
 
 ## Superseded Decisions

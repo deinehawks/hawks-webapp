@@ -608,9 +608,20 @@ applied. SQL SHA-256:
 JSON SHA-256:
 `581afc0b858c5eb9760594926e9240c1e984542877359d2f17775ae84999c313`.
 
-The retry branch is still uncommitted and its focused suite passes 24/24. Next
-review/finalize that diff, then follow the staging inventory, checksummed
-backup, isolated draft/rollback rehearsal, explicit approval, authorization
-smoke, and external asset smoke gates. Do not approve, activate, supersede, or
-touch production automatically. Full evidence is in
-`docs/workshop-asset-migration-completion-2026-09-25.md`.
+The retry branch is committed and pushed as `92dabf5a`. Current branch
+`ops/workshop-manifest-rollout` contains the rollout packager and rehearsal
+evidence. The ignored package pins `manifest-2026-09-25`
+(`b07905c4-71ae-4df6-a834-14fbbae13552`) to
+`manifest-2026-08-11`. Its 41 entries cover 30 surveys.
+
+The ACL-complete ignored staging backup restored cleanly; all 53 Auth/Public
+table counts match. Draft/verify, containment/reapply, reviewed/atomic
+cutover, active verification, forward recovery, and fail-closed confirmation
+checks pass in the isolated clone. Optional backup alias/timestamp fields are
+intentionally null. No staging data changed.
+
+Next: review and commit this branch, then obtain explicit approval before
+running only `01-draft-apply.sql` on non-production staging. Activation
+requires later authorization/external asset smoke and separate approval.
+Production remains untouched. See
+`docs/workshop-manifest-staging-rehearsal-2026-09-25.md`.

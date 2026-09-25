@@ -10,6 +10,10 @@ Use this index after the compressed startup files. Document classifications prev
   of all 11 organization/private waves, exact 30-survey coverage, combined
   object/byte totals, review-only manifest hashes, and the remaining staging
   approval/activation gates.
+- `docs/workshop-manifest-staging-rehearsal-2026-09-25.md`: current
+  checksummed backup, exact rollout package, 53-table restore parity,
+  draft/containment/cutover/forward-recovery rehearsal, and remaining explicit
+  staging approval gates.
 - `docs/minio-storage-relocation-signoff-2026-09-22.md`: operational XFS
   cutover evidence, verification results, rollback boundary, remaining
   application/external acceptance checks, and Wave 3 gate.
