@@ -1,8 +1,97 @@
 # Session Handoff
 
-Last updated: 2026-09-25
+Last updated: 2026-10-05
 
-Current branch: `fix/workshop-share-retries` (uncommitted).
+Resume from `development`. The dynamic implementation arrived through
+`fix/workshop-multi-source-roots`; the separately created
+`feature/dynamic-survey-publishing` branch has no unique commit. It adds
+`survey_output_publications`, audited platform-admin draft/publish/retire
+RPCs, service-role-only idempotent verification, RLS-authorized discovery, and
+dynamic-first protected asset authorization with active-manifest fallback.
+The V3 output detail page exposes the platform-admin protected-delivery
+workflow. V2 now consumes the discovery RPC and verifies the exact current
+specialized artifact before rendering; its ignored selection/catalog/bindings
+remain historical evidence, not runtime gates. Dataset years are 2000-2100 and
+PCDs are limited to 5 GiB. Local validation passes: clean replay, focused pgTAP
+34/34, full pgTAP 242/242, V3 TypeScript/targeted ESLint, and V2 tests 30/30.
+V2's full type-check still has only its documented legacy UI errors and none
+touch the new adapter or asset-auth files.
+
+No remote database or infrastructure mutation occurred. Before live V2 smoke,
+review and rehearse migration
+`20261005000000_dynamic_survey_output_publishing.sql` with a fresh staging
+backup, then obtain separate staging approval. Details:
+`docs/dynamic-survey-publishing.md`.
+
+Branch integration on 2026-10-05: `ops/workshop-manifest-rollout`,
+`feature/dataset-onboarding`'s final smoke evidence, and
+`fix/workshop-multi-source-roots` were merged into `development`. The Admin
+Output page keeps its existing workflow available while the new publication
+table is absent, displaying the publishing controls only after migration.
+
+The V3 admin UI no longer truncates semantic survey IDs to eight characters.
+The Surveys page now uses 25-row server-side pagination, exact counts, partial
+survey-ID search and stable `flight_date desc, id asc` ordering, with a
+responsive table and result-range/Previous/Next controls. Related admin labels
+also show full survey IDs. The focused changes are in
+`components/admin/admin-resource-list-page.tsx`,
+`components/admin/admin-overview-page.tsx` and
+`lib/admin/survey-labels.ts`. Focused ESLint, full TypeScript, whitespace and
+control-character checks pass. Authenticated smoke should search
+`AH-026061`, navigate pages and inspect narrow width before commit. No
+database, authorization or deployment change occurred.
+
+Resume at
+`.tmp/workshop-assets/survey-metadata-20261002-r2/package/README.md`.
+All 56 source CSVs validate and exactly cover the selected surveys lacking
+geospatial metadata. The r2 package and fresh targeted staging backup are
+checksummed. Exact clone no-commit rehearsal, committed apply/read-only verify,
+duplicate-apply rejection, guarded rollback, baseline restoration and
+reapply/verify pass. The user approved `01-apply.sql` SHA-256
+`6fcd86b11cf24f18b198e290380312c7b19167ecec8ee022938e73ffc00b352b`;
+staging apply and the frozen verifier passed. All 56 target surveys now have
+complete geospatial metadata, AH-026012/AH-026013 remain preserved, the active
+77-entry manifest is unchanged and the package audit count is one. Evidence is
+`.tmp/workshop-assets/survey-metadata-20261002-r2/staging-apply-result.json`.
+Next run representative V2 orthomap and authorization smoke.
+The earlier r1 package is superseded because its baseline serialized
+PostgreSQL date values incorrectly; it failed closed during isolated rehearsal
+and was never applied.
+
+Resume at
+.tmp/workshop-assets/cumulative-20261002-activation/package/README.md.
+All 21 waves verified; 77-entry cumulative manifest and 56-ortho/9-PCD metadata
+proposal prepared. A fresh checksummed staging backup was restored to an
+isolated local database; exact apply, verification and history-preserving
+containment passed. The user then explicitly approved the exact r4 apply hash;
+staging apply and post-apply preservation checks passed. User decided 2026-10-02 that
+unknown dates stay null and existing current AH-026012/AH-026013 PCD rows,
+counts and survey pointers must remain unchanged. V2's catalog mapping now
+requires pointer, current row and reviewed binding agreement. Its PCD admission
+gate is now 5 GiB; 27/27 focused tests, local runtime validation and production
+build pass. Do not rerun generators over the checksummed r4 package. The new
+manifest-2026-10-02 has 77 entries. Its reviewed transition and the later
+separately approved guarded activation both passed; it is now approved/active
+and the prior manifest is superseded/inactive.
+The isolated hawks-v2-recording-nginx container is healthy and loopback-only at
+127.0.0.1:8082. Existing V3 NGINX was not edited or reloaded. Health/app checks,
+anonymous tile and ranged-PCD 401 responses with private/no-store, and external
+404 for the internal auth route pass. The user confirmed authenticated
+inactive-manifest denial: 401 and no 200.
+The guarded activation package is frozen with `01-activate.sql` SHA-256
+`3f235e19908d236713f7eef753e26b03f965db47841ba987639156d5bd58587f`.
+Fresh backup `backups/staging-workshop-recording-20261002-preactivation` is
+checksummed. The exact transaction passed rollback rehearsal, baseline restore,
+clone-only commit and read-only verification. The user then separately approved
+the exact hash; staging apply and frozen verification passed. Post-activation
+anonymous protected access remains 401 with private/no-store and the externally
+requested internal auth route remains 404. Next repeat signed-in
+permitted-user/cross-scope asset smoke before recording acceptance. Production
+is unchanged.
+See docs/workshop-cumulative-recording-package-2026-09-29.md; historical
+running-upload instructions below are superseded.
+
+Current branch: `fix/workshop-multi-source-roots` (uncommitted).
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,
@@ -608,20 +697,56 @@ applied. SQL SHA-256:
 JSON SHA-256:
 `581afc0b858c5eb9760594926e9240c1e984542877359d2f17775ae84999c313`.
 
-The retry branch is committed and pushed as `92dabf5a`. Current branch
-`ops/workshop-manifest-rollout` contains the rollout packager and rehearsal
-evidence. The ignored package pins `manifest-2026-09-25`
-(`b07905c4-71ae-4df6-a834-14fbbae13552`) to
-`manifest-2026-08-11`. Its 41 entries cover 30 surveys.
+The retry branch is committed/pushed as `92dabf5a`. Rollout branch
+`ops/workshop-manifest-rollout` is committed as `7471f0ca`; its exact inactive
+draft was applied and verified in staging. Do not mark reviewed or activate
+without the remaining smoke and separate approval. Production is untouched.
 
-The ACL-complete ignored staging backup restored cleanly; all 53 Auth/Public
-table counts match. Draft/verify, containment/reapply, reviewed/atomic
-cutover, active verification, forward recovery, and fail-closed confirmation
-checks pass in the isolated clone. Optional backup alias/timestamp fields are
-intentionally null. No staging data changed.
+## 2026-09-25 additional asset batch handoff
 
-Next: review and commit this branch, then obtain explicit approval before
-running only `01-draft-apply.sql` on non-production staging. Activation
-requires later authorization/external asset smoke and separate approval.
-Production remains untouched. See
-`docs/workshop-manifest-staging-rehearsal-2026-09-25.md`.
+The ignored allowlist at
+`.tmp/workshop-assets/additional-20260925/allowlist.json` contains 28 surveys,
+explicit X/Z roots, expected client codes, round-corner tiles, and no PCDs. The
+onboarding package was rehearsed, backed up, explicitly applied to staging, and
+verified. It corrected MCS to organization scope, adopted
+`United Employees Multi-Purpose Cooperative` as the UEMPC database name, and
+added 28 surveys, three organizations, five farms, 48 survey-farm
+relationships, and 19 survey-organization relationships without changing
+Auth users, profiles, or grants. Evidence and hashes are in
+`docs/workshop-additional-asset-intake-2026-09-25.md`.
+
+The post-onboarding dry run found all 28 surveys ready: 1,366,555 PNG tiles,
+91,438,193,367 bytes, and no PCDs. It generated ten waves, and all ten were
+reviewed and frozen. The user started the separate ignored runner at
+`.tmp/workshop-assets/additional-20260925/run-additional-overnight.ps1`; the
+original private overnight script is unchanged. The adapted script SHA-256 is
+`B21E587C434096C7FD7ED3C653F81F21FABC15AF78F567A59AB5F4D1CE9506B7`.
+
+At handoff, additional Wave 001 is active as run ID `20260925-174429`, using
+`workshop-additional-wave-001-2026-09-25T09-37-36-798Z.jobs.json`. No
+additional-wave verification report exists yet. Do not start a duplicate
+runner. Next session, check status once; after completion audit all ten reports
+and 28-survey coverage. If stopped early, inspect that wave's logs and resume
+the same script only after resolving the failure.
+
+Output onboarding has not started. The inactive 30-survey manifest must not be
+reviewed or activated because its six MCS artifacts have private protection.
+After every additional wave verifies, build a corrected cumulative manifest
+that preserves active entries and uses organization protection for MCS.
+
+The multi-source-root code and evidence were subsequently committed on
+`fix/workshop-multi-source-roots` and integrated into `development`.
+
+## Survey-event/flight recovery warning
+
+The user reported a successful local smoke of the approved survey-event/flight
+implementation, including platform-admin CRUD, generated codes/date behavior,
+four viewer states, Timeline/Explorer, member/preview access, and the repaired
+org-admin survey view. The final repository audit cannot locate that code:
+`feature/survey-flights` still points to `8af15a59`, no `survey_flights`
+schema or source references exist, no relevant diff/stash/reflog/unreachable
+object exists, and `lib/actions/surveys.ts` still has the original missing
+client-relationship throw. Preserve the approved decisions in
+`.project_state/decisions.md`, but treat implementation and the loader fix as
+unrecovered work. Recover from an external copy if available or reimplement
+and repeat validation.

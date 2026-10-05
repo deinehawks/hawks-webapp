@@ -1,10 +1,17 @@
 ﻿# Project Index
 
-Last updated: 2026-09-25
+Last updated: 2026-10-05
 
 Use this index after the compressed startup files. Document classifications prevent historical plans from being mistaken for current instructions.
 
 ## Authoritative And Current
+
+- `docs/dynamic-survey-publishing.md`: current V3-owned output-publication
+  lifecycle, V2 dynamic discovery contract, security boundaries, local
+  validation and staging rollout gate.
+- docs/workshop-cumulative-recording-package-2026-09-29.md: completed 21-wave
+  evidence, corrected cumulative review package, output metadata gaps and
+  remaining rehearsal/approval gates; supersedes older running-batch statuses.
 
 - `docs/workshop-asset-migration-completion-2026-09-25.md`: verified completion
   of all 11 organization/private waves, exact 30-survey coverage, combined
@@ -136,6 +143,9 @@ Use this index after the compressed startup files. Document classifications prev
 - `scripts/prepare-workshop-assets.js` and
   `scripts/publish-workshop-assets.js`: current workshop batch preparation and
   streaming staging publisher.
+- `docs/workshop-additional-asset-intake-2026-09-25.md`: additional 28-survey
+  X/Z inventory, staging onboarding evidence, frozen-wave state, and live
+  migration handoff.
 
 ## Validation Baselines
 

@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   public: {
     Tables: {
       account_signup_approvals: {
@@ -1304,6 +1299,158 @@ export type Database = {
           },
         ]
       }
+      survey_output_publications: {
+        Row: {
+          bounds: number[] | null
+          byte_size: number | null
+          client_code: string
+          created_at: string
+          created_by: string | null
+          dataset_year: number
+          destination_prefix_alias: string | null
+          destination_storage_alias: string
+          entry_type: string
+          external_run_id: string | null
+          file_name: string | null
+          id: string
+          max_zoom: number | null
+          min_zoom: number | null
+          object_path: string
+          organization_id: string | null
+          output_id: string
+          protection_level: string
+          published_at: string | null
+          published_by: string | null
+          retired_at: string | null
+          retired_by: string | null
+          route_pattern: string
+          source_system: string | null
+          status: string
+          survey_id: string
+          tile_folder: string | null
+          updated_at: string
+          verification: Json
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          bounds?: number[] | null
+          byte_size?: number | null
+          client_code: string
+          created_at?: string
+          created_by?: string | null
+          dataset_year: number
+          destination_prefix_alias?: string | null
+          destination_storage_alias: string
+          entry_type: string
+          external_run_id?: string | null
+          file_name?: string | null
+          id?: string
+          max_zoom?: number | null
+          min_zoom?: number | null
+          object_path: string
+          organization_id?: string | null
+          output_id: string
+          protection_level: string
+          published_at?: string | null
+          published_by?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          route_pattern: string
+          source_system?: string | null
+          status?: string
+          survey_id: string
+          tile_folder?: string | null
+          updated_at?: string
+          verification?: Json
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          bounds?: number[] | null
+          byte_size?: number | null
+          client_code?: string
+          created_at?: string
+          created_by?: string | null
+          dataset_year?: number
+          destination_prefix_alias?: string | null
+          destination_storage_alias?: string
+          entry_type?: string
+          external_run_id?: string | null
+          file_name?: string | null
+          id?: string
+          max_zoom?: number | null
+          min_zoom?: number | null
+          object_path?: string
+          organization_id?: string | null
+          output_id?: string
+          protection_level?: string
+          published_at?: string | null
+          published_by?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          route_pattern?: string
+          source_system?: string | null
+          status?: string
+          survey_id?: string
+          tile_folder?: string | null
+          updated_at?: string
+          verification?: Json
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_output_publications_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_output_publications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_output_publications_output_id_fkey"
+            columns: ["output_id"]
+            isOneToOne: true
+            referencedRelation: "survey_outputs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_output_publications_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_output_publications_retired_by_fkey"
+            columns: ["retired_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_output_publications_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_output_publications_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       survey_outputs: {
         Row: {
           created_at: string
@@ -1804,6 +1951,26 @@ export type Database = {
         }[]
       }
       claim_approved_signup: { Args: never; Returns: string }
+      list_authorized_published_survey_assets: {
+        Args: never
+        Returns: {
+          artifact_code: string
+          bounds: Json
+          byte_size: number
+          client_code: string
+          dataset_year: number
+          file_name: string
+          max_zoom: number
+          min_zoom: number
+          output_id: string
+          output_type: string
+          publication_id: string
+          route_template: string
+          source_kind: string
+          survey_id: string
+          tile_folder: string
+        }[]
+      }
       org_admin_cancel_user_request: {
         Args: { request_id: string }
         Returns: string
@@ -1905,9 +2072,35 @@ export type Database = {
         Args: { onboarding_payload: Json }
         Returns: Json
       }
+      platform_admin_delete_output_publication_draft: {
+        Args: { target_output_id: string }
+        Returns: undefined
+      }
       platform_admin_preview_dataset_onboarding: {
         Args: { onboarding_payload: Json }
         Returns: Json
+      }
+      platform_admin_publish_output: {
+        Args: { target_output_id: string }
+        Returns: string
+      }
+      platform_admin_retire_output_publication: {
+        Args: { target_output_id: string }
+        Returns: string
+      }
+      platform_admin_save_output_publication: {
+        Args: {
+          target_bounds?: Json
+          target_byte_size?: number
+          target_dataset_year: number
+          target_destination_prefix_alias?: string
+          target_file_name?: string
+          target_max_zoom?: number
+          target_min_zoom?: number
+          target_output_id: string
+          target_tile_folder?: string
+        }
+        Returns: string
       }
       platform_admin_update_survey: {
         Args: {
@@ -1919,6 +2112,15 @@ export type Database = {
           survey_location?: string
           survey_status?: Database["public"]["Enums"]["mission_status"]
           survey_type?: string
+        }
+        Returns: string
+      }
+      service_verify_output_publication: {
+        Args: {
+          target_output_id: string
+          verification_external_run_id: string
+          verification_payload: Json
+          verification_source_system: string
         }
         Returns: string
       }
@@ -1966,12 +2168,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1995,11 +2197,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2020,11 +2222,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2045,11 +2247,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2062,11 +2264,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2111,3 +2313,4 @@ export const Constants = {
     },
   },
 } as const
+

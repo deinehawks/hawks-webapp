@@ -127,6 +127,40 @@ function parseStatus(value: string): OutputStatus {
   throw new Error("Invalid output status.");
 }
 
+function readRequiredInteger(
+  formData: FormData,
+  key: string,
+  minimum: number,
+  maximum: number,
+): number {
+  const value = readRequiredString(formData, key);
+  if (!/^-?\d+$/.test(value)) throw new Error(`Invalid ${key}.`);
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum)
+    throw new Error(`${key} must be between ${minimum} and ${maximum}.`);
+  return parsed;
+}
+
+function readRequiredNumber(
+  formData: FormData,
+  key: string,
+  minimum: number,
+  maximum: number,
+): number {
+  const value = Number(readRequiredString(formData, key));
+  if (!Number.isFinite(value) || value < minimum || value > maximum)
+    throw new Error(`Invalid ${key}.`);
+  return value;
+}
+
+function parseDestinationPrefixAlias(formData: FormData): string | undefined {
+  const alias = readOptionalString(formData, "destinationPrefixAlias", 200);
+  if (!alias) return undefined;
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(alias))
+    throw new Error("Destination prefix alias is invalid.");
+  return alias;
+}
+
 async function assertPlatformAdmin() {
   const { profile } = await getAuthenticatedUserContext();
   if (profile.role !== "platform_admin")
@@ -313,5 +347,112 @@ export async function setCurrentOutput(formData: FormData) {
   });
   if (error)
     throw new Error("Failed to select current output.", { cause: error });
+  revalidateOutputPaths(outputId, output.survey_id);
+}
+
+export async function saveOutputPublication(formData: FormData) {
+  await assertPlatformAdmin();
+  const outputId = readRequiredString(formData, "outputId");
+  const output = await loadOutput(outputId);
+  const datasetYear = readRequiredInteger(
+    formData,
+    "datasetYear",
+    2000,
+    2100,
+  );
+  const destinationPrefixAlias = parseDestinationPrefixAlias(formData);
+  const supabase = await createClient();
+
+  const args =
+    output.output_type === "orthomosaic"
+      ? {
+          target_output_id: outputId,
+          target_dataset_year: datasetYear,
+          target_tile_folder: readRequiredString(formData, "tileFolder"),
+          target_min_zoom: readRequiredInteger(formData, "minZoom", 0, 30),
+          target_max_zoom: readRequiredInteger(formData, "maxZoom", 0, 30),
+          target_bounds: [
+            readRequiredNumber(formData, "minX", -180, 180),
+            readRequiredNumber(formData, "minY", -90, 90),
+            readRequiredNumber(formData, "maxX", -180, 180),
+            readRequiredNumber(formData, "maxY", -90, 90),
+          ],
+          ...(destinationPrefixAlias
+            ? { target_destination_prefix_alias: destinationPrefixAlias }
+            : {}),
+        }
+      : output.output_type === "point_cloud"
+        ? {
+            target_output_id: outputId,
+            target_dataset_year: datasetYear,
+            target_file_name: readRequiredString(formData, "fileName"),
+            target_byte_size: readRequiredInteger(
+              formData,
+              "byteSize",
+              1,
+              5 * 1024 * 1024 * 1024,
+            ),
+            ...(destinationPrefixAlias
+              ? { target_destination_prefix_alias: destinationPrefixAlias }
+              : {}),
+          }
+        : null;
+
+  if (!args)
+    throw new Error(
+      "Protected delivery is available only for orthomosaic and point-cloud outputs.",
+    );
+
+  const { error } = await supabase.rpc(
+    "platform_admin_save_output_publication",
+    args,
+  );
+  if (error)
+    throw new Error("Failed to save protected delivery draft.", {
+      cause: error,
+    });
+  revalidateOutputPaths(outputId, output.survey_id);
+}
+
+export async function publishOutputPublication(formData: FormData) {
+  await assertPlatformAdmin();
+  const outputId = readRequiredString(formData, "outputId");
+  const output = await loadOutput(outputId);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("platform_admin_publish_output", {
+    target_output_id: outputId,
+  });
+  if (error)
+    throw new Error("Failed to publish protected delivery.", { cause: error });
+  revalidateOutputPaths(outputId, output.survey_id);
+}
+
+export async function retireOutputPublication(formData: FormData) {
+  await assertPlatformAdmin();
+  const outputId = readRequiredString(formData, "outputId");
+  const output = await loadOutput(outputId);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc(
+    "platform_admin_retire_output_publication",
+    { target_output_id: outputId },
+  );
+  if (error)
+    throw new Error("Failed to retire protected delivery.", { cause: error });
+  revalidateOutputPaths(outputId, output.survey_id);
+}
+
+export async function deleteOutputPublicationDraft(formData: FormData) {
+  await assertPlatformAdmin();
+  const outputId = readRequiredString(formData, "outputId");
+  const output = await loadOutput(outputId);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc(
+    "platform_admin_delete_output_publication_draft",
+    { target_output_id: outputId },
+  );
+  if (error)
+    throw new Error("Failed to delete protected delivery draft.", {
+      cause: error,
+    });
   revalidateOutputPaths(outputId, output.survey_id);
 }

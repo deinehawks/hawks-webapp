@@ -260,6 +260,23 @@ test("temporary directories are recognized", () => {
   assert.equal(isTemporaryDirectoryName("round-corners"), false);
 });
 
+test("per-survey source roots override the backward-compatible batch root", () => {
+  const result = validateAllowlist({
+    sourceRoot: "Z:\\surveys\\2026",
+    approvedSurveys: [
+      { surveyId: "AH-026016", sourceRoot: "Z:\\surveys\\2026", tileVariant: "round-corners", scope: "private" },
+      { surveyId: "AH-026030", expectedClientCode: " tlw ", sourceRoot: "X:\\surveys\\2026", tileVariant: "round-corners", scope: "private" },
+      { surveyId: "AH-026031", tileVariant: "round-corners", scope: "organization" },
+    ],
+  });
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.allowlist.approvedSurveys[0].sourceRoot, path.resolve("Z:\\surveys\\2026"));
+  assert.equal(result.allowlist.approvedSurveys[1].sourceRoot, path.resolve("X:\\surveys\\2026"));
+  assert.equal(result.allowlist.approvedSurveys[1].expectedClientCode, "TLW");
+  assert.equal(result.allowlist.approvedSurveys[2].sourceRoot, path.resolve("Z:\\surveys\\2026"));
+});
+
 test("transient filesystem operations retry and recover", async () => {
   const delays = [];
   const retries = [];

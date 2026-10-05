@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowRight, Building2, ClipboardList, FileBarChart, Landmark, Map, Plus, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, ClipboardList, FileBarChart, Landmark, Map, Plus, Search, Users } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import type { PostgrestError } from "@supabase/supabase-js";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -41,6 +42,13 @@ type DisplayRow = {
   cells: ReactNode[];
 };
 
+type PaginationConfig = {
+  page: number;
+  pageSize: number;
+  searchQuery: string;
+  total: number;
+};
+
 type ResourceConfig = {
   title: string;
   description: string;
@@ -48,7 +56,16 @@ type ResourceConfig = {
   headers: string[];
   rows: DisplayRow[];
   emptyLabel: string;
+  columnClasses?: string[];
+  pagination?: PaginationConfig;
 };
+
+type ResourceSearchParams = {
+  page?: string | string[];
+  q?: string | string[];
+};
+
+const SURVEY_PAGE_SIZE = 25;
 
 function formatLabel(value: string | null): string {
   if (!value) return "Not set";
@@ -68,6 +85,30 @@ function formatDate(value: string | null): string {
 
 function formatShortId(value: string | null): string {
   return value ? value.slice(0, 8) : "Not set";
+}
+
+function firstSearchParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function parsePage(value: string | string[] | undefined): number {
+  const parsed = Number.parseInt(firstSearchParam(value), 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function normalizeSurveySearch(value: string | string[] | undefined): string {
+  return firstSearchParam(value)
+    .trim()
+    .slice(0, 80)
+    .replace(/[^a-zA-Z0-9-]/g, "");
+}
+
+function surveyListHref(page: number, searchQuery: string): string {
+  const query = new URLSearchParams();
+  if (searchQuery) query.set("q", searchQuery);
+  if (page > 1) query.set("page", String(page));
+  const suffix = query.toString();
+  return `/admin/surveys${suffix ? `?${suffix}` : ""}`;
 }
 
 function formatPersonName(person: PersonRow): string {
@@ -103,7 +144,10 @@ function throwResourceError(resource: ResourceName, error: PostgrestError): neve
   throw new Error(`Failed to load admin ${resource}.`, { cause: error });
 }
 
-async function loadResource(resource: ResourceName): Promise<ResourceConfig> {
+async function loadResource(
+  resource: ResourceName,
+  searchParams: ResourceSearchParams,
+): Promise<ResourceConfig> {
   const supabase = await createClient();
 
   if (resource === "profiles") {
@@ -127,12 +171,35 @@ async function loadResource(resource: ResourceName): Promise<ResourceConfig> {
       return { title: "Legacy Clients", description: "Compatibility client records and classification status.", icon: Landmark, headers: ["Code", "Name", "Classification", "Created", ""], rows, emptyLabel: "No clients are visible." };
     }
     case "surveys": {
-      const { data, error } = await supabase.from("surveys").select("id, location, status, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name)").order("flight_date", { ascending: false, nullsFirst: false }).limit(100);
+      const page = parsePage(searchParams.page);
+      const searchQuery = normalizeSurveySearch(searchParams.q);
+      const rangeStart = (page - 1) * SURVEY_PAGE_SIZE;
+      const rangeEnd = rangeStart + SURVEY_PAGE_SIZE - 1;
+      let query = supabase
+        .from("surveys")
+        .select(
+          "id, location, status, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name)",
+          { count: "exact" },
+        );
+
+      if (searchQuery) {
+        query = query.ilike("id", `%${searchQuery}%`);
+      }
+
+      const { data, error, count } = await query
+        .order("flight_date", { ascending: false, nullsFirst: false })
+        .order("id", { ascending: true })
+        .range(rangeStart, rangeEnd);
       if (error) throwResourceError(resource, error);
+      const total = count ?? 0;
+      const pageCount = Math.max(1, Math.ceil(total / SURVEY_PAGE_SIZE));
+      if (total > 0 && page > pageCount) {
+        redirect(surveyListHref(pageCount, searchQuery));
+      }
       const rows = ((data ?? []) as SurveyRow[]).map((row) => ({
         id: row.id,
         cells: [
-          detailLink("surveys", row.id, formatShortId(row.id)),
+          detailLink("surveys", row.id, <span className="font-mono tabular-nums">{row.id}</span>),
           row.client?.code ?? formatShortId(row.client_id),
           row.location ?? "Not set",
           statusBadge(row.status),
@@ -140,7 +207,30 @@ async function loadResource(resource: ResourceName): Promise<ResourceConfig> {
           detailButton("surveys", row.id, `Open ${row.id}`),
         ],
       }));
-      return { title: "Surveys", description: "Survey and mission records used by the user dashboard and protected assets.", icon: Map, headers: ["Survey", "Client", "Location", "Status", "Flight date", ""], rows, emptyLabel: "No surveys are visible." };
+      return {
+        title: "Surveys",
+        description: "Survey and mission records used by the user dashboard and protected assets.",
+        icon: Map,
+        headers: ["Survey", "Client", "Location", "Status", "Flight date", ""],
+        rows,
+        emptyLabel: searchQuery
+          ? `No surveys match "${searchQuery}".`
+          : "No surveys are visible.",
+        columnClasses: [
+          "min-w-36",
+          "min-w-32",
+          "min-w-72 whitespace-normal",
+          "w-28",
+          "min-w-36",
+          "w-12 text-right",
+        ],
+        pagination: {
+          page,
+          pageSize: SURVEY_PAGE_SIZE,
+          searchQuery,
+          total,
+        },
+      };
     }
     case "organizations": {
       const { data, error } = await supabase.from("organizations").select("id, name, code, type_code, status, created_at").order("created_at", { ascending: false }).limit(100);
@@ -215,7 +305,7 @@ async function loadResource(resource: ResourceName): Promise<ResourceConfig> {
         cells: [
           detailLink("outputs", row.id, row.title ?? formatShortId(row.id)),
           statusBadge(row.output_type),
-          detailLink("surveys", row.survey_id, formatShortId(row.survey_id)),
+          detailLink("surveys", row.survey_id, row.survey_id),
           statusBadge(row.status),
           statusBadge(row.is_current),
           detailButton("outputs", row.id, "Open output"),
@@ -230,7 +320,13 @@ function isResourceName(value: string): value is ResourceName {
   return ["clients", "surveys", "organizations", "people", "farms", "memberships", "outputs", "profiles"].includes(value);
 }
 
-export default async function AdminResourceListPage({ params }: { params: Promise<{ resource: string }> }) {
+export default async function AdminResourceListPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ resource: string }>;
+  searchParams: Promise<ResourceSearchParams>;
+}) {
   const { profile } = await getAuthenticatedUserContext();
 
   if (profile.role !== "platform_admin") redirect("/dashboard");
@@ -238,8 +334,18 @@ export default async function AdminResourceListPage({ params }: { params: Promis
   const { resource } = await params;
   if (!isResourceName(resource)) notFound();
 
-  const config = await loadResource(resource);
+  const config = await loadResource(resource, await searchParams);
   const Icon = config.icon;
+  const pagination = config.pagination;
+  const totalPages = pagination
+    ? Math.max(1, Math.ceil(pagination.total / pagination.pageSize))
+    : 1;
+  const firstVisible = pagination && pagination.total > 0
+    ? (pagination.page - 1) * pagination.pageSize + 1
+    : 0;
+  const lastVisible = pagination
+    ? Math.min(pagination.page * pagination.pageSize, pagination.total)
+    : config.rows.length;
 
   return (
     <main className="@container/main flex flex-1 flex-col gap-6 p-4 md:p-6">
@@ -248,7 +354,9 @@ export default async function AdminResourceListPage({ params }: { params: Promis
           <div className="flex items-center gap-2">
             <Icon className="size-5 text-muted-foreground" />
             <h1 className="text-2xl font-semibold tracking-normal">{config.title}</h1>
-            <Badge variant="secondary">{config.rows.length} shown</Badge>
+            <Badge variant="secondary">
+              {pagination ? `${pagination.total} total` : `${config.rows.length} shown`}
+            </Badge>
           </div>
           {resource === "organizations" || resource === "farms" || resource === "outputs" ? (
             <Button asChild size="sm">
@@ -259,27 +367,105 @@ export default async function AdminResourceListPage({ params }: { params: Promis
         <p className="max-w-3xl text-sm text-muted-foreground">{config.description}</p>
       </div>
 
-      <Card className="rounded-lg">
-        <CardHeader><CardTitle className="text-base">Records</CardTitle></CardHeader>
-        <CardContent>
+      <Card className="overflow-hidden rounded-lg">
+        <CardHeader className="gap-4 border-b">
+          <div className="flex flex-col gap-1">
+            <CardTitle className="text-base">Records</CardTitle>
+            {pagination ? (
+              <p className="text-sm text-muted-foreground">
+                Newest survey date first, then complete survey ID.
+              </p>
+            ) : null}
+          </div>
+          {pagination ? (
+            <form className="flex flex-col gap-2 sm:flex-row sm:items-center" method="get">
+              <div className="relative w-full sm:max-w-sm">
+                <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  aria-label="Search by survey ID"
+                  className="pl-9 font-mono"
+                  defaultValue={pagination.searchQuery}
+                  maxLength={80}
+                  name="q"
+                  placeholder="Search survey ID"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" variant="secondary">Search</Button>
+                {pagination.searchQuery ? (
+                  <Button asChild type="button" variant="ghost">
+                    <Link href="/admin/surveys">Clear</Link>
+                  </Button>
+                ) : null}
+              </div>
+            </form>
+          ) : null}
+        </CardHeader>
+        <CardContent className="grid gap-4 p-0">
           {config.rows.length === 0 ? (
-            <p className="rounded-md border border-dashed px-4 py-6 text-sm text-muted-foreground">{config.emptyLabel}</p>
+            <p className="m-6 rounded-md border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">{config.emptyLabel}</p>
           ) : (
-            <div className="overflow-x-auto rounded-md border">
-              <Table className="min-w-[760px]">
-                <TableHeader>
-                  <TableRow>{config.headers.map((header, index) => <TableHead key={`${header}-${index}`} className={header.length === 0 ? "w-12" : undefined}>{header}</TableHead>)}</TableRow>
+            <div className="border-b">
+              <Table className={pagination ? "min-w-[940px]" : "min-w-[760px]"}>
+                <TableHeader className="bg-muted/40">
+                  <TableRow>{config.headers.map((header, index) => (
+                    <TableHead
+                      key={`${header}-${index}`}
+                      className={config.columnClasses?.[index] ?? (header.length === 0 ? "w-12" : undefined)}
+                    >
+                      {header}
+                    </TableHead>
+                  ))}</TableRow>
                 </TableHeader>
                 <TableBody>
                   {config.rows.map((row) => (
                     <TableRow key={row.id}>
-                      {row.cells.map((cell, index) => <TableCell key={`${row.id}-${index}`}>{cell}</TableCell>)}
+                      {row.cells.map((cell, index) => (
+                        <TableCell
+                          key={`${row.id}-${index}`}
+                          className={config.columnClasses?.[index]}
+                        >
+                          {cell}
+                        </TableCell>
+                      ))}
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
           )}
+          {pagination ? (
+            <div className="flex flex-col gap-3 px-6 pb-6 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground" aria-live="polite">
+                {pagination.total > 0
+                  ? `Showing ${firstVisible}-${lastVisible} of ${pagination.total} surveys`
+                  : "No surveys to show"}
+              </p>
+              <div className="flex items-center gap-2">
+                {pagination.page > 1 ? (
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={surveyListHref(pagination.page - 1, pagination.searchQuery)}>
+                      <ArrowLeft />Previous
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button disabled size="sm" variant="outline"><ArrowLeft />Previous</Button>
+                )}
+                <span className="min-w-24 text-center text-sm tabular-nums">
+                  Page {pagination.page} of {totalPages}
+                </span>
+                {pagination.page < totalPages ? (
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={surveyListHref(pagination.page + 1, pagination.searchQuery)}>
+                      Next<ArrowRight />
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button disabled size="sm" variant="outline">Next<ArrowRight /></Button>
+                )}
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </main>

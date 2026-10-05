@@ -1,8 +1,23 @@
 ﻿# Decisions
 
-Last updated: 2026-09-23
+Last updated: 2026-10-05
 
 ## Current Decisions
+
+- V3 is the source of truth for survey/output publication. V2 preserves the old
+  UI but discovers only RLS-authorized, verified and published V3 outputs.
+  V2's ignored selection/catalog/output-binding files are historical migration
+  evidence and must not restrict runtime survey visibility.
+- Protected delivery uses an additive per-output lifecycle:
+  platform-admin draft/publish/retire, service-role-only idempotent
+  verification, and member discovery through a narrow RLS-aware RPC. Direct
+  authenticated publication-table mutation remains revoked.
+- Dynamic publications take precedence over the active workshop manifest;
+  legacy active-manifest entries remain compatibility fallback only. A retired
+  dynamic publication must not resurrect its legacy asset.
+- Publication paths and scope are derived from canonical relationships. Dataset
+  year is explicit rather than hardcoded to 2026, exact specialized output
+  binding is required, and point clouds remain capped at 5 GiB.
 
 - Keep the platform-admin and user experiences in one Next.js application and deployment, but use separate route trees and layouts.
 - `platform_admin` lands on `/admin`; active organization admins and ordinary
@@ -127,6 +142,21 @@ Last updated: 2026-09-23
   database backup, immutable manifest history, guarded draft containment, and
   forward supersession. Never fabricate an export timestamp or edit an
   approved/superseded manifest backward.
+- Treat a survey as one commissioned observation event for a physical area.
+  `surveys.area_code`, scoped by `client_id`, identifies the area;
+  complementary nadir, oblique, mixed, LiDAR, or other flights belong under
+  that survey. A later observation date receives a separate survey ID.
+- Add flights through a `survey_flights` child model with server-allocated
+  per-survey codes, capture/status/time data, normalized orthomosaic and
+  point-cloud intents, and same-survey provenance links to existing
+  `orthos`/`point_clouds`. Do not fabricate flights for legacy surveys or
+  consolidate existing output tables in this release.
+- Derive `none`, `orthomap_only`, `three_d_only`, or
+  `orthomap_and_three_d` from current orthos and point clouds, never tags.
+  For this release 3D means the protected point-cloud output. Only platform
+  admins may manage surveys, flights, intents, or provenance through audited
+  RPCs; organization admins and members remain read-only, and future pipeline
+  writes use separate narrow service-role-only idempotent RPCs.
 - Defer platform-created Auth accounts, automated invitation delivery, platform-admin role changes, true impersonation, hard deletion, broad asset/infrastructure administration, and full-history migration.
 
 ## Superseded Decisions

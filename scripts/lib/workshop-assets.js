@@ -98,16 +98,23 @@ function validateAllowlist(value) {
   if (Number.isInteger(maximum) && pilotSurveyIds.length > maximum) errors.push("pilotSurveyIds cannot exceed maxSurveysPerWave.");
   const batchKey = String(value.batchKey ?? "workshop").trim().toLowerCase();
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(batchKey)) errors.push("batchKey must be a short lowercase kebab-case identifier.");
+  const sourceRoot = path.resolve(value.sourceRoot ?? DEFAULT_SOURCE_ROOT);
   return {
     errors,
     allowlist: {
       version: value.version ?? 1,
-      sourceRoot: path.resolve(value.sourceRoot ?? DEFAULT_SOURCE_ROOT),
+      sourceRoot,
       datasetYear: Number(value.datasetYear ?? 2026),
       batchKey,
       maxSurveysPerWave: maximum,
       pilotSurveyIds,
-      approvedSurveys: approvedSurveys.map((item) => ({ ...item, surveyId: normalizeSurveyId(item?.surveyId), includeTiles: item?.includeTiles !== false })),
+      approvedSurveys: approvedSurveys.map((item) => ({
+        ...item,
+        surveyId: normalizeSurveyId(item?.surveyId),
+        expectedClientCode: String(item?.expectedClientCode ?? "").trim().toUpperCase(),
+        sourceRoot: path.resolve(String(item?.sourceRoot ?? sourceRoot).trim() || sourceRoot),
+        includeTiles: item?.includeTiles !== false,
+      })),
       approvedPointClouds: approvedPointClouds.map((item) => {
         const sourceFile = String(item?.sourceFile ?? "").trim();
         return { ...item, surveyId: normalizeSurveyId(item?.surveyId), sourceFile: sourceFile ? path.resolve(sourceFile) : "" };

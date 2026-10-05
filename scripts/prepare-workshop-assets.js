@@ -188,6 +188,11 @@ function databaseBlock(row) {
   return resolveDatasetScope(row).error ?? null;
 }
 
+function sourceAliasFromRoot(sourceRoot) {
+  const rootName = path.parse(sourceRoot).root.replace(/[:\\/]/g, "").toLowerCase();
+  return ["workshop", rootName || "source", "drive"].join("-");
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   const raw = await readJson(args.allowlist);
@@ -230,13 +235,16 @@ async function main() {
   for (let surveyIndex = 0; surveyIndex < allowlist.approvedSurveys.length; surveyIndex += 1) {
     const survey = allowlist.approvedSurveys[surveyIndex];
     console.log(`[${surveyIndex + 1}/${allowlist.approvedSurveys.length}] Inspecting ${survey.surveyId}...`);
-    const source = await discoverSurveySource(allowlist.sourceRoot, survey.surveyId, survey.tileVariant);
+    const source = await discoverSurveySource(survey.sourceRoot, survey.surveyId, survey.tileVariant);
     const row = dbRows.get(survey.surveyId);
     const reasons = [];
     if (source.status !== "ready") reasons.push(source.reason);
     const resolvedScope = resolveDatasetScope(row);
     const dbReason = resolvedScope.error ?? databaseBlock(row);
     if (dbReason) reasons.push(dbReason);
+    if (row && survey.expectedClientCode && String(row.client_code ?? "").toUpperCase() !== survey.expectedClientCode) {
+      reasons.push(["Expected client code", survey.expectedClientCode, "but staging resolved", row.client_code ?? "none"].join(" ") + ".");
+    }
     if (!resolvedScope.error && resolvedScope.scope !== survey.scope) {
       reasons.push(`Allowlist scope ${survey.scope} does not match staging scope ${resolvedScope.scope}.`);
     }
@@ -261,7 +269,7 @@ async function main() {
     const approved = approvedPc.get(survey.surveyId) ?? [];
     const pointClouds = [];
     for (const item of approved) {
-      const relative = path.relative(allowlist.sourceRoot, item.sourceFile);
+      const relative = path.relative(survey.sourceRoot, item.sourceFile);
       if (relative.startsWith("..") || path.isAbsolute(relative)) {
         reasons.push(`Approved point cloud is outside sourceRoot: ${item.sourceFile}`);
         continue;
@@ -277,7 +285,7 @@ async function main() {
     if (!survey.includeTiles && !pointClouds.length) {
       reasons.push("Survey selects neither tiles nor an approved point cloud.");
     }
-    const item = { surveyId: survey.surveyId, scope: survey.scope, tileVariant: survey.tileVariant, source, staging: row ?? null, resolvedScope: resolvedScope.error ? null : resolvedScope, tileStats, pointClouds, status: reasons.length ? "blocked" : "ready", reasons };
+    const item = { surveyId: survey.surveyId, scope: survey.scope, sourceRoot: survey.sourceRoot, tileVariant: survey.tileVariant, source, staging: row ?? null, resolvedScope: resolvedScope.error ? null : resolvedScope, tileStats, pointClouds, status: reasons.length ? "blocked" : "ready", reasons };
     report.surveys.push(item);
     if (reasons.length) report.blocked.push({ surveyId: survey.surveyId, reasons });
     else ready.push(item);
@@ -323,8 +331,8 @@ async function main() {
             organizationId: item.resolvedScope.organizationId,
             clientId: item.resolvedScope.clientId,
           },
-          tiles: item.source.status === "ready" && item.tileStats.fileCount ? [{ tileFolder: item.tileVariant, sourceRoot: item.source.tileRoot, destinationAlias: "tiles", sourceAlias: "workshop-z-drive" }] : [],
-          pointClouds: item.pointClouds.map((pc) => ({ sourceFile: pc.sourceFile, file: path.basename(pc.sourceFile), destinationAlias: "pointclouds", sourceAlias: "workshop-z-drive" })),
+          tiles: item.source.status === "ready" && item.tileStats.fileCount ? [{ tileFolder: item.tileVariant, sourceRoot: item.source.tileRoot, destinationAlias: "tiles", sourceAlias: sourceAliasFromRoot(item.sourceRoot) }] : [],
+          pointClouds: item.pointClouds.map((pc) => ({ sourceFile: pc.sourceFile, file: path.basename(pc.sourceFile), destinationAlias: "pointclouds", sourceAlias: sourceAliasFromRoot(item.sourceRoot) })),
         })),
       };
       const outputPath = path.join(args.outputRoot, "generated", `${waveId}.jobs.json`);

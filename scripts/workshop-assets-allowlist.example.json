@@ -5,7 +5,16 @@
   "batchKey": "example",
   "maxSurveysPerWave": 3,
   "pilotSurveyIds": [],
-  "approvedSurveys": [],
+  "approvedSurveys": [
+    {
+      "surveyId": "<SURVEY-ID>",
+      "expectedClientCode": "<CLIENT-CODE>",
+      "sourceRoot": "X:\\surveys\\2026",
+      "tileVariant": "round-corners",
+      "includeTiles": true,
+      "scope": "organization"
+    }
+  ],
   "approvedPointClouds": [],
   "ignoredPointClouds": []
 }
