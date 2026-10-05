@@ -73,7 +73,7 @@ interface ThreeDTabContentProps {
 }
 
 export function ThreeDTabContent({ survey }: ThreeDTabContentProps) {
-  const hasPointCloud = survey.point_cloud != null;
+  const hasPointCloud = Array.isArray(survey.recording_clouds) && survey.recording_clouds.length > 0;
 
   return (
     <Card className="h-full border-0 shadow-none">
@@ -109,10 +109,9 @@ export function ThreeDTabContent({ survey }: ThreeDTabContentProps) {
         ) : !hasPointCloud ? (
           <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Processing in progress</AlertTitle>
+            <AlertTitle>3D output unavailable</AlertTitle>
             <AlertDescription>
-              The 3D point cloud for this survey is not yet available. It may
-              still be processing.
+              No verified point-cloud output is available for this survey.
             </AlertDescription>
           </Alert>
         ) : (

@@ -1,144 +1,43 @@
 "use client";
-
-import { useSurveyMapStore } from "@/providers/survey-map-store-provider";
-import { Bounds, Center, OrbitControls, useGLTF } from "@react-three/drei";
+import { Component, Suspense, useMemo, type ReactNode } from "react";
 import { Canvas, useLoader } from "@react-three/fiber";
-import { getYear } from "date-fns";
-import { useEffect, useMemo } from "react";
-import {
-  AddEquation,
-  CustomBlending,
-  SrcColorFactor,
-  ZeroFactor,
-  Vector3,
-  Box3,
-} from "three";
+import { Bounds, Center, OrbitControls } from "@react-three/drei";
 import { PCDLoader } from "three-stdlib";
-import { Points, BufferGeometry } from "three";
+import type { Points } from "three";
+import { useSurveyMapStore } from "@/providers/survey-map-store-provider";
+import {
+  RECORDING_PCD_MAX_BYTES,
+  RECORDING_PCD_MAX_LABEL,
+} from "@/lib/recording/limits";
 
-function PointCloud(props) {
-  const result = useLoader(PCDLoader, props.url);
-
-  const centered = useMemo(() => {
-    // PCDLoader always returns a single Points object, cast to fix the type
-    const points = (
-      Array.isArray(result) ? result[0] : result
-    ) as Points<BufferGeometry>;
-
-    points.geometry.computeBoundingBox();
-    const box = points.geometry.boundingBox;
-    if (!box) return points;
-
-    const center = new Vector3();
-    box.getCenter(center);
-    points.geometry.translate(-center.x, -center.y, -center.z);
-
-    return points;
-  }, [result]);
-
-  return <primitive object={centered} {...props} />;
+class CloudErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() { return this.state.failed ? <p className="p-6">Point cloud unavailable. Check authorization and the active manifest.</p> : this.props.children; }
 }
-
-function OdmPointCloud({ survey }) {
-  return (
-    <Bounds fit={true} clip={true} observe={true}>
-      <Center>
-        <PointCloud
-          url={`/asimov-hawks/3d/${survey.code?.toLowerCase()}/${getYear(
-            survey.flight_date,
-          )}/${survey.id}/odm.pcd`}
-          material-size={0.1}
-          material-vertexColors={true}
-          material-blending={CustomBlending}
-          material-blendingEquation={AddEquation}
-          material-blendSrc={SrcColorFactor}
-          material-blendDst={ZeroFactor}
-        />
-      </Center>
-    </Bounds>
-  );
+function PointCloud({ url }: { url: string }) {
+  const loaded = useLoader(PCDLoader, url) as Points;
+  const points = useMemo(() => {
+    const object = loaded.clone();
+    object.geometry = loaded.geometry.clone();
+    object.geometry.center();
+    return object;
+  }, [loaded]);
+  return <primitive object={points} material-size={0.1} material-vertexColors />;
 }
-
-function LidarPointCloud({ survey }) {
-  return (
-    <Bounds fit={true} clip={true} observe={true}>
-      <Center>
-        <PointCloud
-          url={`/asimov-hawks/3d/${survey.code?.toLowerCase()}/${getYear(
-            survey.flight_date,
-          )}/${survey.id}/lidar.pcd`}
-          material-size={0.1}
-          material-vertexColors={true}
-          material-blending={CustomBlending}
-          material-blendingEquation={AddEquation}
-          material-blendSrc={SrcColorFactor}
-          material-blendDst={ZeroFactor}
-        />
-      </Center>
-    </Bounds>
-  );
-}
-
-export function ThreeDimensionalModel({ survey }) {
-  const { selected3dModel, show3dAxesHelper } = useSurveyMapStore(
-    (state) => state,
-  );
-
-  if (!selected3dModel)
+export function ThreeDimensionalModel({ survey }: { survey: { recording_clouds: { url: string; bytes: number }[] } }) {
+  const { selected3dModel, show3dAxesHelper } = useSurveyMapStore((s) => s);
+  const cloud = survey.recording_clouds.find((m) => m.url === selected3dModel) ?? survey.recording_clouds[0];
+  if (!cloud) return <p className="p-6">No verified point cloud available.</p>;
+  if (cloud.bytes > RECORDING_PCD_MAX_BYTES) {
     return (
-      <div className="flex flex-1 items-center justify-center text-primary-foreground">
-        No selected 3D model.
-      </div>
+      <p className="p-6">
+        This point cloud exceeds the supported {RECORDING_PCD_MAX_LABEL} loading limit.
+      </p>
     );
-
-  // if (selected3dModel === "pcd-lidar") {
-  //   return (
-  //     <Canvas
-  //       fallback={
-  //         <div className="flex flex-1 items-center justify-center">
-  //           {" "}
-  //           WebGL is not supported.{" "}
-  //         </div>
-  //       }
-  //       className="flex flex-1 items-center justify-center"
-  //     >
-  //       <Bounds fit={true} clip={true} observe={true}>
-  //         <Center>
-  //           <PointCloud
-  //             url={`/asimov-hawks/3d/${survey.code?.toLowerCase()}/${getYear(
-  //               survey.flight_date
-  //             )}/${survey.id}/lidar.pcd`}
-  //             material-size={0.1}
-  //             material-vertexColors={true}
-  //             material-blending={CustomBlending}
-  //             material-blendingEquation={AddEquation}
-  //             material-blendSrc={SrcColorFactor}
-  //             material-blendDst={ZeroFactor}
-  //           />
-  //           <OrbitControls />
-  //         </Center>
-  //       </Bounds>
-  //       {show3dAxesHelper && <axesHelper args={[150]} />}
-  //     </Canvas>
-  //   );
-  // }
-
-  return (
-    <Canvas
-      // ── Fix: logarithmic depth buffer eliminates z-fighting and
-      //    jitter when the camera is close to large-coordinate geometry ──
-      gl={{ logarithmicDepthBuffer: true }}
-      fallback={
-        <div className="flex flex-1 items-center justify-center">
-          WebGL is not supported.
-        </div>
-      }
-      className="flex flex-1 items-center justify-center"
-    >
-      {selected3dModel === "pcd-lidar" && <LidarPointCloud survey={survey} />}
-      {selected3dModel === "pcd-odm" && <OdmPointCloud survey={survey} />}
-      <OrbitControls />
-      {show3dAxesHelper && <axesHelper args={[150]} />}
-    </Canvas>
-  );
+  }
+  return <CloudErrorBoundary key={cloud.url}><Canvas gl={{ logarithmicDepthBuffer: true }} fallback={<p>WebGL is not supported.</p>}>
+    <Suspense fallback={null}><Bounds fit clip observe><Center><PointCloud url={cloud.url} /></Center></Bounds></Suspense>
+    <OrbitControls />{show3dAxesHelper && <axesHelper args={[150]} />}
+  </Canvas></CloudErrorBoundary>;
 }

@@ -2,19 +2,15 @@ import SurveyMapCaller from "@/components/callers/survey-map-caller";
 import { getUserSurvey } from "@/lib/actions/survey";
 import { getObjectDetectionData } from "@/lib/actions/surveys";
 import { SurveyMapStoreProvider } from "@/providers/survey-map-store-provider";
+import { notFound } from "next/navigation";
 
-export default async function Page(props: { params: { surveyId: string } }) {
+export default async function Page(props: { params: Promise<{ surveyId: string }> }) {
   const { surveyId } = await props.params;
   const survey = await getUserSurvey(surveyId);
-  const detectedObjects = await getObjectDetectionData(surveyId);
-
   if (!survey) {
-    return (
-      <div className="flex flex-1 items-center justify-center ">
-        Survey not found.
-      </div>
-    );
+    notFound();
   }
+  const detectedObjects = await getObjectDetectionData(surveyId);
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-2 h-full">

@@ -11,7 +11,7 @@ import loadingAnimation from "@/public/loading_blue_dots.json";
 const queryClient = new QueryClient();
 
 export default function OrthoMapCaller(props) {
-  const { surveys, detectedObjects, userProfile } = props;
+  const { surveys, detectedObjects } = props;
 
   // Add validation checks
   if (!surveys || !Array.isArray(surveys) || surveys.length === 0) {

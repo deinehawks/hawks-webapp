@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { assertRecordingEnvironment } from "@/lib/recording/config";
 
 export async function updateSession(request: NextRequest) {
+  assertRecordingEnvironment();
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -42,10 +44,36 @@ export async function updateSession(request: NextRequest) {
   if (
     !user &&
     !request.nextUrl.pathname.startsWith("/auth") &&
+    request.nextUrl.pathname !== "/internal/asset-auth" &&
+    request.nextUrl.pathname !== "/asimov-hawks/internal/asset-auth" &&
     request.nextUrl.pathname !== "/"
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
+    const forwardedHost = request.headers
+      .get("x-forwarded-host")
+      ?.split(",", 1)[0]
+      .trim();
+
+    if (forwardedHost) {
+      try {
+        const forwardedUrl = new URL(`http://${forwardedHost}`);
+        const isLoopbackHost =
+          forwardedUrl.hostname === "127.0.0.1" ||
+          forwardedUrl.hostname === "localhost";
+        const isRecordingPort =
+          forwardedUrl.port === "8082" || forwardedUrl.port === "3200";
+
+        if (isLoopbackHost && isRecordingPort) {
+          url.protocol = "http:";
+          url.hostname = forwardedUrl.hostname;
+          url.port = forwardedUrl.port;
+        }
+      } catch {
+        // Ignore malformed/untrusted forwarded hosts and retain Next's origin.
+      }
+    }
+
     url.pathname = "/auth/login";
     return NextResponse.redirect(url);
   }

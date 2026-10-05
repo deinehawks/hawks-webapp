@@ -1,13 +1,22 @@
 "use client";
 
-import { Building2Icon, ChevronRight, SquareTerminalIcon } from "lucide-react";
+import { Fragment, useMemo } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { isAfter, subMonths } from "date-fns";
+import {
+  Building2Icon,
+  ChevronRight,
+  ClipboardCheckIcon,
+  SquareTerminalIcon,
+} from "lucide-react";
 
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-
+import { Badge } from "@/components/ui/badge";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -19,181 +28,158 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 
-import { Badge } from "./ui/badge";
-import Link from "next/link";
-import { useMemo } from "react";
-import { useParams } from "next/navigation";
-import { isAfter, subMonths } from "date-fns";
-
-const data = {
-  navMain: [
-    {
-      title: "Areas",
-      url: "#",
-      icon: SquareTerminalIcon,
-      isActive: true,
-    },
-  ],
+type NavSurvey = {
+  id: string;
+  code: string;
+  created_at?: string | null;
+  flight_date?: string | null;
+  client: { name: string } | null;
 };
+
+type NavProfile = { role?: string | null } | null;
+
+function isRecentSurvey(survey: NavSurvey, threshold: Date) {
+  const rawDate = survey.created_at ?? survey.flight_date;
+  if (!rawDate) return false;
+  const date = new Date(rawDate);
+  return !Number.isNaN(date.getTime()) && isAfter(date, threshold);
+}
 
 export function NavMain({
   surveys,
   userProfile,
 }: {
-  surveys: any[];
-  userProfile: any;
+  surveys: NavSurvey[];
+  userProfile?: NavProfile;
 }) {
   const params = useParams();
-  const selectedSurvey = params.surveyId;
-
+  const selectedSurvey = typeof params.surveyId === "string" ? params.surveyId : undefined;
+  const selectedPlantation = typeof params.plantation === "string" ? params.plantation : undefined;
+  const isPlatformAdmin = userProfile?.role === "platform_admin";
   const sixMonthsAgo = subMonths(new Date(), 6);
 
-  // --- Map of survey IDs that are NEW based on created_at
-  const surveyNewMap = useMemo(() => {
-    const map: Record<string, boolean> = {};
-    surveys?.forEach((s) => {
-      // Use created_at if available, fallback to flight_date if not
-      const date = s.created_at
-        ? new Date(s.created_at)
-        : new Date(s.flight_date);
-      map[s.id] = isAfter(date, sixMonthsAgo);
-    });
-    return map;
-  }, [surveys]);
-
-  // --- Map of survey counts per area --- //
-  const surveyCounts = useMemo(() => {
-    const map: Record<string, { total: number; new: number }> = {};
-    if (!surveys) return map;
-    surveys.forEach((s) => {
-      const key = s.access_code;
-      const isNew = isAfter(new Date(s.flight_date), subMonths(new Date(), 3));
-      if (!map[key]) map[key] = { total: 0, new: 0 };
-      map[key].total += 1;
-      if (isNew) map[key].new += 1;
-    });
-    return map;
-  }, [surveys]);
-
-  const surveyIds = useMemo(() => surveys?.map((s) => s.id) ?? [], [surveys]);
-  const isLoading = !surveyIds.length;
+  const sortedSurveys = useMemo(
+    () => [...surveys].sort((a, b) => a.code.localeCompare(b.code) || a.id.localeCompare(b.id)),
+    [surveys],
+  );
+  const codes = useMemo(
+    () => [...new Set(sortedSurveys.map((survey) => survey.code).filter(Boolean))],
+    [sortedSurveys],
+  );
 
   return (
     <>
-      {/* Orthomap */}
+      {isPlatformAdmin && (
+        <SidebarGroup>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/dashboard/recording">
+                  <ClipboardCheckIcon />
+                  <span>Recording checklist</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
+
       <SidebarGroup>
         <SidebarGroupLabel>Orthomap</SidebarGroupLabel>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={params.plantation === userProfile.access_code}
-              asChild
-              className="transition-colors hover:bg-primary/10"
-            >
-              <Link
-                href={`/dashboard/orthomap/${userProfile.access_code}`}
-                className="flex items-center gap-2 px-3 py-2 rounded"
+          {codes.map((code) => (
+            <SidebarMenuItem key={code}>
+              <SidebarMenuButton
+                isActive={selectedPlantation === code}
+                asChild
+                className="transition-colors hover:bg-primary/10"
               >
-                <Building2Icon className="size-4" />
-                <span className="font-medium">{userProfile.access_code}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarGroup>
-
-      {/* Survey Data */}
-      <SidebarGroup>
-        <SidebarGroupLabel>Survey Data</SidebarGroupLabel>
-        <SidebarMenu>
-          {data.navMain.map((item) => (
-            <Collapsible
-              key={item.title}
-              asChild
-              defaultOpen={item.isActive}
-              className="group/collapsible"
-            >
-              <SidebarMenuItem>
-                <CollapsibleTrigger asChild>
-                  <SidebarMenuButton
-                    tooltip={item.title}
-                    className="flex items-center gap-2 px-3 py-2 rounded transition-colors hover:bg-primary/10"
-                  >
-                    {item.icon && <item.icon className="size-4" />}
-                    <span className="font-medium">{item.title}</span>
-                    {surveyCounts[userProfile.access_code] && (
-                      <Badge variant="secondary" className="ml-auto flex gap-1">
-                        {" "}
-                        {surveyCounts[userProfile.access_code].total}{" "}
-                      </Badge>
-                    )}
-                    <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                  </SidebarMenuButton>
-                </CollapsibleTrigger>
-
-                <CollapsibleContent>
-                  {isLoading ? (
-                    <SidebarMenuSub>
-                      {[1, 2, 3].map((i) => (
-                        <SidebarMenuSubItem key={i}>
-                          <div className="flex items-center gap-2 px-3 py-2 w-full">
-                            <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded animate-shimmer w-full"></div>
-                          </div>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  ) : (
-                    <SidebarMenuSub>
-                      {surveyIds.map((id, index) => (
-                        <SidebarMenuSubItem
-                          key={id}
-                          className="animate-fadeIn"
-                          style={{
-                            animationDelay: `${index * 50}ms`,
-                            animationFillMode: "backwards",
-                          }}
-                        >
-                          <SidebarMenuSubButton
-                            isActive={id === selectedSurvey}
-                            asChild
-                            className="transition-colors hover:bg-primary/10 rounded px-3 py-2 flex items-center justify-between"
-                          >
-                            <Link
-                              href={`/dashboard/surveys/${id}`}
-                              className="flex items-center gap-2"
-                            >
-                              <span>{id}</span>
-
-                              {/* NEW SURVEY BADGE */}
-                              {surveyNewMap[id] && (
-                                <Badge variant="secondary" className="ml-auto">
-                                  NEW
-                                </Badge>
-                              )}
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  )}
-                </CollapsibleContent>
-              </SidebarMenuItem>
-            </Collapsible>
+                <Link
+                  href={`/dashboard/orthomap/${encodeURIComponent(code)}`}
+                  className="flex items-center gap-2 rounded px-3 py-2"
+                >
+                  <Building2Icon className="size-4" />
+                  <span className="font-medium">{code}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           ))}
         </SidebarMenu>
       </SidebarGroup>
 
-      {/* Animations */}
-      <style jsx>{`
-        @keyframes shimmer {
-          0% {
-            background-position: -200% 0;
-          }
-          100% {
-            background-position: 200% 0;
-          }
-        }
+      <SidebarGroup>
+        <SidebarGroupLabel>Survey Data</SidebarGroupLabel>
+        <SidebarMenu>
+          <Collapsible asChild defaultOpen className="group/collapsible">
+            <SidebarMenuItem>
+              <CollapsibleTrigger asChild>
+                <SidebarMenuButton className="flex items-center gap-2 rounded px-3 py-2 transition-colors hover:bg-primary/10">
+                  <SquareTerminalIcon className="size-4" />
+                  <span className="font-medium">Areas</span>
+                  <Badge variant="secondary" className="ml-auto">
+                    {sortedSurveys.length}
+                  </Badge>
+                  <ChevronRight className="transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                </SidebarMenuButton>
+              </CollapsibleTrigger>
 
+              <CollapsibleContent>
+                <SidebarMenuSub>
+                  {codes.map((code) => (
+                    <Fragment key={code}>
+                      {codes.length > 1 && (
+                        <SidebarMenuSubItem>
+                          <span className="block px-3 py-1 text-xs font-semibold text-muted-foreground">
+                            {code}
+                          </span>
+                        </SidebarMenuSubItem>
+                      )}
+                      {sortedSurveys
+                        .filter((survey) => survey.code === code)
+                        .map((survey, index) => (
+                          <SidebarMenuSubItem
+                            key={survey.id}
+                            className="animate-fadeIn"
+                            style={{
+                              animationDelay: `${index * 50}ms`,
+                              animationFillMode: "backwards",
+                            }}
+                          >
+                            <SidebarMenuSubButton
+                              isActive={survey.id === selectedSurvey}
+                              asChild
+                              className="rounded px-3 py-2 transition-colors hover:bg-primary/10"
+                            >
+                              <Link
+                                href={`/dashboard/surveys/${encodeURIComponent(survey.id)}`}
+                                className="flex items-center gap-2"
+                              >
+                                <span>{survey.id}</span>
+                                {isRecentSurvey(survey, sixMonthsAgo) && (
+                                  <Badge variant="secondary" className="ml-auto">
+                                    NEW
+                                  </Badge>
+                                )}
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                    </Fragment>
+                  ))}
+                </SidebarMenuSub>
+              </CollapsibleContent>
+            </SidebarMenuItem>
+          </Collapsible>
+        </SidebarMenu>
+      </SidebarGroup>
+
+      {!sortedSurveys.length && (
+        <p className="px-4 py-2 text-sm text-muted-foreground">
+          No surveys have been assigned to this account.
+        </p>
+      )}
+
+      <style jsx>{`
         @keyframes fadeIn {
           from {
             opacity: 0;
@@ -203,11 +189,6 @@ export function NavMain({
             opacity: 1;
             transform: translateY(0);
           }
-        }
-
-        :global(.animate-shimmer) {
-          animation: shimmer 1.5s ease-in-out infinite;
-          background-size: 200% 100%;
         }
 
         :global(.animate-fadeIn) {

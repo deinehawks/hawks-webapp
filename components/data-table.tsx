@@ -90,17 +90,19 @@ import { survey_data_types } from "@/data/survey-types";
 import Link from "next/link";
 
 export const schema = z.object({
+  tile_url: z.string().nullable().optional(),
+  recording_clouds: z.array(z.object({ url: z.string(), bytes: z.number() })).optional(),
   id: z.string(),
   code: z.string(),
-  area_code: z.string().length(4),
-  flight_date: z.date(),
-  location: z.string(),
-  area: z.number(),
+  area_code: z.string().nullable(),
+  flight_date: z.string().nullable(),
+  location: z.string().nullable(),
+  area: z.number().nullable(),
   tags: z.string().array(),
-  min_x: z.number(),
-  max_x: z.number(),
-  min_y: z.number(),
-  max_y: z.number(),
+  min_x: z.number().nullable(),
+  max_x: z.number().nullable(),
+  min_y: z.number().nullable(),
+  max_y: z.number().nullable(),
   geojson_boundaries: z.string().array(),
 });
 
@@ -167,7 +169,9 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
       <TableColumnHeader column={column} title="Flight Date" />
     ),
     cell: ({ row }) => {
-      return <div> {format(row.getValue("flight_date"), "dd MMM yyyy")} </div>;
+      const value = row.getValue<string | null>("flight_date");
+      const date = value ? new Date(value) : null;
+      return <div>{date && Number.isFinite(date.getTime()) ? format(date, "dd MMM yyyy") : "Date unavailable"}</div>;
     },
   },
   {
@@ -176,7 +180,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
       <TableColumnHeader column={column} title="Location" />
     ),
     cell: ({ row }) => {
-      const location: string = row.getValue("location");
+      const location = row.getValue<string | null>("location") ?? "Location unavailable";
       const barangay = location.split(",").at(0);
       const city = location.split(",").at(1);
       const province = location.split(",").at(2);
@@ -637,7 +641,7 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
                 <TableCell>Orthomap:</TableCell>
                 <TableCell>
                   <DataAvailabilityIndicator
-                    availability={survey.tags?.includes("rgb") || false}
+                    availability={!!survey.tile_url}
                   />
                 </TableCell>
               </TableRow>
@@ -658,9 +662,7 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
                 <TableCell>
                   <DataAvailabilityIndicator
                     availability={
-                      survey.tags?.includes("rgb") ||
-                      survey.tags?.includes("lidar") ||
-                      false
+                      (survey.recording_clouds?.length ?? 0) > 0
                     }
                   />
                 </TableCell>

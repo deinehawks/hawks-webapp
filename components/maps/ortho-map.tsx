@@ -73,6 +73,9 @@ import { createPinLayout } from "@/lib/constants/map-layers";
 // ============================================================================
 
 type SurveyLike = {
+  tile_url?: string | null;
+  min_zoom?: number;
+  max_zoom?: number;
   id: string | number;
   code?: string | null;
   flight_date?: string | Date | null;
@@ -84,6 +87,10 @@ type SurveyLike = {
   area?: number;
   location?: string;
   tags?: string;
+  client?: {
+    code: string;
+    name: string;
+  } | null;
 };
 
 type PopupInfo = {
@@ -612,16 +619,14 @@ OrthomapFoiSelector.displayName = "OrthomapFoiSelector";
 const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
   const surveyTiles = useMemo(() => {
     return surveys
-      .filter((survey) => survey.code && survey.flight_date)
+      .filter((survey) => survey.tile_url && survey.code && survey.flight_date)
       .map((survey) => ({
         id: survey.id,
         code: String(survey.code).toLowerCase(),
         year: getYear(new Date(survey.flight_date as any)),
-        tileUrl: `/asimov-hawks/tiles/${String(
-          survey.code,
-        ).toLowerCase()}/${getYear(new Date(survey.flight_date as any))}/${
-          survey.id
-        }/ortho/sharp-corners/{z}/{x}/{y}.png`,
+        tileUrl: survey.tile_url!,
+        minZoom: survey.min_zoom,
+        maxZoom: survey.max_zoom,
       }));
   }, [surveys]);
 
@@ -635,10 +640,8 @@ const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
           tiles={[tile.tileUrl]}
           scheme="tms"
           tileSize={256}
-          minzoom={10}
-          maxzoom={24}
-          // PERFORMANCE: Increase tile cache to reduce reloading
-          maxzoom={24}
+          minzoom={tile.minZoom}
+          maxzoom={tile.maxZoom}
         >
           <Layer
             id={String(tile.id)}
@@ -991,11 +994,9 @@ BoundaryLayers.displayName = "BoundaryLayers";
 // ============================================================================
 
 export default function OrthoMap({
-  userProfile,
   surveys,
   detectedObjects,
 }: {
-  userProfile: any;
   surveys: SurveyLike[];
   detectedObjects: ComputerVisionObject[] | null | undefined;
 }) {
@@ -1027,6 +1028,9 @@ export default function OrthoMap({
   const { selectedFoi, setPopupInfo } = useOrthoMapStore((state) => state);
 
   const surveyIds = useMemo(() => surveys.map((s) => s.id), [surveys]);
+  const client = surveys[0]?.client;
+  const clientCode = client?.code || surveys[0]?.code || "Client";
+  const clientName = client?.name || clientCode;
 
   const { global_x, global_y } = useMemo(
     () =>
@@ -1070,7 +1074,7 @@ export default function OrthoMap({
 
   const mapStyle = useMemo<StyleSpecification>(() => {
     const areaFeatures: Feature<Polygon, GeoJsonProperties>[] = surveys
-      .filter((survey) => survey.boundaries && Array.isArray(survey.boundaries))
+      .filter((survey) => Array.isArray(survey.boundaries) && survey.boundaries.length >= 4)
       .map((survey) => {
         const coords = transformCoordinatesToLonLatFormat(
           survey.boundaries as any,
@@ -1120,7 +1124,7 @@ export default function OrthoMap({
       sources: {
         osm: {
           type: "raster",
-          tiles: ["https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"],
+          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
           tileSize: 256,
           attribution: "&copy; OpenStreetMap Contributors",
         },
@@ -1235,11 +1239,9 @@ export default function OrthoMap({
         <div className="flex flex-1 h-full px-4 lg:px-6">
           <Card className="@container/card flex flex-1 flex-col h-full relative">
             <CardHeader>
-              <CardTitle>
-                {userProfile?.organization?.code || "Organization"}
-              </CardTitle>
+              <CardTitle>{clientName}</CardTitle>
               <CardDescription>
-                {userProfile?.organization?.name || "Loading..."}
+                {clientCode} &middot; {surveys.length} {surveys.length === 1 ? "survey" : "surveys"}
               </CardDescription>
             </CardHeader>
 
@@ -1262,7 +1264,7 @@ export default function OrthoMap({
                     ) {
                       return {
                         url: url,
-                        headers: { "Cache-Control": "public, max-age=86400" },
+                        credentials: "same-origin",
                       };
                     }
                     return { url };
@@ -1271,23 +1273,19 @@ export default function OrthoMap({
                   <InitializeMapImages />
 
                   {surveys
-                    .filter((survey) => survey.code && survey.flight_date)
+                    .filter((survey) => survey.tile_url && survey.code && survey.flight_date)
                     .map((survey) => (
                       <Source
                         key={survey.id}
                         id={String(survey.id)}
                         type="raster"
                         tiles={[
-                          `/asimov-hawks/tiles/${String(
-                            survey.code,
-                          ).toLowerCase()}/${getYear(
-                            new Date(survey.flight_date as any),
-                          )}/${survey.id}/ortho/sharp-corners/{z}/{x}/{y}.png`,
+                          survey.tile_url!,
                         ]}
                         scheme="tms"
                         tileSize={256}
-                        minzoom={10}
-                        maxzoom={24}
+                        minzoom={survey.min_zoom}
+                        maxzoom={survey.max_zoom}
                       >
                         <Layer
                           id={String(survey.id)}

@@ -36,27 +36,34 @@ export function transformNullToEmptyString<T>(obj: T): T {
   return transformedObj;
 }
 
-export function calculateGlobalCenters(data): {
+export function calculateGlobalCenters(data: Array<{
+  min_x?: number | string | null; max_x?: number | string | null;
+  min_y?: number | string | null; max_y?: number | string | null;
+}>): {
   global_x: number;
   global_y: number;
 } {
-  if (data.length === 0) {
-    throw new Error("No available data to process.");
-  }
+  const located = data.filter((row) =>
+    [row.min_x, row.max_x, row.min_y, row.max_y].every(
+      (value) => value != null && value !== "" && Number.isFinite(Number(value)),
+    ),
+  );
+  // Regional base-map view only; never written as a survey's location.
+  if (!located.length) return { global_x: 125.58147596772221, global_y: 7.0763840759644 };
 
   let sum_x = 0;
   let sum_y = 0;
 
-  data.forEach((obj) => {
-    const center_x = (parseFloat(obj.min_x) + parseFloat(obj.max_x)) / 2;
-    const center_y = (parseFloat(obj.min_y) + parseFloat(obj.max_y)) / 2;
+  located.forEach((obj) => {
+    const center_x = (Number(obj.min_x) + Number(obj.max_x)) / 2;
+    const center_y = (Number(obj.min_y) + Number(obj.max_y)) / 2;
 
     sum_x += center_x;
     sum_y += center_y;
   });
 
-  const global_x = sum_x / data.length;
-  const global_y = sum_y / data.length;
+  const global_x = sum_x / located.length;
+  const global_y = sum_y / located.length;
 
   return { global_x, global_y };
 }

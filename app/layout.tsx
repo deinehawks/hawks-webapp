@@ -3,8 +3,8 @@ import "@/app/globals.css";
 
 export const metadata: Metadata = {
   title: {
-    template: "%s - ASIMOV-HAWKS",
-    default: "ASIMOV-HAWKS",
+    template: "%s - asimov-hawks V2",
+    default: "asimov-hawks V2",
   },
 };
 

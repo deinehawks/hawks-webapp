@@ -37,8 +37,9 @@ const formSchema = z.object({
 
 export function LoginForm({
   className,
+  initialError,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & { initialError?: string }) {
   const [passwordInputType, setPasswordInputType] = useState("password");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -158,6 +159,10 @@ export function LoginForm({
                   <div className="text-sm text-red-500">
                     {form.formState.errors.root.message}
                   </div>
+                )}
+
+                {!form.formState.errors.root && initialError && (
+                  <div className="text-sm text-red-500">{initialError}</div>
                 )}
 
                 {/* Submit button */}

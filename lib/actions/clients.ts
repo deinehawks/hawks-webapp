@@ -1,18 +1,6 @@
 "use server";
-
-import { createClient } from "@/utils/supabase/server";
-
+import { loadRecordingSurveys } from "@/lib/recording/surveys";
 export async function getAllClients() {
-  const supabase = await createClient();
-
-  const { data: clients, error } = await supabase
-    .from("clients")
-    .select("*")
-    .order("code");
-
-  if (error) {
-    throw new Error("Failed to fetch client data");
-  }
-
-  return clients;
+  const surveys = await loadRecordingSurveys();
+  return [...new Map(surveys.filter((s) => s.client).map((s) => [s.client!.id, s.client!])).values()];
 }

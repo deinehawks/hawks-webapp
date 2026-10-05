@@ -260,6 +260,7 @@ function MapEvents({ data, setPopupInfo }) {
     );
 
     const extremePoints = findExtremeCoordinates(bounds);
+    if (!extremePoints) return;
 
     map.fitBounds(extremePoints, {
       padding: { top: 50, bottom: 50, left: 50, right: 50 },
@@ -282,7 +283,7 @@ export default function MapLibre({ data: surveys }) {
   };
 
   // Create polygon features
-  const polygonFeatures = surveys.map((survey) => {
+  const polygonFeatures = surveys.filter((survey) => survey.geojson_boundaries?.length >= 4).map((survey) => {
     const coordinates = [
       survey.geojson_boundaries.map((pair) => [
         parseFloat(pair[0]),
@@ -302,7 +303,7 @@ export default function MapLibre({ data: surveys }) {
   });
 
   // Create separate point features for labels at polygon centroids
-  const labelFeatures = surveys.map((survey) => {
+  const labelFeatures = surveys.filter((survey) => survey.geojson_boundaries?.length >= 4).map((survey) => {
     const coordinates = [
       survey.geojson_boundaries.map((pair) => [
         parseFloat(pair[0]),

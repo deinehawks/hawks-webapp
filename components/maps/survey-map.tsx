@@ -150,9 +150,7 @@ const hasValidBoundaries = (boundaries: any) => {
 };
 
 const hasOrthoTilesAvailable = (survey: any): boolean =>
-  Boolean(
-    survey.ortho !== null && survey.code && survey.id && survey.flight_date,
-  );
+  Boolean(survey.tile_url && survey.code && survey.id);
 
 function calculateCentersWithOffset(
   min_lon: number,
@@ -845,6 +843,36 @@ function NoMapDataFallback() {
   );
 }
 
+function NoThreeDDataFallback() {
+  return (
+    <div className="flex h-96 lg:h-full items-center justify-center rounded-lg border-2 border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="max-w-md p-8 text-center">
+        <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-slate-200">
+          <svg
+            className="h-8 w-8 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"
+            />
+          </svg>
+        </div>
+        <h3 className="mb-2 text-lg font-semibold text-slate-900">
+          3D output unavailable
+        </h3>
+        <p className="text-sm leading-relaxed text-slate-600">
+          No verified point-cloud output is available for this survey.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function RegionalViewOverlay() {
   return (
     <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
@@ -1118,7 +1146,7 @@ function MapView({
       sources: {
         osm: {
           type: "raster",
-          tiles: ["https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"],
+          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
           tileSize: MAP_CONFIG.tileSize,
           attribution: "&copy; OpenStreetMap Contributors",
         },
@@ -1258,12 +1286,12 @@ function MapView({
               id="ortho"
               type="raster"
               tiles={[
-                `/asimov-hawks/tiles/${codeLower}/${flightYear}/${survey.id}/ortho/sharp-corners/{z}/{x}/{y}.png`,
+                survey.tile_url,
               ]}
               tileSize={MAP_CONFIG.tileSize}
               scheme="tms"
-              minzoom={MAP_CONFIG.orthoMinZoom}
-              maxzoom={MAP_CONFIG.orthoMaxZoom}
+              minzoom={survey.min_zoom}
+              maxzoom={survey.max_zoom}
             >
               <Layer
                 id="ortho"
@@ -1444,7 +1472,7 @@ export default function SurveyMap({
   detectedObjects: ComputerVisionObject[] | null | undefined;
   fallbackCenter?: { lng: number; lat: number };
 }) {
-  const [activeTab, setActiveTab] = useState("ortho");
+  const [activeTab, setActiveTab] = useState(survey.tile_url || !survey.recording_clouds?.length ? "ortho" : "3d");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const globalCenter: MapCenter = {
@@ -1513,17 +1541,7 @@ export default function SurveyMap({
   const { hasValidCoordinates, hasOrthoTiles, shouldShowMap } =
     useValidationState(survey);
 
-  const tagsLower = String(survey.tags ?? "").toLowerCase();
-
-  const has3DModel =
-    survey.point_cloud != null ||
-    tagsLower.includes("rgb") ||
-    tagsLower.includes("lidar");
-
-  const hasPointCloud = survey.point_cloud != null;
-  const hasPhotogrammetryModel =
-    tagsLower.includes("rgb") || tagsLower.includes("photogrammetry");
-  const hasLidarModel = tagsLower.includes("lidar");
+  const has3DModel = survey.recording_clouds.length > 0;
 
   const isOrtho = activeTab === "ortho";
   const is3D = activeTab === "3d";
@@ -1550,13 +1568,13 @@ export default function SurveyMap({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ortho">Orthomosaic</SelectItem>
-              {has3DModel && <SelectItem value="3d">3D Model</SelectItem>}
+              <SelectItem value="3d">3D Model</SelectItem>
             </SelectContent>
           </Select>
 
           <TabsList className="@4xl/main:flex hidden">
             <TabsTrigger value="ortho">Orthomosaic</TabsTrigger>
-            {has3DModel && <TabsTrigger value="3d">3D Model</TabsTrigger>}
+            <TabsTrigger value="3d">3D Model</TabsTrigger>
           </TabsList>
 
           {/* RIGHT-SIDE SELECTORS + SIDEBAR TOGGLE */}
@@ -1567,12 +1585,9 @@ export default function SurveyMap({
                 <FoiSelector detectedObjects={safeDetectedObjects} />
               </div>
             )}
-            {is3D && survey.code && (
+            {is3D && has3DModel && survey.code && (
               <ThreeDimensionalModelSelector
-                code={String(survey.code)}
-                hasPointCloud={hasPointCloud}
-                hasPhotogrammetryModel={hasPhotogrammetryModel}
-                hasLidarModel={hasLidarModel}
+                models={survey.recording_clouds}
               />
             )}
 
@@ -1618,7 +1633,9 @@ export default function SurveyMap({
               </CardHeader>
 
               <CardContent className="flex-1 relative">
-                {!shouldShowMap ? (
+                {is3D && !has3DModel ? (
+                  <NoThreeDDataFallback />
+                ) : !is3D && !shouldShowMap ? (
                   <NoMapDataFallback />
                 ) : (
                   <div className="flex h-96 lg:h-full">

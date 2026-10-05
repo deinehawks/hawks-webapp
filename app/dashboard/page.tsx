@@ -6,19 +6,23 @@ import {
   getObjectDetectionData,
 } from "@/lib/actions/surveys";
 
-import { AppSidebar } from "@/components/app-sidebar";
-import { HeaderBreadcrumb } from "@/components/header-breadcrumb";
-import { Separator } from "@/components/ui/separator";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { getCurrentUserProfile } from "@/lib/actions/profiles";
-
 export default async function Page() {
-  const userProfile = await getCurrentUserProfile();
   const surveys = await getAllUserSurveys();
+
+  if (!surveys.length) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div className="max-w-md rounded-lg border bg-card p-6 text-center shadow-sm">
+          <h1 className="text-xl font-semibold">No surveys assigned</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This account is active, but it does not have access to any recording surveys yet.
+            Ask a platform administrator to assign the required surveys.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const detectedObjects = await getObjectDetectionData();
 
   if (!surveys || !detectedObjects) return <div className="flex"></div>;

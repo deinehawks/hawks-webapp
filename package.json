@@ -4,7 +4,11 @@
   "private": true,
   "engines": {},
   "scripts": {
-    "dev": "set NEXT_DISABLE_TURBOPACK=1 && next dev",
+    "dev": "set NEXT_DISABLE_TURBOPACK=1 && next dev --hostname 127.0.0.1 --port 3200",
+    "recording:configure": "node scripts/configure-recording.cjs",
+    "recording:catalog": "node scripts/build-recording-catalog.cjs",
+    "recording:bind-outputs": "node scripts/build-recording-output-bindings.cjs",
+    "recording:test": "node --test scripts/tests/recording.test.cjs scripts/tests/recording-auth.test.cjs",
     "turbo-dev": "next dev --turbo",
     "update-tile-bounds": "node scripts/update-tile-bounds.js",
     "update-tile-bounds:force": "node scripts/update-tile-bounds.js --force",
