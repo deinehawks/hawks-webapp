@@ -64,7 +64,8 @@ staging or production.
 
 ## Filesystem retry branch
 
-Branch `fix/workshop-share-retries` remains uncommitted. Its focused change
+Branch `fix/workshop-share-retries` was committed as `92dabf5a` and pushed.
+Its focused change
 retries recognized transient `readdir` and `stat` failures with visible bounded
 backoff for approximately 60 seconds. Persistent transient failures and all
 non-transient failures remain fail closed. The workshop asset suite passes
@@ -73,14 +74,12 @@ coverage.
 
 ## Next gate
 
-1. Review the combined SQL and JSON inventory against the 30-survey expected
-   inventory and the 11 embedded verification-report hashes.
-2. Finalize the focused retry branch separately without committing `.tmp`
-   artifacts.
-3. Before any staging manifest write, capture the required read-only inventory
-   and checksummed backup, assign reviewed manifest identifiers, rehearse the
-   draft/rollback workflow in an isolated clone, and obtain explicit approval.
-4. Do not approve, activate, or supersede the current manifest until the new
+1. The combined SQL/JSON, read-only staging inventory, checksummed backup, and
+   exact draft/containment/cutover/forward-recovery package are reviewed and
+   rehearsed. See
+   `docs/workshop-manifest-staging-rehearsal-2026-09-25.md`.
+2. Obtain explicit approval before applying the inactive draft to
+   non-production staging.
+3. Do not approve, activate, or supersede the current manifest until the new
    draft passes staging authorization and external asset smoke.
-5. Production remains out of scope without separate approval.
-
+4. Production remains out of scope without separate approval.

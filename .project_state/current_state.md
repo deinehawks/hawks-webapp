@@ -544,7 +544,16 @@ The draft contains only two inserts, retains manifest ID/key placeholders, and
 has not been applied, approved, activated, or used to supersede staging.
 
 The filesystem retry suite passes 24/24. Branch
-`fix/workshop-share-retries` remains uncommitted. Next: review/finalize that
-focused branch, then perform the separately approved staging manifest
-inventory, backup, isolated rehearsal, and authorization/external asset smoke.
+`fix/workshop-share-retries` is committed/pushed as `92dabf5a`.
+
+Branch `ops/workshop-manifest-rollout` now contains a tested rollout packager
+and evidence. It pins replacement `manifest-2026-09-25` with ID
+`b07905c4-71ae-4df6-a834-14fbbae13552` to active predecessor
+`manifest-2026-08-11`. The ignored package and ACL-complete staging backup
+are checksummed. All 53 Auth/Public table counts matched in the isolated
+restore; draft apply/verify, containment/reapply, reviewed/atomic cutover,
+active verification, forward recovery, and missing-confirmation denial pass.
+Backup alias/timestamp fields intentionally remain null. No staging row was
+changed. Next: review/commit this branch and obtain explicit approval before
+applying only the inactive staging draft.
 See `docs/workshop-asset-migration-completion-2026-09-25.md`.

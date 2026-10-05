@@ -29,6 +29,8 @@
                     "workshop-assets:review":  "node scripts/review-workshop-asset-wave.js",
                     "workshop-assets:upload":  "node scripts/publish-workshop-assets.js",
                     "workshop-assets:manifest":  "node scripts/build-workshop-manifest-draft.js",
+                    "workshop-assets:rollout-package":  "node scripts/package-workshop-manifest-rollout.js",
+                    "workshop-assets:rollout-test":  "node --test scripts/tests/workshop-manifest-rollout.test.js",
                     "workshop-assets:runner":  "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/workshop-asset-runner.ps1",
                     "minio-storage:start":  "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/minio-storage-start.ps1"
                 },
