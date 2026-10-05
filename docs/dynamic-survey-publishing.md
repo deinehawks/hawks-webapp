@@ -1,7 +1,11 @@
 # Dynamic survey publishing
 
-Status: implemented and validated locally on 2026-10-05. The migration has not
-been applied to staging or production.
+Status: implemented; fresh staging backup, isolated rehearsal and explicitly
+approved staging migration completed on 2026-10-05. Direct post-apply schema,
+permissions, preservation and migration-history verification pass. See
+[rehearsal evidence](dynamic-survey-publishing-staging-rehearsal-2026-10-05.md).
+Production is unchanged. The user confirmed all ten existing-asset/access
+browser smoke checks passed; publication lifecycle smoke remains pending.
 
 ## Purpose
 
@@ -35,6 +39,8 @@ current `orthos` or `point_clouds` row before rendering an asset.
 - Platform admins manage drafts, publishing, retirement, and draft deletion
   through audited RPCs.
 - Verification is service-role-only and idempotent by source/run identifier.
+- Platform-admin RPCs explicitly revoke service-role execution, including
+  grants inherited from Supabase default ACLs.
 - Organization admins and ordinary members cannot mutate publication records.
 - Consumer reads inherit `app_private.domain_can_read_survey(survey_id)` and
   enforce the derived organization/private/platform-admin protection level.
@@ -46,8 +52,10 @@ current `orthos` or `point_clouds` row before rendering an asset.
 ## Local validation
 
 - Clean local schema replay: passed.
-- Focused publication pgTAP: 34/34 passed.
-- Full database pgTAP: 242/242 passed.
+- Revised focused publication pgTAP: 38/38 passed in the staging restore clone.
+- Earlier full clean-local pgTAP: 242/242 passed before four new assertions.
+- Current full staging-schema suite: 245/246; the one pre-existing anonymous
+  organization SELECT-grant mismatch is documented in the rehearsal evidence.
 - V3 TypeScript and targeted ESLint: passed.
 - V2 recording/authorization tests: 30/30 passed.
 - V2 repository-wide TypeScript still reports only its documented legacy UI
@@ -55,12 +63,12 @@ current `orthos` or `point_clouds` row before rendering an asset.
 
 ## Rollout gate
 
-Do not use the V2 dynamic reader against staging until the migration is
-separately reviewed, backed up, rehearsed in an isolated clone, explicitly
-approved, applied to non-production staging, and verified. After that apply,
-smoke platform-admin draft/verify/publish/retire, ordinary-member discovery,
-cross-scope denial, tiles, point clouds, and legacy-manifest compatibility.
-Production requires a separate approval and rollout.
+The staging schema gate is complete: exact-hash approval, apply and read-only
+verification passed. The discovery RPC is live; existing records and the active
+manifest remain unchanged. The user passed V3 controls, ordinary-member V2
+discovery, cross-scope denial, tiles, point clouds and legacy compatibility. Publication
+lifecycle smoke requires separately scoped test records/actions; this approval
+did not publish or retire outputs. Production requires separate approval.
 
 V3's existing output detail page remains usable when deployed before the
 migration: it shows a pending-migration message in place of the new publishing

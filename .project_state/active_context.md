@@ -2,16 +2,32 @@
 
 Last updated: 2026-10-05
 
-Current priority: prepare the locally validated dynamic survey-publishing
-migration for an isolated non-production rehearsal. Do not apply it remotely
-without a fresh staging inventory/backup, reviewed rehearsal evidence and
-separate approval. The application work is complete locally: platform admins
+Next-session priority: confirm the user's active UEMPC membership is Member
+and only AH-026032 is visible if one-survey recording is still required. Read-only
+inspection found a separate removed historical membership; active admin scope
+still returns all four surveys despite three revoked grants. No mutation was
+performed; the role change has not been confirmed. Publication lifecycle tests
+remain separately scoped. V2 is clean/pushed at `9c507324` on
+`fix/v2-recording-compat`; V3 closeout stays on `development`. The user
+confirmed all ten V3/V2 existing-asset/access browser smoke steps passed.
+Exact-hash apply, remote history, no-pending dry-run and read-only verifier pass;
+52 existing table counts and 26 application-table fingerprints are unchanged.
+Publication rows remain zero and all 77 active manifest entries are preserved.
+Discovery is live; anonymous API execution returns 401. No output publishing,
+manifest or production change occurred. Fresh ignored backup, 52-table restore parity,
+guarded empty-state rollback, baseline fingerprints and exact reapply pass.
+The revised migration explicitly denies service-role admin-RPC execution;
+focused pgTAP passes 38/38. Full staging-schema tests pass 245/246, with one
+pre-existing anonymous organization SELECT-grant/test mismatch; RLS returns
+zero rows. Evidence and approved hash:
+`docs/dynamic-survey-publishing-staging-rehearsal-2026-10-05.md`.
+The migration is applied only to non-production staging. Platform admins
 manage protected-delivery drafts and publication through narrow audited RPCs;
 verification remains service-role-only; V2 reads the RLS-authorized published
 catalog dynamically and treats its ignored selection/catalog files as
 historical evidence only. The existing active workshop manifest remains a
-fail-closed compatibility fallback. Validation passes: clean replay, focused
-pgTAP 34/34, full pgTAP 242/242, V3 TypeScript/targeted ESLint and V2 recording
+fail-closed compatibility fallback. Earlier validation passes: clean replay,
+full pgTAP 242/242, V3 TypeScript/targeted ESLint and V2 recording
 tests 30/30. See `docs/dynamic-survey-publishing.md`.
 
 Branch integration: `ops/workshop-manifest-rollout`,

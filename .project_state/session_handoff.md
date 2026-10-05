@@ -2,7 +2,13 @@
 
 Last updated: 2026-10-05
 
-Resume from `development`. The dynamic implementation arrived through
+Resume V3 from `development`. Session closeout commit message:
+`fix(publishing): harden RPC grants and complete staging rollout`.
+V2 is an independent clean checkout on `fix/v2-recording-compat`; existing
+commit `9c507324` is pushed and tracks its remote branch. Do not merge the old
+V2 application into V3. Backups and machine-readable evidence remain ignored.
+
+The dynamic implementation arrived through
 `fix/workshop-multi-source-roots`; the separately created
 `feature/dynamic-survey-publishing` branch has no unique commit. It adds
 `survey_output_publications`, audited platform-admin draft/publish/retire
@@ -12,16 +18,46 @@ The V3 output detail page exposes the platform-admin protected-delivery
 workflow. V2 now consumes the discovery RPC and verifies the exact current
 specialized artifact before rendering; its ignored selection/catalog/bindings
 remain historical evidence, not runtime gates. Dataset years are 2000-2100 and
-PCDs are limited to 5 GiB. Local validation passes: clean replay, focused pgTAP
-34/34, full pgTAP 242/242, V3 TypeScript/targeted ESLint, and V2 tests 30/30.
+PCDs are limited to 5 GiB. Earlier local validation passes: clean replay,
+full pgTAP 242/242, V3 TypeScript/targeted ESLint, and V2 tests 30/30.
 V2's full type-check still has only its documented legacy UI errors and none
 touch the new adapter or asset-auth files.
 
-No remote database or infrastructure mutation occurred. Before live V2 smoke,
-review and rehearse migration
-`20261005000000_dynamic_survey_output_publishing.sql` with a fresh staging
-backup, then obtain separate staging approval. Details:
-`docs/dynamic-survey-publishing.md`.
+The explicitly approved migration is applied only to staging. Fresh ignored backups at
+`backups/staging-dynamic-publishing-20261005`, 52-table restore parity, guarded
+empty-state recovery, 26 application-table baseline fingerprints, exact
+reapply and read-only verifier pass. Review fixed default service-role admin
+RPC grants and added four assertions; focused pgTAP passes 38/38. Full clean
+staging-schema pgTAP is 245/246 because of one reproduced baseline anonymous
+organization SELECT-grant mismatch (zero rows under RLS). Other populated-data
+fixture failures also reproduce before the migration.
+The user approved and staging applied
+`20261005000000_dynamic_survey_output_publishing.sql`, SHA-256
+`5c7b20cd121429d0f65947a2ba51056207e842090e3359f3a45aa045f489ef41`.
+Remote history, no-pending dry-run and
+`supabase/verification/dynamic_survey_output_publishing.sql` pass. All 52 existing
+table counts and 26 application-table fingerprints are unchanged; publication
+rows remain zero and the active manifest still has 77 entries. Admin discovery
+returns 77 compatibility assets across 62 surveys; anonymous API execution is
+401 / 42501. The CLI catalog-cache export warned about a missing certificate
+file, but direct schema/history checks confirm the successful apply. Evidence:
+`.tmp/dynamic-survey-publishing-20261005/staging-apply-result.json`.
+The user confirmed all ten V3/V2 browser checks passed, including existing
+assets, member visibility, denial and login/logout. Next: separately scoped
+publication lifecycle smoke. No output publishing or manifest change was
+authorized or performed; publication lifecycle tests need separately scoped
+records/actions. Production and infrastructure are unchanged. The guarded rollback is under `supabase/rollback/`
+and refuses any publication rows. Evidence and remaining gates:
+`docs/dynamic-survey-publishing-staging-rehearsal-2026-10-05.md`.
+
+Follow-up access diagnosis: the unique account matching AH-026032 Active and
+AH-026046/AH-026053/AH-026061 Revoked still has an active UEMPC Org Admin
+membership, alongside a distinct removed historical membership. Staging RLS
+and discovery correctly return all four via admin scope. Ask the user to change
+the active membership to Member and repeat preview/V2 access; no source fix or
+remote mutation was performed. The user has not confirmed the Member change;
+first next session verify that configuration and one-survey preview/V2 access,
+then scope publication lifecycle testing. Do not unlink survey-organization relationships.
 
 Branch integration on 2026-10-05: `ops/workshop-manifest-rollout`,
 `feature/dataset-onboarding`'s final smoke evidence, and
@@ -37,8 +73,9 @@ also show full survey IDs. The focused changes are in
 `components/admin/admin-resource-list-page.tsx`,
 `components/admin/admin-overview-page.tsx` and
 `lib/admin/survey-labels.ts`. Focused ESLint, full TypeScript, whitespace and
-control-character checks pass. Authenticated smoke should search
-`AH-026061`, navigate pages and inspect narrow width before commit. No
+control-character checks pass. General authenticated search/detail and
+pagination smoke passed on 2026-10-05; specifically searching `AH-026061` and
+checking narrow width remains undocumented. No
 database, authorization or deployment change occurred.
 
 Resume at
@@ -91,7 +128,8 @@ is unchanged.
 See docs/workshop-cumulative-recording-package-2026-09-29.md; historical
 running-upload instructions below are superseded.
 
-Current branch: `fix/workshop-multi-source-roots` (uncommitted).
+Historical workshop branch at that earlier handoff:
+`fix/workshop-multi-source-roots` (then uncommitted); current V3 branch is `development`.
 
 Access Policy v2 is fully smoke-validated in staging. The user confirmed all
 member, org-admin, membership-transition, platform-exception, rejected-signup,

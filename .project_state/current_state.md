@@ -2,6 +2,10 @@
 
 Last updated: 2026-10-05
 
+Session closeout: the latest staging/apply/browser results below supersede
+older pre-apply and running-workshop statuses. V2 remains a separate checkout;
+its clean `fix/v2-recording-compat` branch is pushed at `9c507324`.
+
 Latest feature state: dynamic survey-output publishing is integrated into
 `development` from `fix/workshop-multi-source-roots`. V3 now owns draft, service verification,
 publish, retire and draft-delete workflows for protected orthomosaic and
@@ -9,13 +13,36 @@ point-cloud deliveries. V2 discovers only published assets allowed by its
 signed-in Supabase/RLS session; its static recording selection/catalog is no
 longer a runtime gate. Dynamic authorization is preferred over the active
 workshop manifest, which remains a compatibility fallback. Clean local replay,
-focused pgTAP 34/34, full pgTAP 242/242, V3 TypeScript/targeted ESLint and V2
-recording tests 30/30 pass. The V3 output detail page tolerates the missing
-publication table until the separate staging migration is approved. No staging
-or production migration was applied.
-Next: review and rehearse the migration with a fresh non-production backup,
-then request separate exact-scope staging approval. See
-`docs/dynamic-survey-publishing.md`.
+earlier full pgTAP 242/242, V3 TypeScript/targeted ESLint and V2 recording tests
+30/30 pass. Revised focused pgTAP now passes 38/38 in the staging restore clone.
+The V3 output detail page retains its compatibility guard for pre-migration
+installs. The exact approved migration is now applied and verified in staging;
+production is unchanged.
+Fresh staging backup, 52-table restore parity, guarded empty-state rollback,
+26 application-table fingerprint parity, exact reapply and read-only contract
+verification pass. Review tightened default service-role grants on admin RPCs.
+The pre-apply dry-run listed only this migration. Full staging-schema pgTAP is
+245/246: a pre-existing anonymous organization SELECT grant returns zero rows
+under RLS but differs from the test's expected permission error.
+Approved staging migration SHA-256:
+`5c7b20cd121429d0f65947a2ba51056207e842090e3359f3a45aa045f489ef41`,
+with remote history recorded and no pending migrations. Post-apply verifier,
+52 existing table counts and 26 application-table fingerprints pass unchanged.
+The new table is empty; all 77 active manifest entries are preserved. Discovery
+returns 77 legacy assets and anonymous API execution returns 401. The user
+confirmed all ten V3/V2 browser smoke steps passed, including existing assets,
+member scope, denied access and login/logout. Next: separately scoped
+publication lifecycle tests; no output or manifest was changed. Evidence:
+`docs/dynamic-survey-publishing-staging-rehearsal-2026-10-05.md`.
+
+Latest access diagnosis: the uniquely matching UEMPC account has one active
+org-admin membership plus a separate removed historical org-admin membership.
+The three survey grants are revoked correctly, but active admin scope still
+permits all four UEMPC surveys through RLS and discovery. User action: change
+the active membership to Member, keep only AH-026032 granted, then recheck V2.
+No membership, grant or source change was performed by the agent. Conversion
+to Member and one-survey preview/V2 confirmation remain unconfirmed; this is
+the first next-session check before separately scoped publication testing.
 
 Latest local UI fix: admin survey identifiers now render in full instead of
 being truncated to eight characters. The Surveys page uses 25-row server-side
@@ -24,8 +51,9 @@ pagination, an exact result count, survey-ID search and deterministic
 widths, wrapping locations, result ranges and Previous/Next controls. Related
 admin output, grant and selector labels also retain full survey IDs while
 UUID-only labels remain shortened. Focused ESLint, full TypeScript, whitespace
-and control-character checks pass. Authenticated browser confirmation is
-pending; no database, authorization or deployment state changed.
+and control-character checks pass. The user passed general authenticated
+survey search/detail and pagination smoke on 2026-10-05; a targeted AH-026061
+and narrow-width table check remains undocumented. No table-code change today.
 
 Latest metadata gate: 56 CSV files in `E:\survey-metadata` exactly cover the
 recording surveys that lack geospatial metadata. Bounds, closed polygons,
@@ -70,8 +98,9 @@ See docs/workshop-cumulative-recording-package-2026-09-29.md for current gates.
 This supersedes the older running-batch status below; existing user work and
 V3 branch remain unchanged.
 
-Current branch: `fix/workshop-multi-source-roots`, based on committed workshop
-filesystem retry change `92dabf5a`.
+Current branch: `development`; integration is complete. The session closeout
+includes the publication-gate permission correction, verifier, guarded rollback
+and evidence. V2 remains on its separately pushed compatibility branch.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,

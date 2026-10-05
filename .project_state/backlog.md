@@ -3,21 +3,40 @@
 Last updated: 2026-10-05
 
 Latest priority override: dynamic survey publishing is implemented and
-validated locally and integrated into `development`. Pending, in order:
-(1) review the migration/security diff,
-(2) capture fresh read-only staging inventory and checksummed backup,
-(3) rehearse apply, verification, authorization and rollback in an isolated
-clone, (4) request separate staging apply approval, and only after an approved
-apply (5) smoke V3 publish/retire plus V2 member discovery, tiles, PCD and
-cross-scope denial. Production remains out of scope. Do not restart V2 against
-the new dynamic contract before staging provides the new RPC.
+integrated into `development`. Completed: user-assisted V3 controls and V2
+member discovery, tiles, PCD, cross-scope denial and login/logout smoke
+(all ten steps). Next: confirm UEMPC's requested one-survey Member configuration,
+then separately scope publication lifecycle test actions and record acceptance.
+V2's independent compatibility branch is clean and pushed at `9c507324`.
+Exact-hash staging approval/apply and history/contract/preservation
+verification are complete; no pending migration remains. All 52 existing counts,
+26 application-table fingerprints and 77 active manifest entries are unchanged;
+the publication table is empty. No output was published or retired.
+Security review, fresh backup, 52-table isolated restore parity, guarded
+rollback/reapply and focused pgTAP 38/38 are complete. Production remains out
+of scope. Staging now provides the verified discovery RPC required by V2.
+Evidence: `docs/dynamic-survey-publishing-staging-rehearsal-2026-10-05.md`.
+
+Pending user access configuration: change the active UEMPC membership from
+Org Admin to Member, then confirm only AH-026032 in preview/V2. The separate
+removed membership does not remove the still-active admin role. Read-only RLS
+and discovery confirm this role, not a grant-revocation or V2 filtering bug,
+permits the other three surveys. No remote membership/grant change occurred.
+
+Separate follow-up: review the existing anonymous SELECT grant on
+`organizations`; RLS returns zero rows, but the clean staging-schema suite is
+245/246 because its permission-error assertion expects the grant revoked.
+Read-only staging checks confirm all other tested domain tables deny anonymous
+SELECT. This predates the publishing migration; do not silently harden it in
+that migration or describe the full staging-schema suite as passing.
 
 Latest priority override: the 56 geospatial CSVs are validated and the guarded
 r2 package passed isolated no-commit, apply/verify, duplicate-apply rejection,
 rollback/baseline restore and reapply/verify. The exact-hash staging apply and
 frozen verification then passed: 56/56 target surveys are complete, both
 pre-existing metadata surveys remain preserved, and manifest/output state is
-unchanged. Pending: representative V2 orthomap and authorization smoke. Do not
+unchanged. Representative V2 orthomap and authorization smoke passed in the
+user-assisted 2026-10-05 checklist; the older pending-smoke status is superseded. Do not
 use the superseded r1 package. Production remains unchanged.
 
 Latest priority override: the additional batch and cumulative package

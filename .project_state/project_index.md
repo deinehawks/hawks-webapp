@@ -9,6 +9,11 @@ Use this index after the compressed startup files. Document classifications prev
 - `docs/dynamic-survey-publishing.md`: current V3-owned output-publication
   lifecycle, V2 dynamic discovery contract, security boundaries, local
   validation and staging rollout gate.
+- `docs/dynamic-survey-publishing-staging-rehearsal-2026-10-05.md`: fresh backup
+  hashes, 52-table restore parity, revised RPC grants, guarded recovery/reapply,
+  focused 38/38 tests, baseline full-suite discrepancy, approved staging apply
+  and preservation/security verification, user-assisted browser acceptance and
+  pending publication lifecycle testing.
 - docs/workshop-cumulative-recording-package-2026-09-29.md: completed 21-wave
   evidence, corrected cumulative review package, output metadata gaps and
   remaining rehearsal/approval gates; supersedes older running-batch statuses.

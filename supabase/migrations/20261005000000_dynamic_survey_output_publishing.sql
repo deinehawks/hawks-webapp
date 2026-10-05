@@ -1073,16 +1073,16 @@ $$;
 
 revoke all on function public.platform_admin_save_output_publication(
   uuid, integer, text, integer, integer, jsonb, text, bigint, text
-) from public, anon;
+) from public, anon, service_role;
 revoke all on function public.service_verify_output_publication(
   uuid, jsonb, text, text
 ) from public, anon, authenticated;
 revoke all on function public.platform_admin_publish_output(uuid)
-  from public, anon;
+  from public, anon, service_role;
 revoke all on function public.platform_admin_retire_output_publication(uuid)
-  from public, anon;
+  from public, anon, service_role;
 revoke all on function public.platform_admin_delete_output_publication_draft(uuid)
-  from public, anon;
+  from public, anon, service_role;
 revoke all on function public.list_authorized_published_survey_assets()
   from public, anon;
 

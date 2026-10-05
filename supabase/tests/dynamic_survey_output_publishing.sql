@@ -121,7 +121,7 @@ insert into public.workshop_manifest_entries (
   '{"client_code":"pub-client","tile_folder":"round-corners","min_zoom":11,"max_zoom":24,"tile_extent":[125.1,7.1,125.2,7.2]}'::jsonb
 );
 
-select extensions.plan(34);
+select extensions.plan(38);
 
 select extensions.has_table(
   'public', 'survey_output_publications',
@@ -168,6 +168,22 @@ select extensions.ok(
     'EXECUTE'
   ),
   'anonymous sessions cannot discover published assets'
+);
+select extensions.ok(
+  not has_function_privilege('service_role', 'public.platform_admin_save_output_publication(uuid,integer,text,integer,integer,jsonb,text,bigint,text)', 'EXECUTE'),
+  'service role cannot execute platform-admin draft RPC'
+);
+select extensions.ok(
+  not has_function_privilege('service_role', 'public.platform_admin_publish_output(uuid)', 'EXECUTE'),
+  'service role cannot execute platform-admin publish RPC'
+);
+select extensions.ok(
+  not has_function_privilege('service_role', 'public.platform_admin_retire_output_publication(uuid)', 'EXECUTE'),
+  'service role cannot execute platform-admin retirement RPC'
+);
+select extensions.ok(
+  not has_function_privilege('service_role', 'public.platform_admin_delete_output_publication_draft(uuid)', 'EXECUTE'),
+  'service role cannot execute platform-admin draft deletion RPC'
 );
 
 set local role authenticated;
