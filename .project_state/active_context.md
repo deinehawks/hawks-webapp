@@ -137,8 +137,10 @@ Completed:
     `supabase_admin`. Missing-confirmation and wrong-role runs fail closed; the
     owner containment/reapply cycle preserves the data fingerprint.
 37. Dataset Onboarding is merged into `development` at `b35c50f5`; the user
-    passed the post-merge no-mutation smoke and confirmed route compilation
-    remains much faster after the Tailwind source-boundary fix.
+    passed the post-merge no-mutation smoke, including platform-admin previews,
+    conflict validation, private fail-closed behavior, role denial, and clean
+    console/network checks. The detailed evidence is in
+    `docs/dataset-onboarding-staging-rollout-2026-09-14.md`.
 38. `feature/org-admin-tables` replaces repeated farm/survey cards with
     responsive tables, keeps farm creation, moves farm editing to an explicitly
     organization-scoped detail route, and links survey View Data through the

@@ -69,7 +69,8 @@ Last updated: 2026-09-25
   staging, direct remote contract/privilege/inventory verification, clean
   post-apply dry-run, and linked staging type regeneration.
 - Dataset Onboarding integration into `development` at `b35c50f5` and
-  successful post-merge no-mutation smoke.
+  successful post-merge no-mutation smoke, with detailed evidence in
+  `docs/dataset-onboarding-staging-rollout-2026-09-14.md`.
 - Org-admin farm/survey responsive tables, scoped farm detail editing, survey
   View Data action, integration into `development` at `49355d2e`, and
   successful post-merge smoke.

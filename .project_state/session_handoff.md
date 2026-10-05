@@ -372,10 +372,10 @@ parentheses. TypeScript and whitespace pass. Dataset Onboarding is merged into
 smoke and observed much faster compilation after the Tailwind source-boundary
 fix. Production, Wave 3, MinIO, assets, and onboarding records remain untouched.
 
-The final smoke-evidence commit `0a2b76e0` remains only on the old local
-`feature/dataset-onboarding` branch and was not included in PR #13. Keep it
-separate from feature work and integrate it later through a documentation-only
-PR if the detailed rollout record is required in `development`.
+The final signed-in staging smoke evidence is recorded in
+`docs/dataset-onboarding-staging-rollout-2026-09-14.md`. It covers preview,
+validation, role denial, private fail-closed behavior, and console/network
+checks without creating an onboarding record.
 
 After observing that hosted staging owns the functions as `postgres` while the
 clone uses `supabase_admin`, the containment artifact was made owner-portable:

@@ -95,11 +95,28 @@ Containment SHA-256:
 - Generated-file whitespace check passes with no extra EOF blank.
 - TypeScript passes.
 
+## Hosted staging UI smoke
+
+The user completed the signed-in no-mutation smoke in Chrome against the
+staging-connected application.
+
+- Platform-admin sign-in, sidebar navigation, and page loading passed.
+- New- and existing-client organization previews passed, including derived
+  compatibility values and explicit confirmation requirements.
+- Preview produced zero mutations, and editing any input invalidated it.
+- Duplicate IDs, case-insensitive duplicates, existing IDs, the 100-ID limit,
+  farm-owner mismatches, and inline validation errors all failed closed.
+- Private onboarding correctly remained blocked because staging has no
+  qualifying confirmed owner/operator farm-person relationship.
+- Ordinary users and organization admins were denied; anonymous users were
+  redirected to sign in.
+- Chrome reported no console errors, failed application requests, or unexpected
+  behavior.
+
 ## Remaining gates
 
-1. Commit and push the linked generated type and rollout evidence changes.
-2. Complete the signed-in hosted staging UI smoke. Do not create a real
-   onboarding batch unless that data mutation is separately reviewed and
-   approved.
-3. Open and review the pull request, then merge into `development` only after
-   the smoke passes.
+1. Push the follow-up commit containing this final smoke evidence.
+2. Open and review the pull request, then merge into `development` only while
+   its checks and focused diff remain clean.
+3. Deploy the merged `development` branch and complete a short post-merge
+   no-mutation smoke.

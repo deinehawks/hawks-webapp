@@ -346,6 +346,8 @@ passes TypeScript and whitespace. Dataset Onboarding is integrated into
 smoke successfully and also observed that route compilation remains materially
 faster after the Tailwind source-boundary fix. Production, Wave 3, MinIO,
 assets, and onboarding records were not mutated.
+The detailed signed-in staging smoke evidence is recorded in
+`docs/dataset-onboarding-staging-rollout-2026-09-14.md`.
 
 The containment artifact was finalized after comparing hosted `postgres`
 function ownership with the clone's `supabase_admin` ownership. It now verifies
