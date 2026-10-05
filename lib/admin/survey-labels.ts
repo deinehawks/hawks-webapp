@@ -15,10 +15,6 @@ function clean(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-function shortId(id: string): string {
-  return id.slice(0, 8);
-}
-
 function shortDate(value: string | null | undefined): string | null {
   const cleaned = clean(value);
   if (!cleaned) return null;
@@ -34,7 +30,7 @@ export function formatAdminSurveyLabel(survey: SurveyLabelInput): string {
   const location = clean(survey.location);
   const clientCode = clean(survey.client?.code) ?? clean(survey.client?.name) ?? clean(survey.client_id);
   const date = shortDate(survey.flight_date);
-  const labelParts = [`Survey ${shortId(survey.id)}`, surveyCode ?? location, clientCode, date].filter(
+  const labelParts = [`Survey ${survey.id}`, surveyCode ?? location, clientCode, date].filter(
     (part): part is string => Boolean(part),
   );
   const dedupedParts = labelParts.filter((part, index) => labelParts.indexOf(part) === index);

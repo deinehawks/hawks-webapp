@@ -514,7 +514,7 @@ function AdminListSection<T extends { id: string }>({
 
 function formatSurveyOption(survey: SurveyGrantSurveyOption): string {
   const clientLabel = survey.client?.code ?? formatShortId(survey.client_id);
-  const surveyLabel = survey.location ?? formatShortId(survey.id);
+  const surveyLabel = survey.location ?? survey.id;
   const dateLabel = survey.flight_date ? ` - ${formatDate(survey.flight_date)}` : "";
 
   return `${clientLabel} - ${surveyLabel}${dateLabel}`;
@@ -908,7 +908,7 @@ export default async function AdminPage() {
               header: "Survey",
               cell: (row) => (
                 <DetailLink href={`/admin/surveys/${row.id}`}>
-                  {formatShortId(row.id)}
+                  {row.id}
                 </DetailLink>
               ),
             },
@@ -1017,7 +1017,7 @@ export default async function AdminPage() {
             },
             {
               header: "Survey",
-              cell: (row) => row.survey ? formatSurveyOption(row.survey) : formatShortId(row.survey_id),
+              cell: (row) => row.survey ? formatSurveyOption(row.survey) : row.survey_id,
             },
             {
               header: "Status",
@@ -1074,7 +1074,7 @@ export default async function AdminPage() {
               ),
             },
             { header: "Type", cell: (row) => formatLabel(row.output_type) },
-            { header: "Survey", cell: (row) => formatShortId(row.survey_id) },
+            { header: "Survey", cell: (row) => row.survey_id },
             {
               header: "Status",
               cell: (row) => <StatusBadge value={row.status} />,

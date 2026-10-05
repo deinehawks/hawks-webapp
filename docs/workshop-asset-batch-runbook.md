@@ -87,7 +87,7 @@ Use these field shapes inside the private file:
 {
   "pilotSurveyIds": ["<PILOT-SURVEY-ID>"],
   "approvedSurveys": [
-    { "surveyId": "<SURVEY-ID>", "tileVariant": "sharp-corners", "includeTiles": true, "scope": "organization" }
+    { "surveyId": "<SURVEY-ID>", "expectedClientCode": "<CLIENT-CODE>", "sourceRoot": "X:\\surveys\\2026", "tileVariant": "sharp-corners", "includeTiles": true, "scope": "organization" }
   ],
   "approvedPointClouds": [
     { "surveyId": "<SURVEY-ID>", "sourceFile": "Z:\\surveys\\2026\\<SURVEY-ID>\\rgb\\3d\\<FILE>.pcd" }
@@ -97,6 +97,11 @@ Use these field shapes inside the private file:
   ]
 }
 ```
+
+Per-survey `sourceRoot` and `expectedClientCode` are optional, fail-closed
+overrides. Use them when one reviewed batch spans mapped drives or must pin the
+expected staging client. Existing allowlists continue to inherit the global
+`sourceRoot`.
 
 `pilotSurveyIds` is optional. When present, those unique approved surveys
 form the first wave in the listed order. The pilot cannot exceed

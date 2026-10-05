@@ -1,9 +1,59 @@
 # Active Context
 
-Last updated: 2026-09-25
+Last updated: 2026-10-05
 
-Current epic: Finalize the workshop share-retry branch and prepare the verified
-30-survey manifest for separately approved non-production staging review.
+Current priority: prepare the locally validated dynamic survey-publishing
+migration for an isolated non-production rehearsal. Do not apply it remotely
+without a fresh staging inventory/backup, reviewed rehearsal evidence and
+separate approval. The application work is complete locally: platform admins
+manage protected-delivery drafts and publication through narrow audited RPCs;
+verification remains service-role-only; V2 reads the RLS-authorized published
+catalog dynamically and treats its ignored selection/catalog files as
+historical evidence only. The existing active workshop manifest remains a
+fail-closed compatibility fallback. Validation passes: clean replay, focused
+pgTAP 34/34, full pgTAP 242/242, V3 TypeScript/targeted ESLint and V2 recording
+tests 30/30. See `docs/dynamic-survey-publishing.md`.
+
+The admin survey-ID display bug is fixed locally: semantic IDs such as
+`AH-026005` are no longer passed through the eight-character UUID formatter.
+The Surveys page now pages on the server in groups of 25, searches by partial
+survey ID and sorts stably by survey date then full ID. The table exposes total
+and visible ranges with responsive columns and Previous/Next controls. Focused
+ESLint, full TypeScript, whitespace and control-character checks pass. Before
+committing, search for `AH-026061`, navigate pages and inspect a narrow
+viewport in the authenticated V3 app.
+
+Current priority: smoke representative V2 orthomaps now that the exact-hash
+survey geospatial metadata staging apply and frozen verifier passed. The
+package updated only `min_x`, `min_y`, `max_x`, `max_y`,
+`boundaries` and `geojson_boundaries` for 56 surveys. Display metadata,
+outputs, manifest state and AH-026012/AH-026013 remained unchanged. Apply hash:
+`6fcd86b11cf24f18b198e290380312c7b19167ecec8ee022938e73ffc00b352b`.
+Evidence:
+`.tmp/workshop-assets/survey-metadata-20261002-r2/staging-apply-result.json`.
+
+The explicitly approved final r4 package is applied to staging. It left 56
+unknown dates null and preserved existing current outputs for
+AH-026012/AH-026013 exactly. Exact post-apply verification passed: 58 current
+orthos, 11 current PCDs and one audited apply. Its review-only transition passed
+rollback rehearsal and committed verification. The separately approved guarded
+activation then passed: the new 77-entry manifest is approved/active and the
+previous manifest is superseded/inactive.
+All uploads are complete; do not resume an uploader. No further manifest/output
+write is pending. The isolated V2 proxy is healthy on loopback port 8082;
+the user confirmed authenticated inactive-manifest denial (401 and no 200).
+The guarded activation package, fresh pre-activation backup and isolated
+rollback/apply/verify rehearsal passed. The user separately approved SHA-256
+`3f235e19908d236713f7eef753e26b03f965db47841ba987639156d5bd58587f`;
+the exact staging apply and read-only verifier passed. Post-activation anonymous
+asset denial remains 401/private/no-store and the internal route remains 404.
+See
+docs/workshop-cumulative-recording-package-2026-09-29.md.
+The historical upload/onboarding sequence below is superseded by that checkpoint.
+
+Complete representative orthomap plus signed-in permitted-user and denied
+cross-scope V2 asset smoke, then close recording readiness for the 58 selected
+surveys.
 
 Completed:
 
@@ -348,13 +398,43 @@ entries and verified hashes recorded in
 `docs/workshop-asset-migration-completion-2026-09-25.md`. No manifest database
 write, approval, activation, or supersession occurred.
 
-Next sequence:
+The earlier plan to review and promote this draft is superseded by the
+additional-batch ownership correction below. Preserve the draft only as
+evidence; do not review or activate it.
 
-1. Review and finalize the uncommitted `fix/workshop-share-retries` diff; its
-   focused suite passes 24/24.
-2. Review the combined SQL/JSON and embedded verification hashes.
-3. Capture staging inventory and checksummed backup, rehearse the draft and
-   rollback in an isolated clone, and request explicit approval before any
-   non-production manifest write.
-4. Run staging authorization and external asset smoke before separately
-   considering activation. Production remains out of scope.
+## 2026-09-25 additional batch
+
+The inactive 30-survey staging draft applied and verified successfully. A new
+28-survey allowlist supports explicit per-survey X/Z roots and expected staging
+client codes. Its initial read-only scan found healthy tile sources but no
+matching staging survey rows, so that scan generated no waves.
+
+The reviewed onboarding package was fully rehearsed and then applied to
+non-production staging after a fresh checksummed backup and exact rollback
+rehearsal. It corrects MCS to organization ownership, creates the missing
+MCS/UEMPC/BLC organizations and five farms, inserts 28 draft surveys, assigns
+primary farms to 48 surveys, and uses
+`United Employees Multi-Purpose Cooperative` as UEMPC's canonical database
+name. The inactive manifest remains blocked until its six MCS entries are
+rebuilt.
+
+The approved staging apply and verification are complete. The repeat dry run
+found all 28 surveys ready and generated ten waves; all ten were reviewed and
+frozen. The separate ignored runner at
+`.tmp/workshop-assets/additional-20260925/run-additional-overnight.ps1` is now
+processing additional Wave 001 (run ID `20260925-174429`). At handoff there
+were no completed additional-wave verification reports.
+
+Next session, check the runner once. If the batch completed, require exactly
+ten successful verification reports, the expected 28-survey coverage, and no
+stderr/capacity failures before any manifest work. If it stopped, diagnose the
+failed wave only; the batch is designed to stop on failure and resume without
+re-uploading fully verified waves. Do not start output onboarding, review or
+activate the invalid inactive manifest, or mutate production.
+
+The approved survey-event/flight model must also be recovered or reimplemented:
+the final Git audit found none of its reported local implementation or
+org-admin loader fix in the worktree, branches, stash, reflog, or unreachable
+objects. Its architecture is preserved in `.project_state/decisions.md`;
+`feature/survey-flights` currently equals `development` at `8af15a59`.
+Handle this after the live batch reaches a safe verified or failed-stop state.

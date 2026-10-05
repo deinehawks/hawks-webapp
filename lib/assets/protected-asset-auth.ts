@@ -5,8 +5,10 @@ import { resolveProtectedAssetStorageTarget } from "@/lib/assets/minio-aliases";
 import type { createClient as createServerSupabaseClient } from "@/utils/supabase/server";
 
 const APP_BASE_PATH = "/asimov-hawks";
-const WORKSHOP_DATASET_YEAR = 2026;
-const SUPPORTED_POINT_CLOUD_FILES = new Set(["odm.pcd", "lidar.pcd"]);
+const MIN_DATASET_YEAR = 2000;
+const MAX_DATASET_YEAR = 2100;
+const POINT_CLOUD_FILE_PATTERN =
+  /^[A-Za-z0-9][A-Za-z0-9._-]{0,250}\.pcd$/i;
 
 type AppSupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
@@ -44,7 +46,7 @@ export type ParsedProtectedAssetRequest =
       clientCode: string;
       year: number;
       surveyId: string;
-      fileName: "odm.pcd" | "lidar.pcd";
+      fileName: string;
       objectPath: string;
     };
 
@@ -108,7 +110,15 @@ export function parseProtectedAssetRequest(
     segments;
   const year = parsePositiveInteger(yearValue ?? "");
 
-  if (!clientCode || !surveyId || year !== WORKSHOP_DATASET_YEAR) return null;
+  if (
+    !clientCode ||
+    !surveyId ||
+    year === null ||
+    year < MIN_DATASET_YEAR ||
+    year > MAX_DATASET_YEAR
+  ) {
+    return null;
+  }
 
   if (assetRoot === "tiles") {
     const [tileFolder, zValue, xValue, yFileName] =
@@ -150,7 +160,7 @@ export function parseProtectedAssetRequest(
     if (
       !fileName ||
       rest.length !== 0 ||
-      !SUPPORTED_POINT_CLOUD_FILES.has(fileName)
+      !POINT_CLOUD_FILE_PATTERN.test(fileName)
     ) {
       return null;
     }
@@ -161,7 +171,7 @@ export function parseProtectedAssetRequest(
       clientCode,
       year,
       surveyId,
-      fileName: fileName as "odm.pcd" | "lidar.pcd",
+      fileName,
       objectPath: `point-clouds/${fileName}`,
     };
   }

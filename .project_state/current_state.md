@@ -1,9 +1,75 @@
 # Current State
 
-Last updated: 2026-09-25
+Last updated: 2026-10-05
 
-Current branch: `fix/workshop-share-retries`, based on updated `development`
-after storage merge commits `193a4500` and `8af15a59`.
+Latest feature state: dynamic survey-output publishing is implemented locally
+on `feature/dynamic-survey-publishing`. V3 now owns draft, service verification,
+publish, retire and draft-delete workflows for protected orthomosaic and
+point-cloud deliveries. V2 discovers only published assets allowed by its
+signed-in Supabase/RLS session; its static recording selection/catalog is no
+longer a runtime gate. Dynamic authorization is preferred over the active
+workshop manifest, which remains a compatibility fallback. Clean local replay,
+focused pgTAP 34/34, full pgTAP 242/242, V3 TypeScript/targeted ESLint and V2
+recording tests 30/30 pass. No staging or production migration was applied.
+Next: review and rehearse the migration with a fresh non-production backup,
+then request separate exact-scope staging approval. See
+`docs/dynamic-survey-publishing.md`.
+
+Latest local UI fix: admin survey identifiers now render in full instead of
+being truncated to eight characters. The Surveys page uses 25-row server-side
+pagination, an exact result count, survey-ID search and deterministic
+`flight_date desc, id asc` ordering. Its responsive table has explicit column
+widths, wrapping locations, result ranges and Previous/Next controls. Related
+admin output, grant and selector labels also retain full survey IDs while
+UUID-only labels remain shortened. Focused ESLint, full TypeScript, whitespace
+and control-character checks pass. Authenticated browser confirmation is
+pending; no database, authorization or deployment state changed.
+
+Latest metadata gate: 56 CSV files in `E:\survey-metadata` exactly cover the
+recording surveys that lack geospatial metadata. Bounds, closed polygons,
+coordinate order and source coverage pass. Four rows contain placeholder
+`id=doc`; the exact CSV filename is recorded as authoritative for AH-026032,
+AH-026046, AH-026053 and AH-026058. The corrected r2 package is frozen at
+`.tmp/workshop-assets/survey-metadata-20261002-r2/package`; exact no-commit
+rehearsal, clone apply/verify, duplicate-apply rejection, guarded rollback,
+baseline restoration and reapply/verify pass. The user approved the exact hash;
+staging apply and the frozen read-only verifier passed. All 56 target rows now
+have complete geospatial metadata, AH-026012/AH-026013 remain preserved, the
+active 77-entry manifest is unchanged and one package audit exists. The exact
+`01-apply.sql` SHA-256 was
+`6fcd86b11cf24f18b198e290380312c7b19167ecec8ee022938e73ffc00b352b`.
+Production is unchanged. Next run representative V2 orthomap smoke.
+
+Latest: all 21 asset waves completed and evidence revalidated (58 selected
+surveys). After checksummed backup and isolated rehearsal, the explicitly
+approved r4 output/manifest package was applied to staging. Exact post-apply
+verification passed. After separate exact-hash approval, the guarded activation
+transaction and frozen read-only verifier passed. The new 77-entry
+`manifest-2026-10-02` is approved/active; the previous manifest is
+superseded/inactive.
+The separate V2 proxy container is healthy at 127.0.0.1:8082. Existing V3
+NGINX remains healthy and untouched. Anonymous protected tile/PCD denial,
+no-store headers and internal-route isolation pass. The user also confirmed an
+authenticated selected-asset request returned 401 with no 200 while the
+replacement manifest was inactive.
+The guarded activation package is frozen at
+`.tmp/workshop-assets/cumulative-20261002-activation/package`. A fresh
+pre-activation backup, rollback rehearsal, exact clone-only apply, read-only
+verification, checksum verification and pre-activation staging no-change check
+passed.
+Activation SHA-256 is
+`3f235e19908d236713f7eef753e26b03f965db47841ba987639156d5bd58587f`.
+The user approved that exact hash and staging activation completed. A
+post-activation anonymous asset request remains 401 with private/no-store and
+the externally requested internal auth route remains 404. Production is
+unchanged. Next run signed-in permitted-user and denied cross-scope asset smoke
+through V2 before recording acceptance.
+See docs/workshop-cumulative-recording-package-2026-09-29.md for current gates.
+This supersedes the older running-batch status below; existing user work and
+V3 branch remain unchanged.
+
+Current branch: `fix/workshop-multi-source-roots`, based on committed workshop
+filesystem retry change `92dabf5a`.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,
@@ -544,7 +610,69 @@ The draft contains only two inserts, retains manifest ID/key placeholders, and
 has not been applied, approved, activated, or used to supersede staging.
 
 The filesystem retry suite passes 24/24. Branch
-`fix/workshop-share-retries` remains uncommitted. Next: review/finalize that
-focused branch, then perform the separately approved staging manifest
-inventory, backup, isolated rehearsal, and authorization/external asset smoke.
+`fix/workshop-share-retries` is committed/pushed as `92dabf5a`. The staging
+manifest inventory, backup, isolated rehearsal, and inactive draft apply are
+complete; authorization/external asset smoke and cutover remain gated.
 See `docs/workshop-asset-migration-completion-2026-09-25.md`.
+
+## 2026-09-25 additional workshop asset intake
+
+The committed rollout branch is `7471f0ca`. With explicit approval, its exact
+`01-draft-apply.sql` was applied to non-production staging and
+`02-verify-draft.sql` passed. `manifest-2026-09-25` remains an inactive draft
+with 41 entries across 30 surveys; no review or cutover occurred.
+
+The additional ignored allowlist covers 28 surveys across X: (20) and Z: (8).
+Its initial read-only scan found 1,366,555 PNG tiles totaling 91,438,193,367
+bytes, zero PCDs, and zero source problems. At that checkpoint all 28 were
+blocked because their survey rows did not exist in staging, so no waves were
+generated. The user confirmed MCS must be organization-scoped; staging then
+classified it as individual.
+The inactive manifest's six private MCS entries now block its promotion and
+must be rebuilt after an audited canonical ownership correction. UEMPC, BLC,
+TLW, and DNG also require documented canonical
+owner/farm prerequisites before Dataset Onboarding. No upload occurred.
+
+The canonical intake is now resolved, including the UEMPC database name
+`United Employees Multi-Purpose Cooperative`. A guarded, checksummed package
+under the ignored additional-batch directory prepares the MCS correction,
+three missing organizations, five canonical farms, 28 new surveys, and farm/
+organization relationships for 20 legacy plus 28 new surveys. Its rollback,
+commit, read-only verification, pre-upload containment, and clean re-apply all
+pass in disposable restored clone
+`workshop_additional_onboarding_rehearsal_20260925`. At that rehearsal
+checkpoint staging was unchanged.
+
+The fresh pre-apply backup, exact rollback rehearsal, approved staging apply,
+and post-commit verification passed. Staging gained 28 surveys, three
+organizations, five farms, 48 primary survey-farm relationships, and 19
+survey-organization relationships; Auth users, profiles, and survey grants
+were unchanged.
+
+The post-onboarding dry run reports all 28 surveys ready, with 1,366,555 PNG
+tiles, 91,438,193,367 bytes, and no PCDs. Ten reviewed waves were frozen. The
+ignored adapted overnight runner is active on additional Wave 001 under run ID
+`20260925-174429`; no additional-wave verification report existed at handoff.
+Output onboarding and manifest promotion have not started. After all ten waves
+verify, audit the reports and build a corrected cumulative manifest; the
+current inactive draft remains invalid for its six private MCS entries.
+
+Branch `fix/workshop-multi-source-roots` adds backward-compatible per-survey
+source roots and expected-client-code checks. Workshop tests pass 25/25;
+targeted ESLint, TypeScript, and whitespace checks pass. The branch changes
+remain uncommitted at handoff. Evidence:
+`docs/workshop-additional-asset-intake-2026-09-25.md`.
+
+## Survey events and flights recovery status
+
+The survey-event/flight architecture was approved and a local build was
+reported as smoke-tested for platform-admin management, all four viewer states,
+Timeline/Explorer, ordinary members, User App Preview, and org-admin read
+access. However, the final repository audit found no `survey_flights` schema
+or source references, no associated worktree diff, and no commit, reflog,
+unreachable object, or stash containing that implementation.
+`feature/survey-flights` still points to `development` at `8af15a59`, and
+`lib/actions/surveys.ts` still contains the client-relationship throw seen in
+the org-admin smoke failure. Treat the architecture as approved but the
+implementation and fix as unrecovered/incomplete; do not claim them merged or
+deployed.

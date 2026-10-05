@@ -1,9 +1,46 @@
 # Backlog
 
-Last updated: 2026-09-25
+Last updated: 2026-10-05
+
+Latest priority override: dynamic survey publishing is implemented and
+validated locally. Pending, in order: (1) review the migration/security diff,
+(2) capture fresh read-only staging inventory and checksummed backup,
+(3) rehearse apply, verification, authorization and rollback in an isolated
+clone, (4) request separate staging apply approval, and only after an approved
+apply (5) smoke V3 publish/retire plus V2 member discovery, tiles, PCD and
+cross-scope denial. Production remains out of scope. Do not restart V2 against
+the new dynamic contract before staging provides the new RPC.
+
+Latest priority override: the 56 geospatial CSVs are validated and the guarded
+r2 package passed isolated no-commit, apply/verify, duplicate-apply rejection,
+rollback/baseline restore and reapply/verify. The exact-hash staging apply and
+frozen verification then passed: 56/56 target surveys are complete, both
+pre-existing metadata surveys remain preserved, and manifest/output state is
+unchanged. Pending: representative V2 orthomap and authorization smoke. Do not
+use the superseded r1 package. Production remains unchanged.
+
+Latest priority override: the additional batch and cumulative package
+preparation are complete. Unknown dates may remain null. Preserve the current
+AH-026012/AH-026013 output rows/counts/pointers. V2's exact asset mapping is
+implemented and validated. Fresh backup, isolated r4 rehearsal, explicitly
+approved staging apply, exact post-apply verification and audited review-only
+transition passed. Authenticated inactive-manifest denial also passed through
+the healthy V2 proxy. The guarded activation package has a fresh backup and a
+passing isolated rollback/apply/verify rehearsal. The exact-hash activation was
+then separately approved and passed in staging: the 77-entry replacement is
+approved/active and the old manifest is superseded/inactive. Frozen verification
+and anonymous fail-closed checks pass. Next repeat the signed-in permitted-user
+and denied cross-scope asset smoke, then complete recording acceptance.
+Production remains out of scope.
+See docs/workshop-cumulative-recording-package-2026-09-29.md. Older P1 upload
+waiting instructions below are historical, not actions to repeat.
 
 ## Completed
 
+- Local admin survey-ID display correction across survey lists, overview
+  tables, output links, grants and selectors, plus 25-row server pagination,
+  stable date/ID ordering, partial-ID search and responsive table controls;
+  automated checks pass and authenticated browser smoke is pending.
 - Output Operations and Access Policy v2 staging rollout.
 - Two-role membership and grant-only member authorization.
 - User-first signup confirmation, review, approval/rejection, and pending state.
@@ -82,14 +119,24 @@ Last updated: 2026-09-25
 
 ## P1
 
-- Review and finalize the uncommitted `fix/workshop-share-retries` change. The
-  live organization/private preparation and all 11 uploads validated the
-  workflow; the focused workshop suite passes 24/24.
-- Review the generated combined 30-survey manifest SQL and JSON hash inventory.
-  Before any non-production manifest write, capture staging inventory and a
-  checksummed backup, rehearse draft/rollback in an isolated clone, and obtain
-  explicit approval. Approval, activation, supersession, production mutation,
-  and rollback deletion remain out of scope.
+- Allow the running ten-wave additional batch to finish. Then verify exactly
+  ten successful reports, all 28 surveys exactly once, expected object/byte
+  totals, capacity acceptance, and empty error logs. If a wave fails, diagnose
+  only that wave and use the runner's safe resume behavior.
+- After all new assets verify, build a corrected cumulative manifest from the
+  then-active manifest plus verified old and new entries. Supersede the current
+  inactive draft because its six MCS entries use private rather than
+  organization protection. Review and activation remain separate approvals;
+  production remains out of scope.
+- Prepare output-record onboarding only after asset verification and manifest
+  planning. All 28 additional surveys are orthomap-only; create no PCD/3D
+  outputs.
+- Review and commit the validated `fix/workshop-multi-source-roots` changes
+  after the operational upload is stable.
+- Recover or reimplement the approved survey-event/flight slice on
+  `feature/survey-flights`. The earlier smoke-tested files and org-admin
+  survey-loader fix are absent from the worktree and Git recovery metadata, so
+  the feature is not complete despite the reported smoke results.
 
 ## P2
 
