@@ -61,3 +61,8 @@ approved, applied to non-production staging, and verified. After that apply,
 smoke platform-admin draft/verify/publish/retire, ordinary-member discovery,
 cross-scope denial, tiles, point clouds, and legacy-manifest compatibility.
 Production requires a separate approval and rollout.
+
+V3's existing output detail page remains usable when deployed before the
+migration: it shows a pending-migration message in place of the new publishing
+controls. Only a missing publication table is treated this way; other database
+errors still fail closed.

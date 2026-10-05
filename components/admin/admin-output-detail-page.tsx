@@ -62,7 +62,13 @@ export default async function AdminOutputDetailPage({ params }: { params: Promis
   ]);
   if (surveysResponse.error) throw new Error("Failed to load surveys.", { cause: surveysResponse.error });
   if (siblingsResponse.error) throw new Error("Failed to load related outputs.", { cause: siblingsResponse.error });
-  if (publicationResponse.error) throw new Error("Failed to load protected delivery.", { cause: publicationResponse.error });
+  // Staging can receive the application before the separately approved schema
+  // migration. Only the missing-table error keeps legacy output management live.
+  const publicationSchemaPending =
+    publicationResponse.error?.code === "PGRST205" ||
+    publicationResponse.error?.code === "42P01";
+  if (publicationResponse.error && !publicationSchemaPending)
+    throw new Error("Failed to load protected delivery.", { cause: publicationResponse.error });
   if (orthoResponse.error) throw new Error("Failed to load current orthomosaic metadata.", { cause: orthoResponse.error });
   const surveys = (surveysResponse.data ?? []) as SurveyOption[];
   const siblings = (siblingsResponse.data ?? []) as SiblingRow[];
@@ -93,7 +99,14 @@ export default async function AdminOutputDetailPage({ params }: { params: Promis
 
       <Card className="rounded-lg"><CardHeader><CardTitle className="text-base">Workshop readiness</CardTitle></CardHeader><CardContent className="grid gap-3">{readinessItems.map((item) => <div className="flex items-start justify-between gap-4 rounded-md border p-3" key={item.label}><div><p className="text-sm font-medium">{item.label}</p><p className="text-sm text-muted-foreground">{item.detail}</p></div><Badge variant={item.complete ? "default" : "secondary"}>{item.complete ? "Done" : "Needed"}</Badge></div>)}</CardContent></Card>
 
-      <OutputPublicationCard
+      {publicationSchemaPending ? (
+        <Card className="rounded-lg">
+          <CardHeader><CardTitle className="text-base">Protected delivery</CardTitle></CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            Publishing becomes available after the reviewed database migration is applied.
+          </CardContent>
+        </Card>
+      ) : <OutputPublicationCard
         currentTileFolder={orthoResponse.data?.tile_folder ?? null}
         flightDate={output.survey?.flight_date ?? null}
         outputId={output.id}
@@ -107,7 +120,7 @@ export default async function AdminOutputDetailPage({ params }: { params: Promis
           output.survey?.max_x ?? null,
           output.survey?.max_y ?? null,
         ]}
-      />
+      />}
 
       {locked ? <div className="flex items-start gap-3 rounded-lg border bg-muted/40 p-4"><LockKeyhole className="mt-0.5 size-4 text-muted-foreground" /><div><p className="text-sm font-medium">This output is locked.</p><p className="text-sm text-muted-foreground">Published and archived records are retained without further mutation in this workflow.</p></div></div> : null}
 
