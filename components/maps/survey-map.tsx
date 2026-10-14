@@ -102,10 +102,10 @@ const DEFAULT_CENTER: MapCenter = {
 };
 
 const MAP_CONFIG = {
-  minZoom: 13,
+  minZoom: 11,
   maxZoom: 23,
   tileSize: 256,
-  orthoMinZoom: 15,
+  orthoMinZoom: 11,
   orthoMaxZoom: 24,
 };
 
@@ -1118,8 +1118,9 @@ function MapView({
       sources: {
         osm: {
           type: "raster",
-          tiles: ["https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"],
+          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
           tileSize: MAP_CONFIG.tileSize,
+          maxzoom: 19,
           attribution: "&copy; OpenStreetMap Contributors",
         },
       },

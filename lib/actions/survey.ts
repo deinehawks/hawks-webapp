@@ -3,6 +3,9 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { getUserProfile } from "./profiles";
+import path from "node:path";
+import { getWorkshopDataDirectory } from "@/lib/workshop-files";
+import { resolveSurveyTileFolder } from "@/lib/helpers/resolve-survey-tile-folder";
 
 export async function getUserSurvey(id: string) {
   const supabase = await createClient();
@@ -34,5 +37,21 @@ export async function getUserSurvey(id: string) {
     throw new Error("Access denied to this survey data.");
   }
 
-  return survey;
+  if (!survey.ortho) return survey;
+
+  const tileFolder = resolveSurveyTileFolder(
+    path.join(
+      getWorkshopDataDirectory("tiles"),
+      survey.code.toLowerCase(),
+      String(new Date(survey.flight_date).getFullYear()),
+      String(survey.id),
+      "ortho",
+    ),
+    survey.ortho.tile_folder,
+  );
+
+  return {
+    ...survey,
+    ortho: { ...survey.ortho, tile_folder: tileFolder },
+  };
 }

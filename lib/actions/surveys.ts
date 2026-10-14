@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { getUserProfile } from "./profiles";
 import path from "path";
 import { getSurveyMaxZoom } from "@/lib/helpers/get-max-zoom";
+import { getWorkshopDataDirectory } from "@/lib/workshop-files";
+import { resolveSurveyTileFolder } from "@/lib/helpers/resolve-survey-tile-folder";
 
 function isTransientNetworkError(error: unknown) {
   const message =
@@ -68,7 +70,23 @@ export async function getUserSurvey(id: string) {
     throw new Error("Access denied to this survey data.");
   }
 
-  return survey;
+  if (!survey.ortho) return survey;
+
+  const tileFolder = resolveSurveyTileFolder(
+    path.join(
+      getWorkshopDataDirectory("tiles"),
+      survey.code.toLowerCase(),
+      String(new Date(survey.flight_date).getFullYear()),
+      String(survey.id),
+      "ortho",
+    ),
+    survey.ortho.tile_folder,
+  );
+
+  return {
+    ...survey,
+    ortho: { ...survey.ortho, tile_folder: tileFolder },
+  };
 }
 
 export async function getAllUserSurveys() {
@@ -110,22 +128,24 @@ export async function getAllUserSurveys() {
     throw new Error("Failed to fetch survey data.");
   }
 
-  const root = path.join(process.cwd(), "public", "tiles");
+  const root = getWorkshopDataDirectory("tiles");
 
   const updatedSurveys = (surveys ?? []).map((survey) => {
-    const folderPath = path.join(
+    const orthoRoot = path.join(
       root,
       survey.code.toLowerCase(),
       String(new Date(survey.flight_date).getFullYear()),
-      survey.id,
+      String(survey.id),
       "ortho",
-      survey.ortho?.tile_folder ?? "round-corners",
     );
-
-    const maxZoom = getSurveyMaxZoom(folderPath);
+    const tileFolder = resolveSurveyTileFolder(orthoRoot, survey.ortho?.tile_folder);
+    const maxZoom = getSurveyMaxZoom(path.join(orthoRoot, tileFolder));
 
     return {
       ...survey,
+      ortho: survey.ortho
+        ? { ...survey.ortho, tile_folder: tileFolder }
+        : survey.ortho,
       max_zoom: maxZoom,
     };
   });

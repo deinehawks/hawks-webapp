@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "set NEXT_DISABLE_TURBOPACK=1 && next dev",
     "turbo-dev": "next dev --turbo",
+    "prepare:workshop-data": "node scripts/prepare-workshop-data.cjs",
+    "test:workshop": "node --experimental-strip-types --test tests/workshop-files.test.mjs tests/prepare-workshop-data.test.cjs tests/workshop-tracing.test.mjs tests/survey-tile-folder.test.mjs",
     "update-tile-bounds": "node scripts/update-tile-bounds.js",
     "update-tile-bounds:force": "node scripts/update-tile-bounds.js --force",
     "build": "next build",

@@ -20,7 +20,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Base path to your tiles directory
-const TILES_BASE_PATH = path.join(__dirname, "../public/tiles");
+const TILES_BASE_PATH = path.join(__dirname, "../workshop-data/tiles");
 
 /**
  * Parse tilemapresource.xml and extract bounding box

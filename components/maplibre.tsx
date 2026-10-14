@@ -165,6 +165,7 @@ export default function MapLibre({ data: surveys }) {
             type: "raster",
             tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
             tileSize: 256,
+            maxzoom: 19,
             attribution: "&copy; OpenStreetMap Contributors",
           },
           areas: {

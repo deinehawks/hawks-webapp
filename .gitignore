@@ -63,3 +63,5 @@ next-env.d.ts
 # /public/3d/mdahi
 # /public/3d/mxl
 /public/3d
+# Local workshop datasets (served at runtime, never bundled)
+/workshop-data/

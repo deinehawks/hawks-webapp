@@ -635,16 +635,14 @@ const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
           tiles={[tile.tileUrl]}
           scheme="tms"
           tileSize={256}
-          minzoom={10}
-          maxzoom={24}
-          // PERFORMANCE: Increase tile cache to reduce reloading
+          minzoom={11}
           maxzoom={24}
         >
           <Layer
             id={String(tile.id)}
             type="raster"
             source={String(tile.id)}
-            minzoom={10}
+            minzoom={11}
             maxzoom={24}
             paint={{
               // PERFORMANCE: Fade in tiles faster for snappier feel
@@ -1120,8 +1118,9 @@ export default function OrthoMap({
       sources: {
         osm: {
           type: "raster",
-          tiles: ["https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"],
+          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
           tileSize: 256,
+          maxzoom: 19,
           attribution: "&copy; OpenStreetMap Contributors",
         },
         areas: {
@@ -1248,7 +1247,7 @@ export default function OrthoMap({
                 <Map
                   id="orthomap"
                   initialViewState={initialViewState}
-                  minZoom={13}
+                  minZoom={11}
                   maxZoom={23}
                   mapStyle={mapStyle}
                   // PERFORMANCE: Optimize map rendering
@@ -1286,14 +1285,14 @@ export default function OrthoMap({
                         ]}
                         scheme="tms"
                         tileSize={256}
-                        minzoom={10}
+                        minzoom={11}
                         maxzoom={24}
                       >
                         <Layer
                           id={String(survey.id)}
                           type="raster"
                           source={String(survey.id)}
-                          minzoom={10}
+                          minzoom={11}
                           maxzoom={24}
                           paint={{
                             "raster-fade-duration": 150,
