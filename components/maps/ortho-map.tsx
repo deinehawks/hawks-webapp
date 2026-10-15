@@ -169,9 +169,9 @@ const MapEvents = React.memo(
         transformCoordinatesToLonLatFormat(survey.boundaries as any),
       ]);
       setPopupInfo({ ...survey, lat, lng });
-      orthomap?.flyTo({
+      orthomap?.easeTo({
         center: [lng, lat], zoom: Math.max(orthomap.getZoom(), 16),
-        padding: { top: 250, bottom: 25, left: 50, right: 50 }, duration: 800,
+        offset: [0, 80], duration: 600,
       });
     }, [orthomap, setPopupInfo, setPlantPopupInfo]);
 
@@ -294,9 +294,13 @@ const ActiveSurveyView = React.memo(({ bounds, rasterIds }: {
   const { orthomap } = useMap();
   const sourceKey = rasterIds.join("|");
   useEffect(() => {
-    if (orthomap && bounds) orthomap.fitBounds(bounds, {
-      padding: 40, duration: 600, maxZoom: 20,
-    });
+    if (orthomap && bounds) {
+      // Popup positioning must not reduce the space available to the next survey.
+      orthomap.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+      orthomap.fitBounds(bounds, {
+        padding: 24, duration: 600, maxZoom: 20, linear: true,
+      });
+    }
   }, [orthomap, bounds]);
 
   useEffect(() => {
@@ -505,12 +509,24 @@ const OrthomapFoiSelector = React.memo(
     }, [detectedObjects]);
 
     const { surveyMode } = useSurveyModeStore();
+    const selectedLabel = selectedFoi === "all" ? "All plants"
+      : selectedFoi === "healthy" ? "Healthy"
+      : selectedFoi === "unhealthy" ? "Infected"
+      : selectedFoi === "none" ? "No overlay" : "Crop status";
+    const selectedCount = selectedFoi === "all" ? counts.healthy + counts.unhealthy
+      : selectedFoi === "healthy" ? counts.healthy
+      : selectedFoi === "unhealthy" ? counts.unhealthy : null;
 
     return (
       <Select value={selectedFoi} onValueChange={setSelectedFoi}>
-        <SelectTrigger className="w-full min-w-0 data-[size=default]:h-11 sm:w-44 sm:data-[size=default]:h-8 [&_[data-slot=select-value]]:flex-1 [&_[data-slot=select-value]]:text-left" id="foi-selector" aria-label="Crop status">
+        <SelectTrigger className="w-full min-w-0 shrink-0 data-[size=default]:h-11 sm:w-auto sm:min-w-52 sm:data-[size=default]:h-8 [&_[data-slot=select-value]]:flex-1 [&_[data-slot=select-value]]:text-left" id="foi-selector" aria-label="Crop status">
           <ListFilter aria-hidden="true" className="size-3.5 text-muted-foreground" />
-          <SelectValue placeholder="Crop status" />
+          <SelectValue placeholder="Crop status">{selectedLabel}</SelectValue>
+          {selectedCount !== null && (
+            <Badge variant="secondary" className="shrink-0 rounded-full tabular-nums" aria-label={`${selectedCount.toLocaleString("en-US")} plants`}>
+              {selectedCount.toLocaleString("en-US")}
+            </Badge>
+          )}
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
@@ -521,16 +537,16 @@ const OrthomapFoiSelector = React.memo(
                 <SelectItem value="healthy" className="min-h-11 sm:min-h-8">
                   Healthy
                   {selectedFoi === "healthy" && (
-                    <Badge variant="secondary" className="ml-2 rounded-full">
-                      {counts.healthy}
+                    <Badge variant="secondary" className="shrink-0 rounded-full tabular-nums">
+                      {counts.healthy.toLocaleString("en-US")}
                     </Badge>
                   )}
                 </SelectItem>
                 <SelectItem value="unhealthy" className="min-h-11 sm:min-h-8">
                   Infected
                   {selectedFoi === "unhealthy" && (
-                    <Badge variant="secondary" className="ml-2 rounded-full">
-                      {counts.unhealthy}
+                    <Badge variant="secondary" className="shrink-0 rounded-full tabular-nums">
+                      {counts.unhealthy.toLocaleString("en-US")}
                     </Badge>
                   )}
                 </SelectItem>
@@ -539,8 +555,8 @@ const OrthomapFoiSelector = React.memo(
             <SelectItem value="all" className="min-h-11 sm:min-h-8">
               All plants
               {selectedFoi === "all" && (
-                <Badge variant="secondary" className="ml-2 rounded-full">
-                  {counts.healthy + counts.unhealthy}
+                <Badge variant="secondary" className="shrink-0 rounded-full tabular-nums">
+                  {(counts.healthy + counts.unhealthy).toLocaleString("en-US")}
                 </Badge>
               )}
             </SelectItem>
@@ -1034,7 +1050,7 @@ function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjec
       latitude: global_y,
       longitude: global_x,
       bounds: bounds ?? undefined,
-      fitBoundsOptions: { padding: 20 },
+      fitBoundsOptions: { padding: 24, maxZoom: 20 },
     }),
     [global_x, global_y, bounds],
   );
@@ -1063,28 +1079,29 @@ function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjec
                   <span className="text-muted-foreground">Viewing:</span>
                   {isOverview ? (
                     <>
-                      <Badge variant="secondary" className="rounded-md font-normal">Combined imagery</Badge>
+                      <Badge variant="secondary" className="rounded-md font-normal">All surveys</Badge>
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button type="button" variant="outline" size="sm" className="h-11 sm:h-8" aria-label={`Imagery layers (${surveyIds.length})`}>
-                            <Layers aria-hidden="true" className="size-3.5" /> Layers ({surveyIds.length})
+                          <Button type="button" variant="outline" size="sm" className="h-11 sm:h-8" aria-label={`Survey images (${surveyIds.length})`}>
+                            <Layers aria-hidden="true" className="size-3.5" /> Survey images ({surveyIds.length})
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent align="end" collisionPadding={16} className="w-80 max-w-[calc(100vw-32px)] p-3" aria-label="Imagery layer order">
-                          <h3 className="text-sm font-medium">Imagery layers</h3>
-                          <p className="mb-2 mt-1 text-xs leading-5 text-muted-foreground">Top layers cover lower layers where they overlap.</p>
+                        <PopoverContent align="end" collisionPadding={16} className="w-80 max-w-[calc(100vw-32px)] p-3" aria-label="Survey images">
+                          <h3 className="text-sm font-medium">Survey images</h3>
+                          <p className="mt-1 text-sm leading-5 text-muted-foreground">These are the survey images shown on the map. They can be side by side or overlap.</p>
+                          <p className="mb-2 mt-2 text-sm leading-5 text-muted-foreground">If images overlap, those higher in this list appear in front.</p>
                           <ol className="max-h-60 space-y-1 overflow-y-auto">
                             {[...surveys].reverse().filter((survey) => getSurveyTileUrl(survey)).map((survey, index) => (
-                              <li key={survey.id} className="flex items-center gap-3 rounded-md px-2 py-2 text-xs">
+                              <li key={survey.id} className="flex items-center gap-3 rounded-md px-2 py-2 text-sm">
                                 <span className="w-3 shrink-0 tabular-nums text-muted-foreground">{index + 1}</span>
                                 <span className="min-w-0 flex-1">
                                   <span className="block break-words font-medium">{survey.id}</span>
                                   <span className="text-muted-foreground">{getSurveyLabel(survey)}</span>
                                 </span>
-                                {index === 0 && <Badge variant="outline" className="rounded font-normal">Top</Badge>}
+                                {index === 0 && surveyIds.length > 1 && <Badge variant="outline" className="rounded font-normal">In front</Badge>}
                               </li>
                             ))}
-                            {surveyIds.length === 0 && <li className="py-2 text-xs text-muted-foreground">No imagery available</li>}
+                            {surveyIds.length === 0 && <li className="py-2 text-sm text-muted-foreground">No survey images available</li>}
                           </ol>
                         </PopoverContent>
                       </Popover>

@@ -109,6 +109,8 @@ const MAP_CONFIG = {
   orthoMaxZoom: 24,
 };
 
+const SURVEY_FIT_OPTIONS = { padding: 24, maxZoom: 20 };
+
 /* -------------------------------------------------------------------------- */
 /* Utilities                                                                  */
 /* -------------------------------------------------------------------------- */
@@ -292,8 +294,9 @@ const useMapCenter = (survey: any, fallbackCenter: MapCenter) => {
           survey.geojson_boundaries as any,
         );
         if (extremes) {
-          const centerLng = (extremes.minLng + extremes.maxLng) / 2;
-          const centerLat = (extremes.minLat + extremes.maxLat) / 2;
+          const [minLng, minLat, maxLng, maxLat] = extremes as [number, number, number, number];
+          const centerLng = (minLng + maxLng) / 2;
+          const centerLat = (minLat + maxLat) / 2;
 
           if (isValidCoordinate(centerLng, centerLat)) {
             return { lng: centerLng, lat: centerLat, zoom: 17 };
@@ -315,30 +318,26 @@ const useMapCenter = (survey: any, fallbackCenter: MapCenter) => {
 
 const useMapBounds = (survey: any) => {
   return useMemo<LngLatBoundsLike | undefined>(() => {
-    if (!hasValidBoundaries(survey.geojson_boundaries)) return undefined;
-
-    try {
-      const extremes = findExtremeCoordinates(survey.geojson_boundaries as any);
-      if (!extremes) return undefined;
-
-      const { minLng, minLat, maxLng, maxLat } = extremes;
-
-      if (
-        !isValidCoordinate(minLng, minLat) ||
-        !isValidCoordinate(maxLng, maxLat)
-      ) {
-        return undefined;
+    const candidates = [
+      survey.geojson_boundaries,
+      [survey.min_x, survey.min_y, survey.max_x, survey.max_y].every(isValidNumber)
+        ? [[survey.min_x, survey.min_y], [survey.max_x, survey.max_y]] : undefined,
+      [survey.tile_min_x, survey.tile_min_y, survey.tile_max_x, survey.tile_max_y].every(isValidNumber)
+        ? [[survey.tile_min_x, survey.tile_min_y], [survey.tile_max_x, survey.tile_max_y]] : undefined,
+    ];
+    for (const coordinates of candidates) {
+      if (!hasValidBoundaries(coordinates)) continue;
+      try {
+        // The helper returns [west, south, east, north], accepted by MapLibre.
+        const bounds = findExtremeCoordinates(coordinates);
+        if (bounds) return bounds;
+      } catch (error) {
+        console.error("Error calculating bounds:", error);
       }
-
-      return [
-        [minLng, minLat],
-        [maxLng, maxLat],
-      ] satisfies LngLatBoundsLike;
-    } catch (error) {
-      console.error("Error calculating bounds:", error);
-      return undefined;
     }
-  }, [survey.geojson_boundaries]);
+    return undefined;
+  }, [survey.geojson_boundaries, survey.min_x, survey.min_y, survey.max_x, survey.max_y,
+    survey.tile_min_x, survey.tile_min_y, survey.tile_max_x, survey.tile_max_y]);
 };
 
 const useValidationState = (survey: any) => {
@@ -1133,7 +1132,7 @@ function MapView({
     if (hasValidCoordinates && mapBounds) {
       return {
         bounds: mapBounds,
-        fitBoundsOptions: { padding: 20 },
+        fitBoundsOptions: SURVEY_FIT_OPTIONS,
       };
     }
 
@@ -1185,19 +1184,16 @@ function MapView({
 
       if (![minLng, maxLng, minLat, maxLat].every(Number.isFinite)) return;
 
-      const lngBuffer = (maxLng - minLng) * 0.1;
-      const latBuffer = (maxLat - minLat) * 0.1;
-
       try {
         map.fitBounds(
           [
-            [minLng - lngBuffer, minLat - latBuffer],
-            [maxLng + lngBuffer, maxLat + latBuffer],
+            [minLng, minLat],
+            [maxLng, maxLat],
           ],
           {
-            padding: { top: 50, bottom: 50, left: 50, right: 50 },
-            duration: 1500,
-            maxZoom: 19,
+            ...SURVEY_FIT_OPTIONS,
+            duration: 600,
+            linear: true,
           },
         );
         setHasZoomed(true);
