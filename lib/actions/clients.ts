@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { filterWorkshopClients } from "@/lib/workshop-visibility";
 
 export async function getAllClients() {
   const supabase = await createClient();
@@ -14,5 +15,5 @@ export async function getAllClients() {
     throw new Error("Failed to fetch client data");
   }
 
-  return clients;
+  return filterWorkshopClients(clients ?? []);
 }

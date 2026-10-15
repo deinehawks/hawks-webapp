@@ -1,12 +1,21 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { getUserProfile } from "./profiles";
 import path from "path";
+import { normalizeDetectionLabels } from "@/lib/helpers/detection-labels";
 import { getSurveyMaxZoom } from "@/lib/helpers/get-max-zoom";
 import { getWorkshopDataDirectory } from "@/lib/workshop-files";
 import { resolveSurveyTileFolder } from "@/lib/helpers/resolve-survey-tile-folder";
+import {
+  getWorkshopVisibility,
+  isWorkshopSurveyVisible,
+  isWorkshopSurveyIdVisible,
+  isWorkshopClientVisible,
+  filterWorkshopSurveys,
+  filterWorkshopDetectionObjects,
+} from "@/lib/workshop-visibility";
 
 function isTransientNetworkError(error: unknown) {
   const message =
@@ -22,6 +31,7 @@ function isTransientNetworkError(error: unknown) {
 }
 
 export async function getUserSurvey(id: string) {
+  if (!isWorkshopSurveyIdVisible(id)) notFound();
   const supabase = await createClient();
 
   const {
@@ -70,6 +80,8 @@ export async function getUserSurvey(id: string) {
     throw new Error("Access denied to this survey data.");
   }
 
+  if (!isWorkshopSurveyVisible(survey.code, survey.id)) notFound();
+
   if (!survey.ortho) return survey;
 
   const tileFolder = resolveSurveyTileFolder(
@@ -113,6 +125,8 @@ export async function getAllUserSurveys() {
   }
 
   const { access_code } = userProfile;
+  const policy = getWorkshopVisibility();
+  if (!isWorkshopClientVisible(access_code, policy)) return [];
 
   const { data: surveys, error } = await supabase
     .from("surveys")
@@ -130,7 +144,7 @@ export async function getAllUserSurveys() {
 
   const root = getWorkshopDataDirectory("tiles");
 
-  const updatedSurveys = (surveys ?? []).map((survey) => {
+  const updatedSurveys = filterWorkshopSurveys(surveys ?? [], policy).map((survey) => {
     const orthoRoot = path.join(
       root,
       survey.code.toLowerCase(),
@@ -182,6 +196,10 @@ export async function getObjectDetectionData(id?: string) {
     redirect("/error");
   }
 
+  const policy = getWorkshopVisibility();
+  if (!isWorkshopClientVisible(access_code, policy) ||
+      (id && !isWorkshopSurveyVisible(access_code, id, policy))) return [];
+
   try {
     const { data: detectedObjects, error } = await supabase.storage
       .from("detected-objects")
@@ -198,7 +216,11 @@ export async function getObjectDetectionData(id?: string) {
       return [];
     }
 
-    const jsonObject = JSON.parse(jsonString);
+    const parsed = JSON.parse(jsonString);
+    if (!Array.isArray(parsed)) return [];
+    const jsonObject = normalizeDetectionLabels(
+      filterWorkshopDetectionObjects(parsed, access_code, policy),
+    );
 
     if (id) {
       return jsonObject.filter((object: any) => object.areaCode === id);

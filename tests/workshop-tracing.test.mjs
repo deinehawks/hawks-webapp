@@ -15,7 +15,7 @@ test("the production tracer skips dataset globs before enumerating any files", a
   config.webpack({ plugins: [plugin] }, { dev: false, isServer: true, nextRuntime: "nodejs" });
   const ignored = picomatch(plugin.traceIgnores, { contains: true, dot: true });
   let datasetGlobs = 0;
-  const result = await nodeFileTrace(["lib/workshop-files.ts", "lib/helpers/get-max-zoom.ts"], {
+  const result = await nodeFileTrace(["lib/workshop-files.ts", "lib/helpers/get-max-zoom.ts", "lib/workshop-visibility.ts"], {
     base: process.cwd(),
     processCwd: process.cwd(),
     readFile: async (file) => {

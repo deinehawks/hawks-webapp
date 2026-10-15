@@ -76,7 +76,16 @@ export function NavMain({
   }, [surveys]);
 
   const surveyIds = useMemo(() => surveys?.map((s) => s.id) ?? [], [surveys]);
-  const isLoading = !surveyIds.length;
+  const isLoading = surveys == null;
+
+  if (surveys?.length === 0) {
+    return (
+      <SidebarGroup>
+        <SidebarGroupLabel>Survey Data</SidebarGroupLabel>
+        <p className="px-3 py-2 text-sm text-muted-foreground">No surveys available</p>
+      </SidebarGroup>
+    );
+  }
 
   return (
     <>

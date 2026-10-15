@@ -10,6 +10,7 @@ export type OrthoMapState = {
   plantPopupInfo: {
     pairId: string;
     areaId: string;
+    label?: string;
     centerLng: number;
     centerLat: number;
   } | null;

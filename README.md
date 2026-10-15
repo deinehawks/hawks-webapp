@@ -143,3 +143,118 @@ foreach ($dataset in $datasets) {
 
 Rebuild and start the restored app. Never overwrite an existing destination or
 delete either copy to resolve a conflict.
+
+## Workshop survey visibility
+
+`config/workshop-visibility.json` controls which surveys this local app exposes:
+
+```json
+{
+  "enabled": true,
+  "visibleSurveys": {
+    "BARBCO2026": [
+      "AH-0260001",
+      "AH-0260002",
+      "AH-0260003"
+    ]
+  }
+}
+```
+
+Workshop filtering is enabled with only those three surveys. All other surveys
+are hidden, including BARBCO2026's AH-026012/AH-026013 and DNG's AH-026005.
+Accounts remain usable and authenticate normally; an account with no selected
+surveys sees an empty dashboard/sidebar. Existing per-account authorization
+still applies, so this list cannot give a user access to another client's
+survey page.
+
+The same list filters dashboard/sidebar data, client listings, direct survey
+pages, object-detection analytics, and local tile/point-cloud file routes.
+Unlisted local file paths return 404 (PCD requests still require the existing
+login check first). No database record, storage object, local dataset, or account
+is removed or updated.
+
+### Add tomorrow's workshop data
+
+After adding your user and survey data through your existing setup process,
+append the new survey IDs under their client/access code in
+`visibleSurveys`. To show DNG's new surveys, add a `"DNG"` entry containing
+only the new IDs; omit AH-026005 to keep that older survey hidden. Put the new
+tile/PCD files in their normal `workshop-data` directories.
+
+The server reloads this small JSON file when it changes, without a rebuild or
+restart. Refresh the browser after editing to replace existing page/navigation
+data. Workshop file responses revalidate using ETags so policy edits take effect
+on later requests. Use a hard refresh with browser caching disabled once if
+older imagery is still cached from before workshop filtering was enabled.
+
+Set `"enabled": false` and refresh to restore normal per-account visibility.
+An enabled empty list hides all surveys. A missing or invalid config hides all
+surveys and logs a configuration error until the file is repaired.
+
+This is a local app visibility filter. It does not change Supabase accounts,
+RLS rules, dashboard visibility, or the existing public detected-objects bucket.
+
+
+## Browser-compatible MCS point clouds
+
+MCS AH-026010 and AH-026011 now use 4,000,000-point workshop copies at their
+existing `workshop-data/3d/mcs/2026/<survey-id>/odm.pcd` paths. Each is about
+64 MB. The complete, full-resolution input is preserved beside it as
+`odm.original.pcd`. Preview copies use evenly spaced source points, so they
+retain the original coordinates and colors at a lower density; they are for
+viewing, not full-resolution analysis.
+
+The converter fixes the MCS export's CRLF headers and separate float64 color
+channels by writing LF headers, float32 XYZ, and packed RGB. It reads with small,
+bounded buffers, validates the source layout/length and sampled values, and
+refuses to overwrite any output. It supports this specific MCS binary layout.
+
+To prepare a new copy without modifying the source:
+
+```powershell
+npm run prepare:workshop-pcd -- workshop-data/3d/mcs/2026/<survey-id>/odm.pcd workshop-data/3d/mcs/2026/<survey-id>/odm.web.pcd 4000000
+```
+
+Validate the output before activation. To activate it at the existing URL,
+first rename the input to `odm.original.pcd`, then rename the new output to
+`odm.pcd`; both destination names must be absent before their respective
+renames. Never overwrite an existing backup. Refresh the 3D page after replacing
+the file; dataset-only changes do not require a rebuild.
+
+To restore full-resolution data, stop the app, rename the workshop `odm.pcd`
+to an unused preview filename, then rename `odm.original.pcd` back to
+`odm.pcd`. The original MCS exports still need conversion to work with the
+current browser loader.
+
+
+## Overlapping surveys and orthomap selection
+
+Click an overlapping area on the dashboard to choose a survey by its ID, area
+label, flight date and available area measurement. A single match opens its
+details directly; clicking empty map space dismisses the survey popup.
+
+The orthomap opens with the first survey ordered by ID (AH-026010 for MCS).
+Use the Survey dropdown to switch. The persistent Viewing label identifies the
+active imagery, and boundaries, detection overlays and detection counts follow
+the same selection. Switching clears old popups and fits the chosen area while
+keeping the map mounted and preserving crop-status and analysis/inventory mode.
+
+All surveys is an explicit overview that combines the available imagery. Its
+notice lists imagery layers from top to bottom; ascending IDs are drawn first,
+so the highest listed ID is above lower IDs in overlaps. With Show Boundaries
+enabled, clicking an overlap opens the chooser; choosing a row isolates that
+survey. Individual mode never substitutes another survey's tiles when imagery
+is missing. Selection lasts for the current page only.
+
+
+The survey chooser and detail popups share a compact, theme-aware surface.
+They show survey IDs first, format flight dates as `02 Jun 2026`, and use
+consistent area values. Escape closes a focused popup and returns focus to its
+previous control or the map. Long content scrolls inside the popup.
+
+Orthomap controls now live in the map card header. In overview mode,
+**Combined imagery** identifies the view; **Layers (n)** opens the drawing-order
+list. The footer reports **Loading imagery…**, **Ready**, **No imagery**, or
+**Some imagery unavailable**. Controls wrap on small screens without changing
+the selected survey, overlays or map instance.

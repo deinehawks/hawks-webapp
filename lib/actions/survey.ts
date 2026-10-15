@@ -1,13 +1,15 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { getUserProfile } from "./profiles";
 import path from "node:path";
 import { getWorkshopDataDirectory } from "@/lib/workshop-files";
 import { resolveSurveyTileFolder } from "@/lib/helpers/resolve-survey-tile-folder";
+import { isWorkshopSurveyIdVisible, isWorkshopSurveyVisible } from "@/lib/workshop-visibility";
 
 export async function getUserSurvey(id: string) {
+  if (!isWorkshopSurveyIdVisible(id)) notFound();
   const supabase = await createClient();
 
   // Get authenticated user
@@ -36,6 +38,8 @@ export async function getUserSurvey(id: string) {
   if (survey.code !== access_code) {
     throw new Error("Access denied to this survey data.");
   }
+
+  if (!isWorkshopSurveyVisible(survey.code, survey.id)) notFound();
 
   if (!survey.ortho) return survey;
 
