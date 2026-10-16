@@ -1865,6 +1865,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_approve_individual_signup_request: {
+        Args: { target_request_id: string; target_review_notes?: string }
+        Returns: string
+      }
       admin_approve_organization_user_request: {
         Args: { target_request_id: string; target_review_notes?: string }
         Returns: string

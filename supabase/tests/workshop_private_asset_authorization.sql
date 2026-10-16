@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(9);
+select extensions.plan(14);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -24,12 +24,19 @@ set role = 'platform_admin'
 where id = '26000000-0000-0000-0000-000000000001';
 
 insert into public.clients (id, code, name, classification_kind)
-values (
-  '26100000-0000-0000-0000-000000000001',
-  'PRIVATE-CLIENT',
-  'Private Client',
-  'individual'
-);
+values
+  (
+    '26100000-0000-0000-0000-000000000001',
+    'PRIVATE-CLIENT',
+    'Private Client',
+    'individual'
+  ),
+  (
+    '26100000-0000-0000-0000-000000000002',
+    'UNRELATED-CLIENT',
+    'Unrelated Client',
+    'individual'
+  );
 
 insert into public.people (id, display_name, status)
 values (
@@ -52,13 +59,28 @@ values (
 insert into public.surveys (
   id, code, access_code, client_id, status
 )
-values (
-  'private-survey-2026',
-  'PRIVATE-CLIENT',
-  'PRIVATE-CLIENT',
-  '26100000-0000-0000-0000-000000000001',
-  'completed'
-);
+values
+  (
+    'private-survey-2026',
+    'PRIVATE-CLIENT',
+    'PRIVATE-CLIENT',
+    '26100000-0000-0000-0000-000000000001',
+    'completed'
+  ),
+  (
+    'private-ungranted-2026',
+    'PRIVATE-UNGRANTED',
+    'PRIVATE-UNGRANTED',
+    '26100000-0000-0000-0000-000000000001',
+    'completed'
+  ),
+  (
+    'unrelated-survey-2026',
+    'UNRELATED-CLIENT',
+    'UNRELATED-CLIENT',
+    '26100000-0000-0000-0000-000000000002',
+    'completed'
+  );
 
 insert into public.survey_access_grants (
   survey_id, profile_id, organization_id, status, granted_by
@@ -132,6 +154,18 @@ set local request.jwt.claims =
   '{"sub":"26000000-0000-0000-0000-000000000002","role":"authenticated"}';
 
 select extensions.results_eq(
+  $$select code from public.clients order by code$$,
+  $$values ('PRIVATE-CLIENT'::text)$$,
+  'a direct survey grant exposes only its client row'
+);
+
+select extensions.results_eq(
+  $$select id from public.surveys order by id$$,
+  $$values ('private-survey-2026'::text)$$,
+  'client visibility does not broaden access beyond the granted survey'
+);
+
+select extensions.results_eq(
   $$select count(*) from public.authorize_workshop_protected_asset(
       2026, 'tile_group', 'private-survey-2026',
       '/asimov-hawks/tiles/private-client/2026/private-survey-2026/ortho/round-corners/12/1/1.png'
@@ -160,6 +194,12 @@ select extensions.results_eq(
 
 set local request.jwt.claims =
   '{"sub":"26000000-0000-0000-0000-000000000003","role":"authenticated"}';
+
+select extensions.is(
+  (select count(*) from public.clients),
+  0::bigint,
+  'an unrelated user cannot read private client metadata'
+);
 
 select extensions.results_eq(
   $$select count(*) from public.authorize_workshop_protected_asset(
@@ -190,6 +230,12 @@ set local role authenticated;
 set local request.jwt.claims =
   '{"sub":"26000000-0000-0000-0000-000000000002","role":"authenticated"}';
 
+select extensions.is(
+  (select count(*) from public.clients),
+  0::bigint,
+  'an expired survey grant no longer exposes client metadata'
+);
+
 select extensions.results_eq(
   $$select count(*) from public.authorize_workshop_protected_asset(
       2026, 'tile_group', 'private-survey-2026',
@@ -206,6 +252,12 @@ where survey_id = 'private-survey-2026';
 set local role authenticated;
 set local request.jwt.claims =
   '{"sub":"26000000-0000-0000-0000-000000000002","role":"authenticated"}';
+
+select extensions.is(
+  (select count(*) from public.clients),
+  0::bigint,
+  'a revoked survey grant no longer exposes client metadata'
+);
 
 select extensions.results_eq(
   $$select count(*) from public.authorize_workshop_protected_asset(

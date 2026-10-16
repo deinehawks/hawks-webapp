@@ -37,7 +37,7 @@ type MembershipStatus = Database["public"]["Enums"]["membership_status"];
 type GrantStatus = Database["public"]["Enums"]["access_grant_status"];
 type ProfileRow = Pick<
   Tables<"profiles">,
-  "id" | "email" | "first_name" | "last_name" | "role" | "person_id" | "created_at" | "updated_at"
+  "id" | "email" | "first_name" | "last_name" | "role" | "account_status" | "person_id" | "created_at" | "updated_at"
 >;
 type MembershipRow = Pick<
   Tables<"organization_memberships">,
@@ -243,7 +243,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const { id } = await params;
   const supabase = await createClient();
   const [profileResponse, membershipsResponse, surveyGrantsResponse, farmGrantsResponse, organizationsResponse, surveysResponse, farmsResponse, auditResponse] = await Promise.all([
-    supabase.from("profiles").select("id, email, first_name, last_name, role, person_id, created_at, updated_at").eq("id", id).maybeSingle(),
+    supabase.from("profiles").select("id, email, first_name, last_name, role, account_status, person_id, created_at, updated_at").eq("id", id).maybeSingle(),
     supabase.from("organization_memberships").select("id, profile_id, organization_id, role, status, notes, invited_at, approved_at, removed_at, updated_at, organization:organizations!organization_memberships_organization_id_fkey(id, name, type_code, status)").eq("profile_id", id).order("updated_at", { ascending: false }),
     supabase.from("survey_access_grants").select("id, profile_id, survey_id, status, expires_at, reason, created_at, updated_at, survey:surveys!survey_access_grants_survey_id_fkey(id, code, location, flight_date, client_id, client:clients!surveys_client_id_fkey(code, name))").eq("profile_id", id).order("updated_at", { ascending: false }),
     supabase.from("farm_access_grants").select("id, profile_id, farm_id, status, expires_at, reason, created_at, farm:farms!farm_access_grants_farm_id_fkey(id, name, code, status)").eq("profile_id", id).order("updated_at", { ascending: false }),
@@ -288,6 +288,15 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const activeMembership = memberships.find((row) => row.status === "active");
   const effectiveSurveyGrants = surveyGrants.filter((row) => isEffectiveGrant(row.status, row.expires_at)).length;
   const effectiveFarmGrants = farmGrants.filter((row) => isEffectiveGrant(row.status, row.expires_at)).length;
+  const organizationAccess = profile.role === "platform_admin"
+    ? "Platform-wide"
+    : profile.account_status !== "active"
+      ? "Account inactive"
+      : activeMembership
+        ? (activeMembership.organization?.name ?? "Unknown") + " - " + formatLabel(activeMembership.role)
+        : effectiveSurveyGrants > 0 || effectiveFarmGrants > 0
+          ? "Individual client - direct grants"
+          : "No organization membership";
 
   return (
     <main className="@container/main flex flex-1 flex-col gap-6 p-4 md:p-6">
@@ -306,12 +315,13 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
           <UserRound className="size-5 text-muted-foreground" />
           <h1 className="text-2xl font-semibold tracking-normal">{formatName(profile)}</h1>
           <Badge variant={profile.role === "platform_admin" ? "default" : "secondary"}>{profile.role === "platform_admin" ? "Platform admin" : "User"}</Badge>
+          <Badge variant={profile.account_status === "active" ? "secondary" : "outline"}>{formatLabel(profile.account_status)}</Badge>
         </div>
         <p className="text-sm text-muted-foreground">{profile.email ?? profile.id}</p>
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="rounded-lg"><CardHeader><CardTitle className="text-sm font-medium">Organization access</CardTitle></CardHeader><CardContent className="text-sm">{profile.role === "platform_admin" ? "Platform-wide" : activeMembership ? `${activeMembership.organization?.name ?? "Unknown"} - ${formatLabel(activeMembership.role)}` : "None active"}</CardContent></Card>
+        <Card className="rounded-lg"><CardHeader><CardTitle className="text-sm font-medium">Access setup</CardTitle></CardHeader><CardContent className="text-sm">{organizationAccess}</CardContent></Card>
         <Card className="rounded-lg"><CardHeader><CardTitle className="text-sm font-medium">Survey grants</CardTitle></CardHeader><CardContent className="text-3xl font-semibold tabular-nums">{effectiveSurveyGrants}</CardContent></Card>
         <Card className="rounded-lg"><CardHeader><CardTitle className="text-sm font-medium">Farm grants</CardTitle></CardHeader><CardContent className="text-3xl font-semibold tabular-nums">{effectiveFarmGrants}</CardContent></Card>
         <Card className="rounded-lg"><CardHeader><CardTitle className="text-sm font-medium">Person link</CardTitle></CardHeader><CardContent className="break-all text-sm">{profile.person_id ?? "Not linked"}</CardContent></Card>

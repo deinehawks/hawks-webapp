@@ -20,7 +20,7 @@ import { createClient } from "@/utils/supabase/server";
 
 type ProfileRow = Pick<
   Tables<"profiles">,
-  "id" | "email" | "first_name" | "last_name" | "role" | "created_at"
+  "id" | "email" | "first_name" | "last_name" | "role" | "account_status" | "created_at"
 >;
 type MembershipRole = Database["public"]["Enums"]["membership_role"];
 type MembershipRow = Pick<
@@ -68,6 +68,16 @@ function accessSummary(
   surveyGrants: GrantRow[],
   farmGrants: FarmGrantRow[],
 ): { label: string; detail: string; hasAccess: boolean } {
+  if (profile.account_status !== "active") {
+    return {
+      label: profile.account_status === "rejected"
+        ? "Signup rejected"
+        : "Awaiting approval",
+      detail: "Account access is inactive",
+      hasAccess: false,
+    };
+  }
+
   if (profile.role === "platform_admin") {
     return {
       label: "Platform access",
@@ -137,7 +147,7 @@ export default async function AdminUsersPage() {
   const [profilesResponse, membershipsResponse, surveyGrantsResponse, farmGrantsResponse] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, email, first_name, last_name, role, created_at")
+      .select("id, email, first_name, last_name, role, account_status, created_at")
       .order("email", { ascending: true, nullsFirst: false }),
     supabase
       .from("organization_memberships")
@@ -227,6 +237,7 @@ export default async function AdminUsersPage() {
               <TableRow>
                 <TableHead>Account</TableHead>
                 <TableHead>Account role</TableHead>
+                <TableHead>Account status</TableHead>
                 <TableHead>Effective access</TableHead>
                 <TableHead className="w-12"><span className="sr-only">Open</span></TableHead>
               </TableRow>
@@ -239,6 +250,11 @@ export default async function AdminUsersPage() {
                     <div className="text-xs text-muted-foreground">{profile.email ?? profile.id}</div>
                   </TableCell>
                   <TableCell><Badge variant={profile.role === "platform_admin" ? "default" : "secondary"}>{formatRole(profile.role)}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant={profile.account_status === "active" ? "secondary" : "outline"}>
+                      {profile.account_status}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="min-w-64 whitespace-normal">
                     <div className="font-medium">{access.label}</div>
                     <div className="text-xs text-muted-foreground">{access.detail}</div>
