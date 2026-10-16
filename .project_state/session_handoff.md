@@ -1,6 +1,99 @@
 # Session Handoff
 
-Last updated: 2026-10-05
+Last updated: 2026-10-16
+
+AH-026004 tile failure is diagnosed. Audit row at 2026-10-15 11:11:21.768 UTC
+shows output `7ca843e5-0aa0-45a7-b7c9-faa45a51a240` changed from
+Approved/Current to Archived/not-current by `visualization.hawks@gmail.com`.
+Published delivery `0ea07d2b-f625-49f6-942b-0ebab8505ae9` remains active.
+Because dynamic published/retired rows suppress manifest fallback and this
+publication no longer matches a current output, authenticated TLW discovery
+returns only AH-026004's legacy point cloud. The active manifest tile entry,
+TLW grants/RLS, `orthos` row, and MinIO prefix remain intact. Recovery requires
+a new output/current selection and new draft/verify/publish lifecycle; the
+archived output is locked. Diagnosis was read-only and production is untouched.
+
+TLW 3D investigation was read-only. AH-026004 and AH-026007 have matching
+current survey pointers and `point_clouds` rows. Their active-manifest assets
+are respectively `AH-026004-RGB--xcb.pcd` / 1,101,604,836 bytes and
+`AH-026007-RGB--xcb.pcd` / 696,237,312 bytes under the canonical
+`tlw/2026/<survey>/point-clouds/` paths. MinIO HEAD returns 200 with exact
+lengths, and authenticated TLW discovery returns both as `legacy_manifest`
+point clouds. No generic point-cloud `survey_outputs` or dynamic publication
+rows exist. V2's Three.js `PCDLoader` loads the whole object and clones its
+geometry; the originals contain 30,600,129 and 19,339,920 points and may exhaust
+browser memory. Prefer reviewed web derivatives before normal smoke. For
+V3-owned dynamic publication, use a separate operational branch and follow
+create/current, draft, service verification, publish, and authorized/denied
+performance smoke gates. No data, asset, grant, or Git branch changed.
+
+AH-026020 output `44df28f0-5532-4dc3-973c-7bb280d13eb7` is
+Approved/Current. User-created protected delivery
+`3e4d30aa-6b17-4695-b214-4e6b77ecde9c` passed a fresh staging MinIO audit and
+the service-only idempotent verifier. The user subsequently published it at
+2026-10-13 02:47:03.376 UTC.
+Exact evidence: 168,477 PNG objects / 6,633,736,026 bytes under
+`dng/2026/AH-026020/ortho/round-corners`, zooms 11-24, private DNG scope,
+current survey bounds, source `minio-prefix-audit`, run ID
+`dng-ah-026020-20261013-v1`, verified at 2026-10-13 02:32:30.842 UTC. The
+transaction rolled back on two guard-query naming errors before the successful
+run; neither failed attempt persisted a change. The successful guarded commit
+and independent post-commit read passed. Membership, farm-grant, survey-grant,
+active-manifest and publication counts and all unrelated publication rows were
+unchanged during verification. The active grant belongs to
+`dagaang.viz.hawks@gmail.com`; that profile is active, has zero memberships,
+and authenticated staging RLS plus
+`list_authorized_published_survey_assets()` return AH-026020 with the exact
+dynamic route. The user used
+`http://127.0.0.1:3200/asimov-hawks/dashboard/surveys/AH-026020`, which is the
+direct Next.js dev server and bypasses protected-asset NGINX. A representative
+tile returns 404 on 3200 and reaches the expected auth boundary (anonymous 401)
+on 8082. Next: open the same page through port 8082 with the granted session
+and confirm rendered tiles. The user completed that check and confirmed
+AH-026020 renders. Do not change grants, publication data or asset paths
+without contrary evidence.
+Production is untouched.
+
+The comparison read also found TLW AH-026004/AH-026007 and MCS AH-026010/
+AH-026011 in Published state. This supersedes the older handoff paragraphs
+that call those four deliveries unpublished; post-publication acceptance is a
+separate follow-up.
+
+MCS AH-026010 publication 69853f4a-b0ec-4978-8bff-19d437710d31 and
+AH-026011 publication 17219f21-083e-4250-8b82-cb42b3057131 are Verified and
+remain unpublished. Exact evidence: AH-026010 has 244,338 PNG objects and
+3,572,174,658 bytes; AH-026011 has 93,481 PNG objects and 4,028,889,492 bytes;
+both are round-corners at zooms 11-24 and match current Approved outputs.
+Run IDs: `mcs-ah-026010-20261009-v1` and `mcs-ah-026011-20261009-v1`.
+No publish, grant, membership, asset, or production mutation was performed.
+
+Resume `feature/individual-signup-approval`. Implementation is locally
+complete and the exact migration is applied to staging after explicit approval.
+Migration SHA-256 is
+`3196c7f4f6138f8545766fb8069b924d219b18cf6aaa46d1fc0cc0c05545d8b7`.
+Focused pgTAP 36/36, full pgTAP 262/262, TypeScript, targeted ESLint, fresh
+checksummed staging backup/restore with 53-table parity, verifier, guarded
+rollback and reapply all pass. Remote history and contract verification pass,
+the linked dry run is clean, and 53 table counts are preserved. Staging TLW is
+now approved/active as a normal user with zero memberships and exactly active
+non-expiring null-organization grants for AH-026004/AH-026007. The user
+confirmed both surveys render tiles through V2 on port 8082, only those two
+surveys appear, AH-026020 is denied, logout/login preserves the scope, and V3
+Users & Access agrees. Core authorization acceptance is complete. Remaining:
+responsive and empty/error checks, plus explicit access preview if the admin
+scope check did not exercise it, then branch closeout. Production is untouched.
+Full evidence:
+`docs/individual-signup-approval-staging-rehearsal-2026-10-09.md`.
+
+TLW AH-026004 output 7ca843e5-0aa0-45a7-b7c9-faa45a51a240 and publication
+0ea07d2b-f625-49f6-942b-0ebab8505ae9 are Approved/Current and Verified.
+AH-026007 output da460fe3-379c-4ad9-ae4d-d28c98364029 and publication
+57a0e42f-613f-4c39-84a3-f4d499c79500 are Approved/Current and Verified.
+Neither is Published. Evidence: AH-026004 has 31,072 objects and 1,598,481,111
+bytes; AH-026007 has 15,935 objects and 1,133,807,495 bytes. Idempotent run IDs
+are tlw-ah-026004-20261009-v1 and tlw-ah-026007-20261009-v1. Next, refresh each
+V3 output page, click Publish delivery, and run authorized TLW plus denied
+cross-scope V2 smoke. No production, manifest, grant or asset mutation occurred.
 
 Resume V3 from `development`. Session closeout commit message:
 `fix(publishing): harden RPC grants and complete staging rollout`.

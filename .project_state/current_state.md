@@ -1,6 +1,101 @@
 # Current State
 
-Last updated: 2026-10-05
+Last updated: 2026-10-16
+
+Latest AH-026004 missing-tile diagnosis is read-only. The TLW account remains
+active with zero memberships and valid AH-026004/AH-026007 grants, and RLS
+still exposes both surveys. However, AH-026004 output
+`7ca843e5-0aa0-45a7-b7c9-faa45a51a240` was changed from Approved/Current to
+Archived/not-current at 2026-10-15 11:11:21 UTC by the platform-admin account.
+Its delivery remains Published, so dynamic publication suppresses the active
+manifest fallback, while current-artifact validation excludes the archived
+output. Authenticated discovery therefore returns only the legacy point cloud
+and no orthomosaic. The MinIO tile prefix still contains objects. Safe recovery
+is a replacement Approved/Current output plus a newly verified/published
+delivery; archived records are locked and should not be silently restored.
+No data or asset mutation was performed.
+
+TLW 3D read-only inventory is complete. AH-026004 and AH-026007 already have
+matching current `point_clouds` rows and survey pointers, active-manifest PCD
+entries, and exact MinIO objects at
+`tlw/2026/<survey>/point-clouds/<file>.pcd`. AH-026004 is
+`AH-026004-RGB--xcb.pcd` / 1,101,604,836 bytes; AH-026007 is
+`AH-026007-RGB--xcb.pcd` / 696,237,312 bytes. Both direct object HEAD checks
+return 200 and match manifest bytes, and authenticated TLW discovery returns
+both point clouds as `legacy_manifest` assets. There are no generic
+`point_cloud` survey outputs or dynamic publication rows yet. V2 uses
+Three.js `PCDLoader` to load the whole file and then clones its geometry; the
+30,600,129-point and 19,339,920-point originals carry substantial browser
+memory risk despite passing the 5 GiB contract ceiling. Prefer web-optimized
+derivatives before normal smoke. Any migration to V3-owned dynamic publication
+is a separate operational task and branch. No mutation was performed.
+
+Latest DNG staging verification: AH-026020 output
+`44df28f0-5532-4dc3-973c-7bb280d13eb7` is Approved/Current and protected
+delivery `3e4d30aa-6b17-4695-b214-4e6b77ecde9c` is Published.
+A fresh MinIO prefix audit matched the frozen upload evidence: 168,477 PNG
+objects / 6,633,736,026 bytes under
+`dng/2026/AH-026020/ortho/round-corners`, with zooms 11-24 and the current
+survey bounds. Idempotent run ID: `dng-ah-026020-20261013-v1`. Transaction
+guards preserved membership, farm-grant, survey-grant, active-manifest and
+publication counts, and every unrelated publication row. No grant,
+membership, manifest, asset or production change occurred during verification.
+The user subsequently published the delivery at 2026-10-13 02:47:03.376 UTC.
+The granted DNG account is active with zero memberships and one active
+null-organization AH-026020 grant. Authenticated RLS and dynamic V2 discovery
+both return the exact published asset. The missing-tile report was traced to
+using the direct Next.js URL on port 3200, which returns 404 for protected tile
+paths and bypasses the V2 NGINX asset-auth proxy. Use the same page through
+`http://127.0.0.1:8082/asimov-hawks/...`. The user subsequently confirmed
+AH-026020 renders there, completing its authenticated V2 tile smoke.
+
+The same read-only preflight confirmed the earlier TLW AH-026004/AH-026007 and
+MCS AH-026010/AH-026011 deliveries are now Published. This supersedes older
+top-level wording that described them as Verified but unpublished; their
+post-publication access acceptance remains a separate check.
+
+Latest MCS staging verification: AH-026010 and AH-026011 have Approved/Current
+orthomosaic outputs and their existing protected-delivery drafts are now
+Verified, not Published. AH-026010 verification covers 244,338 PNG objects /
+3,572,174,658 bytes; AH-026011 covers 93,481 PNG objects / 4,028,889,492 bytes.
+Both use round-corners at zooms 11-24 and match the current specialized
+artifacts. Idempotent run IDs are `mcs-ah-026010-20261009-v1` and
+`mcs-ah-026011-20261009-v1`. No grant, membership, asset, publication, or
+production change occurred beyond the two approved staging verifications.
+
+Individual signup approval is implemented on
+`feature/individual-signup-approval` and its exact migration is applied to
+staging. The linked history contains `20261009000000`, the post-apply dry run
+is clean, the frozen verifier passes, and all 53 compared table counts remain
+unchanged.
+Platform Admin can now choose Organization user or Individual client; the
+individual path activates a normal user without membership and keeps survey
+authorization grant-specific. Local focused pgTAP passes 36/36, full pgTAP
+262/262, TypeScript and targeted ESLint pass, and generated types are current.
+The exact migration, verifier and guarded rollback also pass against a fresh
+staging-backup clone with 53-table count parity. Its SHA-256 is
+`3196c7f4f6138f8545766fb8069b924d219b18cf6aaa46d1fc0cc0c05545d8b7`.
+TLW is now approved as an Individual client: the profile is an active normal
+user with zero memberships and exactly the two intended active, non-expiring,
+null-organization grants, AH-026004 and AH-026007. The user confirmed both
+surveys render tiles through V2 on port 8082, the dashboard shows only those
+two surveys, direct access to out-of-scope AH-026020 is denied, logout/login
+preserves the scope, and V3 Users & Access agrees. Core authorization
+acceptance is complete. Responsive and empty/error checks, plus an explicit
+access-preview check if not already exercised, remain before final closeout.
+Production is untouched. Evidence:
+`docs/individual-signup-approval-staging-rehearsal-2026-10-09.md`.
+
+Latest staging lifecycle state: the BARBCO AH-0260001 through AH-0260003
+orthomosaics are Published and user-confirmed in V2. TLW AH-026004 and
+AH-026007 now have Approved/Current orthomosaic outputs and Verified protected
+deliveries; neither is Published. Exact MinIO evidence is 31,072 objects /
+1,598,481,111 bytes for AH-026004 and 15,935 objects / 1,133,807,495 bytes for
+AH-026007, both sharp-corners at zooms 11-24. Next: refresh each V3 output page,
+click Publish delivery without updating the draft, then smoke the authorized
+TLW V2 account and denied cross-scope access. Production, active manifests,
+grants and assets were unchanged. Follow-up remains the safe server-side Verify
+delivery control and separate invalid HTTP service-role credential review.
 
 Session closeout: the latest staging/apply/browser results below supersede
 older pre-apply and running-workshop statuses. V2 remains a separate checkout;
@@ -98,9 +193,10 @@ See docs/workshop-cumulative-recording-package-2026-09-29.md for current gates.
 This supersedes the older running-batch status below; existing user work and
 V3 branch remain unchanged.
 
-Current branch: `development`; integration is complete. The session closeout
-includes the publication-gate permission correction, verifier, guarded rollback
-and evidence. V2 remains on its separately pushed compatibility branch.
+Current V3 branch: `feature/individual-signup-approval`; its implementation and
+staging work remain uncommitted locally. V2 remains on its separately pushed
+`fix/v2-recording-compat` branch with additional uncommitted grant-only client
+presentation changes.
 
 Access Policy v2 is complete in staging and unchanged in production. The user
 manually passed the full staging authorization matrix: grant-only member,

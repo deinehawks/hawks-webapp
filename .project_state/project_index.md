@@ -1,11 +1,15 @@
 ﻿# Project Index
 
-Last updated: 2026-10-05
+Last updated: 2026-10-09
 
 Use this index after the compressed startup files. Document classifications prevent historical plans from being mistaken for current instructions.
 
 ## Authoritative And Current
 
+- `docs/individual-signup-approval-staging-rehearsal-2026-10-09.md`: exact
+  migration/hash, staging inventory, fresh checksummed backup, 53-table restore
+  parity, guarded rollback/reapply, transactional TLW access proof, approved
+  staging schema rollout, and the remaining account/browser acceptance gates.
 - `docs/dynamic-survey-publishing.md`: current V3-owned output-publication
   lifecycle, V2 dynamic discovery contract, security boundaries, local
   validation and staging rollout gate.

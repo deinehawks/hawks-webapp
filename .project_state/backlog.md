@@ -1,6 +1,56 @@
 # Backlog
 
-Last updated: 2026-10-05
+Last updated: 2026-10-16
+
+AH-026004 P0 pending approval: replace the accidentally archived orthomosaic
+output and publish a new matching protected delivery. Do not unarchive the
+locked historical output or change grants/assets. After recovery, verify TLW
+discovery contains both the dynamic tile asset and legacy point cloud and run
+authorized/cross-scope tile smoke through port 8082.
+
+TLW 3D P0: choose and generate browser-safe derivative PCDs, or explicitly
+accept a cautious desktop-only smoke of the 30.6M/19.3M-point originals.
+Read-only staging and MinIO checks already confirm current specialized metadata,
+active-manifest entries, authorized TLW discovery, exact PCD objects and matching
+bytes. The V2 loader fetches each whole PCD and clones its geometry, so the
+5 GiB gate is not a practical browser target. No grant change is needed.
+Follow-up: upload reviewed derivatives, create current generic point-cloud
+outputs, service-verify exact dynamic delivery drafts, and publish them on a
+separate operational branch so V3 publication supersedes the legacy fallback.
+
+AH-026020 staging verification is complete. The private DNG delivery is
+Published after a fresh 168,477-object / 6,633,736,026-byte
+MinIO prefix audit and guarded idempotent run
+`dng-ah-026020-20261013-v1`. The user published it at 2026-10-13
+02:47:03.376 UTC. The granted DNG account passes authenticated survey RLS and
+dynamic discovery. The missing tiles were caused by opening the direct Next.js
+server on port 3200, which bypasses the protected-asset proxy and returns 404
+for tile paths. P0: repeat the page/map smoke through loopback NGINX on port
+8082 with the granted session. The user completed that smoke and confirmed
+AH-026020 renders. No grant, publication, or asset-path change is pending.
+
+Read-only verification shows the previously documented TLW AH-026004/
+AH-026007 and MCS AH-026010/AH-026011 deliveries are now Published. Treat the
+older unpublished status below as superseded; post-publication access
+acceptance remains to be confirmed where not already recorded.
+
+MCS AH-026010 and AH-026011 verification is complete; both deliveries are
+Verified and not Published. Publishing and subsequent authorized/denied V2
+tile smoke remain separate actions.
+
+TLW Individual-client approval and positive V2 smoke are complete. Read-only
+staging verification confirms an active normal user, zero memberships, and
+exactly active non-expiring grants for AH-026004/AH-026007; the user confirmed
+both render through V2 on port 8082. Exact two-survey visibility, AH-026020
+cross-scope denial, logout/login persistence, and V3 Users & Access scope all
+pass. P0: finish responsive and empty/error checks, explicitly run access
+preview if it was not part of the Users & Access check, then record final
+acceptance and prepare branch closeout.
+P1: design and implement a safe server-side Verify
+delivery action that performs trusted MinIO verification while keeping
+service-role credentials off the browser. Separately review the invalid staging
+HTTP service-role credential without printing or silently rotating secrets.
+The BARBCO three-survey pilot remains complete and user-confirmed.
 
 Latest priority override: dynamic survey publishing is implemented and
 integrated into `development`. Completed: user-assisted V3 controls and V2

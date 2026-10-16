@@ -1,6 +1,64 @@
 # Active Context
 
-Last updated: 2026-10-05
+Last updated: 2026-10-16
+
+AH-026004 tiles are absent because its only generic orthomosaic output was
+archived and made not-current on October 15, while its dynamic delivery remains
+Published. The published row suppresses legacy-manifest fallback, but fails the
+current-artifact match, so TLW discovery returns no tile asset. Grants, survey
+RLS, the active manifest entry, and MinIO objects remain intact. Do not mutate
+the archived record. If recovery is approved, create a replacement output using
+the existing storage reference, move it to Approved/Current, create and
+service-verify a new delivery, publish it, then repeat TLW permitted/denied
+smoke. No recovery action is currently authorized.
+
+TLW point clouds already exist and are authorized through the active-manifest
+compatibility path. Current survey pointers and `point_clouds` rows match;
+authenticated discovery for `tlw.viz.hawks@gmail.com` returns AH-026004
+`AH-026004-RGB--xcb.pcd` (1,101,604,836 bytes) and AH-026007
+`AH-026007-RGB--xcb.pcd` (696,237,312 bytes), and MinIO HEAD checks match.
+No generic point-cloud outputs/publications exist. Immediate next action: smoke
+or generate browser-safe derivatives before normal 3D use. V2's `PCDLoader`
+fetches the whole file and clones its geometry, so the 30.6M/19.3M-point
+originals have high browser-memory risk. Plan any V3-owned lifecycle migration
+separately from the dirty signup-approval branch.
+
+AH-026020 is now Published in staging. Its
+Approved/Current orthomosaic and current `round-corners` artifact match
+protected delivery `3e4d30aa-6b17-4695-b214-4e6b77ecde9c`: 168,477 PNG
+objects / 6,633,736,026 bytes, zooms 11-24, current bounds, private DNG scope,
+and run ID `dng-ah-026020-20261013-v1`. The guarded transaction and independent
+post-commit read passed; unrelated publication rows and membership, grant,
+active-manifest and publication counts were unchanged during verification. The
+user published it at 2026-10-13 02:47:03.376 UTC. The exact granted DNG profile
+is active, has zero memberships and an active null-organization AH-026020
+grant; authenticated RLS and dynamic discovery return the correct publication.
+The user opened the detail page directly on port 3200. That Next.js dev server
+does not serve protected tile paths: a representative AH-026020 tile returns
+404 there, while port 8082 reaches the intended NGINX asset-auth boundary and
+returns the expected unauthenticated 401. Next: open the same page on 8082 with
+the granted session and confirm the map and tile requests; the user completed
+this check and confirmed AH-026020 renders. No data change was required.
+
+Read-only comparison also confirms TLW AH-026004/AH-026007 and MCS
+AH-026010/AH-026011 are Published, superseding older unpublished wording.
+
+MCS AH-026010 and AH-026011 protected deliveries are Verified and remain
+unpublished. Their MinIO evidence is respectively 244,338 PNG objects /
+3,572,174,658 bytes and 93,481 PNG objects / 4,028,889,492 bytes, both
+round-corners at zooms 11-24. Refresh their V3 output pages before any separately
+approved Publish delivery action; do not re-save the drafts first.
+
+TLW individual approval and its positive V2 path are complete. Read-only
+staging verification confirms `tlw.viz.hawks@gmail.com` is approved/active as
+a normal user with zero memberships and exactly active non-expiring grants for
+AH-026004 and AH-026007; the user confirmed both surveys render tiles through
+V2 on port 8082. The user also confirmed the dashboard exposes only those two
+surveys, AH-026020 is denied, logout/login preserves the scope, and V3
+Users & Access agrees. Core authorization acceptance is complete. Finish
+responsive and empty/error checks, and explicitly exercise access preview if
+the Users & Access check did not include it, before closing the feature.
+Production remains untouched.
 
 Next-session priority: confirm the user's active UEMPC membership is Member
 and only AH-026032 is visible if one-survey recording is still required. Read-only
