@@ -86,8 +86,8 @@ export function ThreeDimensionalModel({ survey }) {
 
   if (!selected3dModel)
     return (
-      <div className="flex flex-1 items-center justify-center text-primary-foreground">
-        No selected 3D model.
+      <div className="flex flex-1 items-center justify-center p-6 text-center text-primary-foreground">
+        No 3D available for this survey.
       </div>
     );
 

@@ -52,7 +52,7 @@ export function ThreeDimensionalModelSelector({
         <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted cursor-not-allowed opacity-50">
           <Label className="text-muted-foreground">Model:</Label>
           <span className="text-sm text-muted-foreground">
-            No 3D model available
+            No 3D available for this survey.
           </span>
         </div>
       </div>
