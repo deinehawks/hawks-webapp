@@ -173,7 +173,7 @@ const MapEvents = React.memo(
       setPopupInfo({ ...survey, lat, lng });
       orthomap?.easeTo({
         center: [lng, lat], zoom: Math.max(orthomap.getZoom(), 16),
-        offset: [0, 80], duration: 600,
+        offset: [0, 80], duration: 1400,
       });
     }, [orthomap, setPopupInfo, setPlantPopupInfo]);
 

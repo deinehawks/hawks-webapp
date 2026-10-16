@@ -45,7 +45,7 @@ function MapEvents({ data, setPopupInfo }) {
     setPopupInfo({ ...survey, lat, lng, opacity: 1 });
     map?.flyTo({
       center: [lng, lat], zoom: Math.max(map.getZoom(), 16),
-      padding: { top: 300, bottom: 25, left: 50, right: 50 }, duration: 800,
+      padding: { top: 300, bottom: 25, left: 50, right: 50 }, duration: 1400,
     });
   }, [map, setPopupInfo]);
 
