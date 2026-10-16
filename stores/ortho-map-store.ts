@@ -9,6 +9,7 @@ export type OrthoMapState = {
   hoveredPairId: string | null;
   plantPopupInfo: {
     pairId: string;
+    areaCode?: string;
     areaId: string;
     label?: string;
     centerLng: number;

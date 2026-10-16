@@ -59,6 +59,10 @@ import { ThreeDimensionalModelSelector } from "@/components/selectors/3d-model-s
 import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
 import { FoiSelector } from "@/components/selectors/foi-selector";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
+import { countPlantDetections, filterPlantDetections, getDetectionKey, getDetectionPlantName, getDetectionPlantType, resolveDetectionFilter } from "@/lib/helpers/detection-labels";
+import { InventoryLayers } from "./shared/inventory-layers";
+import { InventoryLegend } from "./shared/inventory-legend";
+import { generateInventoryFeatureCollection } from "@/lib/helpers/geometry";
 import MapLegend from "@/components/maps/shared/map-legend";
 import {
   OrthoTabContent,
@@ -85,6 +89,8 @@ import { createPinLayout } from "@/lib/constants/map-layers";
 type MapCenter = { lng: number; lat: number; zoom: number };
 
 type ObjectPopupInfo = {
+  label?: string;
+  areaCode?: string;
   pairId: string;
   areaId?: string;
   centerLng: number;
@@ -228,6 +234,8 @@ function generatePointsWithOffset(
           pairId: obj.pairId,
           areaPairId: obj.areaPairId,
           label: obj.label,
+          areaCode: obj.areaCode,
+          detectionKey: getDetectionKey(obj),
         },
       };
     });
@@ -383,11 +391,11 @@ function SurveyMapEvents({
       if (!objectPairId) return;
 
       const clickedObject = detectedObjects.find(
-        (object) => object.pairId === objectPairId,
+        (object) => object.pairId === objectPairId && (!e.features?.[0]?.properties?.areaCode || object.areaCode === e.features[0].properties.areaCode),
       );
       if (!clickedObject) return;
 
-      const { pairId, areaPairId: areaId, bbox } = clickedObject;
+      const { pairId, areaPairId: areaId, bbox, label, areaCode } = clickedObject;
       const { centerLng, centerLat } = calculateCentersWithOffset(
         bbox.min_lon,
         bbox.max_lon,
@@ -395,14 +403,14 @@ function SurveyMapEvents({
         bbox.max_lat,
       );
 
-      setPopupInfo({ pairId, areaId, centerLng, centerLat });
+      setPopupInfo({ pairId, areaId, areaCode, label, centerLng, centerLat });
     },
     [detectedObjects, setPopupInfo],
   );
 
   const handlePinHover = useCallback(
     (e: MapMouseEvent) => {
-      const pairId = e.features?.[0]?.properties?.pairId as string | undefined;
+      const pairId = (e.features?.[0]?.properties?.detectionKey ?? e.features?.[0]?.properties?.pairId) as string | undefined;
       setHoveredPairId(pairId || null);
       if (pairId && map) map.getCanvas().style.cursor = "pointer";
     },
@@ -499,6 +507,7 @@ function InitializeMapImages() {
     loadSvgImage(PIN_IMAGES.yellow, "pin-yellow");
     loadSvgImage(PIN_IMAGES.red, "pin-red");
     loadSvgImage(PIN_IMAGES.gray, "pin-gray");
+    loadSvgImage(PIN_IMAGES.coconut, "pin-coconut");
   }, [map]);
 
   return null;
@@ -519,23 +528,9 @@ function FeaturesOfInterest({
   const id = survey?.id;
   if (!id) return null;
 
-  // --- Inventory mode: merge everything into one collection ---
-  const allBananas = useMemo(
-    () =>
-      generatePointsWithOffset(
-        detectedObjects,
-        "Banana Plant (Healthy-looking)",
-      ).features.concat(
-        generatePointsWithOffset(detectedObjects, "Banana Plant (Infected)")
-          .features,
-      ),
-    [detectedObjects],
-  );
-
-  const allBananasFC = useMemo<FeatureCollection<Point, PlantPointProps>>(
-    () => ({ type: "FeatureCollection", features: allBananas }),
-    [allBananas],
-  );
+  const activeFilter = resolveDetectionFilter(selectedFoi, surveyMode, countPlantDetections(detectedObjects).coconut > 0);
+  const activeObjects = useMemo(() => filterPlantDetections(detectedObjects, activeFilter, surveyMode), [detectedObjects, activeFilter, surveyMode]);
+  const allBananasFC = useMemo(() => generateInventoryFeatureCollection(detectedObjects, activeFilter), [detectedObjects, activeFilter]);
 
   // --- Analysis mode: split collections ---
   const healthyBananas = useMemo(
@@ -560,8 +555,8 @@ function FeaturesOfInterest({
       (popupInfo as ObjectPopupInfo | null)?.pairId || hoveredPairId;
     if (!selectedId) return null;
 
-    const selectedObject = detectedObjects.find(
-      (obj) => obj.pairId === selectedId,
+    const selectedObject = activeObjects.find(
+      (obj) => getDetectionKey(obj) === selectedId || (obj.pairId === selectedId && (!(popupInfo as ObjectPopupInfo | null)?.areaCode || obj.areaCode === (popupInfo as ObjectPopupInfo).areaCode)),
     );
     if (!selectedObject) return null;
 
@@ -591,7 +586,7 @@ function FeaturesOfInterest({
         },
       ],
     };
-  }, [detectedObjects, popupInfo, hoveredPairId]);
+  }, [activeObjects, popupInfo, hoveredPairId]);
 
   const isHealthy =
     selectedPlantBbox?.features[0]?.properties &&
@@ -599,10 +594,10 @@ function FeaturesOfInterest({
       "Healthy",
     );
 
-  // In inventory mode the bbox highlight is always blue
+  // Inventory highlights identify the species, rather than its health.
   const selectedColor =
     surveyMode === "inventory"
-      ? MAP_COLORS.inventory.base
+      ? getDetectionPlantType(selectedPlantBbox?.features[0]?.properties?.label) === "coconut" ? MAP_COLORS.coconut.base : MAP_COLORS.inventory.base
       : isHealthy
         ? MAP_COLORS.healthy.base
         : MAP_COLORS.unhealthy.base;
@@ -622,8 +617,8 @@ function FeaturesOfInterest({
     [allBananasFC.features],
   );
 
-  const showHealthy = selectedFoi === "healthy" || selectedFoi === "all";
-  const showUnhealthy = selectedFoi === "unhealthy" || selectedFoi === "all";
+  const showHealthy = activeFilter === "healthy" || activeFilter === "all";
+  const showUnhealthy = activeFilter === "unhealthy" || activeFilter === "all";
 
   // ── INVENTORY MODE ──────────────────────────────────────────────────────────
   if (surveyMode === "inventory") {
@@ -655,32 +650,7 @@ function FeaturesOfInterest({
         )}
         {showInventoryPins && (
           <>
-            <Source
-              id={`${id}-inventory`}
-              type="geojson"
-              data={allBananasFC as any}
-            >
-              <Layer
-                id={`${id}-inventory-heatmap`}
-                type="heatmap"
-                maxzoom={allZoomLevels.heatmapMaxZoom}
-                paint={createHeatmapPaint("inventory")} // neutral heatmap color
-              />
-            </Source>
-
-            <Source
-              id={`${id}-inventory-pins`}
-              type="geojson"
-              data={allBananasFC as any}
-            >
-              <Layer
-                id={`${id}-inventory-pin`}
-                type="symbol"
-                minzoom={allZoomLevels.pinMinZoom}
-                layout={createPinLayout("pin-gray")}
-                paint={{ "icon-opacity": 0.9 }}
-              />
-            </Source>
+            <InventoryLayers id={id} data={allBananasFC as FeatureCollection<Point>} zoomLevels={allZoomLevels} />
           </>
         )}
       </>
@@ -778,6 +748,7 @@ function FeaturesOfInterest({
 }
 
 function ObjectPopup() {
+  const { surveyMode } = useSurveyModeStore();
   const { popupInfo, setPopupInfo } = useSurveyMapStore((state) => state);
   const info = popupInfo as ObjectPopupInfo | null;
 
@@ -792,9 +763,10 @@ function ObjectPopup() {
       closeOnClick={false}
     >
       <div className="flex flex-col w-fit gap-1">
-        <div className="font-semibold">Object Information</div>
+        <div className="font-semibold">Plant Information</div>
         <Separator />
         <div className="flex flex-col">
+          {surveyMode === "inventory" && <div className="grid grid-cols-2 gap-2"><span>Plant type:</span><span className="font-medium">{getDetectionPlantName(info.label)}</span></div>}
           <div className="grid grid-cols-2 gap-2">
             <span>Longitude:</span>
             <span className="text-muted-foreground">
@@ -902,7 +874,7 @@ function SurveyBoundaries({ survey }: { survey: any }) {
       survey_id: survey.id,
       label: `${survey.access_code ?? ""}-${survey.area_code ?? ""}`,
     },
-    geometry: { type: "Point", coordinates: centroid },
+    geometry: { type: "Point", coordinates: [...centroid] },
   };
 
   const polygonFC: FeatureCollection<Polygon, GeoJsonProperties> = {
@@ -1037,9 +1009,11 @@ function SurveyBoundaryEvents() {
         );
       }
 
-      hoveredFeatureIdRef.current = e.features[0].id;
+      const featureId = e.features[0].id;
+      if (typeof featureId !== "string" && typeof featureId !== "number") return;
+      hoveredFeatureIdRef.current = featureId;
       map.setFeatureState(
-        { source: "survey-boundary", id: hoveredFeatureIdRef.current },
+        { source: "survey-boundary", id: featureId },
         { hover: true },
       );
     },
@@ -1108,7 +1082,6 @@ function MapView({
     selectedFoi != null &&
     selectedFoi !== "" &&
     selectedFoi !== "none";
-  surveyMode === "analysis";
 
   const mapStyle = useMemo<StyleSpecification>(
     () => ({
@@ -1287,6 +1260,8 @@ function MapView({
 
       {!hasValidCoordinates && hasOrthoTiles && <RegionalViewOverlay />}
 
+      {surveyMode === "inventory" && selectedFoi && selectedFoi !== "none" && <InventoryLegend detectedObjects={detectedObjects} />}
+
       {/* Map Legend */}
       <AnimatePresence>
         {shouldShowLegend && (
@@ -1318,25 +1293,17 @@ function SurveyInfo({
   activeTab: string;
 }) {
   const statistics = useMemo(() => {
-    let bananas = 0;
-    let healthy = 0;
-    let infected = 0;
-
-    for (const obj of detectedObjects) {
-      const label = String(obj.label ?? "");
-      if (label.includes("Banana")) bananas++;
-      if (label.includes("Healthy-looking")) healthy++;
-      if (label.includes("Infected")) infected++;
-    }
-
+    const counts = countPlantDetections(detectedObjects);
     const hasOrthoData = survey.ortho != null;
 
     return {
       area: survey.area,
-      cropInventory: bananas,
-      healthy,
-      infected,
-      hasData: hasOrthoData && bananas > 0,
+      cropInventory: counts.total,
+      bananas: counts.banana,
+      coconuts: counts.coconut,
+      healthy: counts.healthy,
+      infected: counts.unhealthy,
+      hasData: hasOrthoData && counts.total > 0,
     };
   }, [survey, detectedObjects]);
 
@@ -1379,11 +1346,15 @@ function SurveyInfo({
                 Plants:
               </span>
               <span className="font-semibold">
-                {statistics.cropInventory.toLocaleString()}
+                {(surveyMode === "inventory" ? statistics.cropInventory : statistics.bananas).toLocaleString()}
               </span>
             </Badge>
           )}
 
+          {surveyMode === "inventory" && statistics.coconuts > 0 && <>
+            <Badge variant="outline">Banana: {statistics.bananas.toLocaleString()}</Badge>
+            <Badge variant="outline">Coconut: {statistics.coconuts.toLocaleString()}</Badge>
+          </>}
           {/* Only show healthy/infected split in analysis mode */}
           {showHealthBreakdown && (
             <>
@@ -1528,14 +1499,14 @@ export default function SurveyMap({
   const is3D = activeTab === "3d";
 
   return (
-    <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
+    <div className="flex min-w-0 flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
         className="flex flex-1 h-full w-full flex-col gap-6"
       >
         {/* HEADER */}
-        <div className="flex items-center justify-between px-4 lg:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 lg:px-6">
           <Label htmlFor="view-selector" className="sr-only">
             View
           </Label>
@@ -1559,10 +1530,10 @@ export default function SurveyMap({
           </TabsList>
 
           {/* RIGHT-SIDE SELECTORS + SIDEBAR TOGGLE */}
-          <div className="flex items-center gap-3">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-3 sm:w-auto">
             {isOrtho && <SurveyModeToggle />}
             {isOrtho && (
-              <div>
+              <div className="w-full min-w-0 sm:w-auto">
                 <FoiSelector detectedObjects={safeDetectedObjects} />
               </div>
             )}
@@ -1607,7 +1578,7 @@ export default function SurveyMap({
         {/* MAIN CONTENT */}
         <div className="flex flex-1 h-full px-4 lg:px-6 gap-4">
           <div className="flex flex-1 h-full min-w-0">
-            <Card className="container/card flex flex-1 flex-col h-full relative">
+            <Card className="container/card flex min-w-0 flex-1 flex-col h-full relative">
               <CardHeader>
                 <SurveyInfo
                   survey={survey}

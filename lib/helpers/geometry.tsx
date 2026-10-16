@@ -1,5 +1,6 @@
 import { Feature, FeatureCollection } from "geojson";
 import { ComputerVisionObject, GeometryType } from "@/lib/types";
+import { filterPlantDetections, getDetectionKey, getDetectionPlantType } from "./detection-labels";
 
 /**
  * Generates a FeatureCollection of either points or lines from ComputerVisionObjects,
@@ -59,6 +60,9 @@ export function generateFeatureCollection(
             pairId: foi.pairId,
             areaId: foi.areaPairId,
             areaCode: foi.areaCode,
+            detectionKey: getDetectionKey(foi),
+            plantType: getDetectionPlantType(foi.label),
+            label: foi.label,
           },
           geometry: {
             type: "Point",
@@ -149,5 +153,15 @@ export function generateFeatureCollection(
   return {
     type: "FeatureCollection",
     features: [],
+  };
+}
+
+/** Inventory contains supported species only; health remains a separate overlay. */
+export function generateInventoryFeatureCollection(data: ComputerVisionObject[], selection: string): FeatureCollection {
+  const objects = filterPlantDetections(data, selection, "inventory");
+  const labels = [...new Set(objects.map(object => object.label))];
+  return {
+    type: "FeatureCollection",
+    features: labels.flatMap(label => generateFeatureCollection(GeometryType.Point, label, objects).features),
   };
 }

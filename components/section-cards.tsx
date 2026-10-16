@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { countPlantDetections } from "@/lib/helpers/detection-labels";
 
 export function SectionCards({
   surveys,
@@ -75,6 +76,7 @@ export function SectionCards({
   );
 
   const totalBananas = numHealthyBananas + numUnhealthyBananas;
+  const inventoryCounts = useMemo(() => countPlantDetections(detectedObjects), [detectedObjects]);
   const healthyBananaPercentage = totalBananas
     ? numHealthyBananas / totalBananas
     : 0;
@@ -224,8 +226,8 @@ export function SectionCards({
           <>
             {/* Slot 3 — total count */}
             <StatCard
-              title="Total Banana Plants"
-              value={totalBananas.toLocaleString()}
+              title={inventoryCounts.coconut ? "Total Plants" : "Total Banana Plants"}
+              value={inventoryCounts.total.toLocaleString()}
               description="All detected plants across all surveys"
               badge={
                 <Badge
@@ -238,7 +240,9 @@ export function SectionCards({
               }
               footerContent={
                 <div className="line-clamp-1 flex gap-2 font-medium">
-                  Healthy + infected combined
+                  {inventoryCounts.coconut
+                    ? `Banana: ${inventoryCounts.banana.toLocaleString()} · Coconut: ${inventoryCounts.coconut.toLocaleString()}`
+                    : "Healthy + infected combined"}
                 </div>
               }
               progress={1}

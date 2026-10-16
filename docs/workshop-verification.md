@@ -252,3 +252,35 @@ counts, overlays and statistics use the same path as older exports. Healthy
 aliases remain separate; original records and uploaded JSON are preserved.
 All 59 tests passed, including mixed healthy/infected/unhealthy exports and
 server-action survey scoping.
+
+## Coconut inventory support - 16 October 2026
+
+Inventory now recognizes `Coconut Tree` alongside the existing banana health
+labels. Surveys with coconut records offer Banana, Coconut and All plants
+filters, with species counts in the selector, survey summary and dashboard
+inventory total. Banana-only surveys retain their existing choices. Availability
+comes from each selected survey's detection records, without a client-code
+exception or changes to Supabase, uploaded JSON, or workshop visibility.
+
+Coconut inventory pins, density layers and bounding-box highlights use violet
+(`#a855f7`); banana inventory remains cyan. A compact text legend and plant-type
+popup identify both species. Analysis sources and health counts remain banana
+only. Mode/filter changes clear stale popups and hover state; repeated detection
+IDs across surveys are disambiguated using the survey ID.
+
+All 68 workshop tests passed. Targeted strict TypeScript checks passed for all
+13 changed/new TypeScript files. An isolated production build passed, and all
+17 generated trace manifests contain zero workshop-data entries. The running
+development server was left in place.
+
+An isolated headless Edge preview loaded the supplied STM JSON through the
+actual map, store and shadcn components, with synthetic survey metadata and
+the existing local imagery routes. AH-026132 showed 4 coconuts and 6 bananas;
+its Analysis sources contained only those 6 bananas. Native pin clicks opened
+the Coconut popup, and switching to Analysis dismissed it. Inventory filtering
+also passed on the individual survey page. Desktop (1440px), tablet (768px),
+and mobile (375px) orthomap checks found no horizontal overflow, map heights
+of at least 320px, and no JavaScript runtime exceptions. Desktop and mobile
+screenshots were inspected. This preview did not use the signed-in STM session
+or modify its account/data. The supplied file contains 13 coconuts and 11
+bananas in total across AH-026128 and AH-026132.

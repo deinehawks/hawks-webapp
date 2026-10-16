@@ -5,6 +5,8 @@ export type SurveyMapState = {
   selectedFoi: string;
   popupInfo: {
     pairId: string;
+    areaCode?: string;
+    label?: string;
     areaId: string;
     centerLng: number;
     centerLat: number;
@@ -24,6 +26,8 @@ export type SurveyMapActions = {
   setPopupInfo: (
     popupInfo: {
       pairId: string;
+      areaCode?: string;
+      label?: string;
       areaId: string;
       centerLng: number;
       centerLat: number;

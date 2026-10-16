@@ -8,10 +8,17 @@ import {
 } from "../lib/helpers/survey-selection.ts";
 
 import { formatSurveyArea, formatSurveyDate } from "../lib/helpers/survey-format.ts";
+import * as detectionLabels from "../lib/helpers/detection-labels.ts";
+import { MAP_COLORS } from "../lib/constants/map-colors.ts";
 
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
 const React = require("react");
+const realGeometry = {};
+new Function("require", "exports", ts.transpileModule(fs.readFileSync("lib/helpers/geometry.tsx", "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+}).outputText)(name => name === "@/lib/types" ? { GeometryType: { Point: "Point", LineString: "LineString" } }
+  : name === "./detection-labels" ? detectionLabels : require(name), realGeometry);
 const realHelpers = {};
 new Function("require", "exports", ts.transpileModule(fs.readFileSync("lib/helpers.ts", "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
@@ -153,7 +160,7 @@ function loadComponents(filename, extraExports = "") {
   const map = mapAdapter();
   const calls = [];
   const state = {
-    selectedFoi: "all", popupInfo: null, plantPopupInfo: null, hoveredPairId: null,
+    selectedFoi: "all", surveyMode: "analysis", popupInfo: null, plantPopupInfo: null, hoveredPairId: null,
     setSelectedFoi: (value) => { state.selectedFoi = value; },
     setPopupInfo: (value) => { calls.push(["popup", value]); state.popupInfo = value; },
     setPlantPopupInfo: (value) => { calls.push(["plant", value]); state.plantPopupInfo = value; },
@@ -171,6 +178,12 @@ function loadComponents(filename, extraExports = "") {
     react: { ...React, ...hooks, memo: (component) => component },
     "@vis.gl/react-maplibre": { Map: "Map", Source: "Source", Layer: "Layer", Popup: "Popup", MapProvider: "MapProvider", useMap: () => ({ orthomap: map, "survey-map": map, current: map }) },
     "@/lib/helpers": helper,
+    "@/lib/helpers/detection-labels": detectionLabels,
+    "@/lib/helpers/geometry": realGeometry,
+    "@/lib/types": { GeometryType: { Point: "Point", LineString: "LineString" } },
+    "@/lib/helpers/map-zoom": { calculateOptimalZoomLevels: () => ({ heatmapMaxZoom: 17, pinMinZoom: 16.6 }) },
+    "@/lib/constants/map-heatmap": { createHeatmapPaint: type => ({ "heatmap-color": type }) },
+    "@/lib/constants/map-layers": { createPinLayout: image => ({ "icon-image": image }) },
     "@/lib/helpers/survey-selection": selection,
     "@/lib/helpers/survey-format": { formatSurveyArea, formatSurveyDate },
     "./survey-popup-shell": { SurveyPopupShell: "SurveyPopupShell" },
@@ -178,8 +191,8 @@ function loadComponents(filename, extraExports = "") {
     "./shared/survey-choice-popup": { SurveyChoicePopup: "SurveyChoicePopup" },
     "@/providers/ortho-map-store-provider": { useOrthoMapStore: (selector) => selector(state) },
     "@/providers/survey-map-store-provider": { useSurveyMapStore: (selector) => selector(state) },
-    "@/stores/survey-mode-store": { useSurveyModeStore: () => ({ surveyMode: "analysis" }) },
-    "@/lib/constants/map-colors": { MAP_COLORS: { boundary: "#0891b2", hover: "#06b6d4" } },
+    "@/stores/survey-mode-store": { useSurveyModeStore: () => ({ surveyMode: state.surveyMode }) },
+    "@/lib/constants/map-colors": { MAP_COLORS },
     "@/lib/constants/map-animation": { PIN_ANIMATION_STYLES: "" },
     "framer-motion": { AnimatePresence: "AnimatePresence", motion: new Proxy({}, { get: (_, key) => "motion-" + String(key) }) },
     "maplibre-gl/dist/maplibre-gl.css": {},
@@ -330,13 +343,13 @@ test("survey fitting clears popup padding and moves directly to the selected bou
 });
 
 test("crop status keeps the complete count separate from the selected label and updates on filtering", () => {
-  const loaded = loadComponents("components/maps/ortho-map.tsx", "\nexport { OrthomapFoiSelector };\n");
+  const loaded = loadComponents("components/maps/shared/plant-filter-select.tsx");
   const render = runner();
   const detectedObjects = [
     ...Array(39212).fill({ label: "Banana Plant (Healthy-looking)" }),
     ...Array(1111).fill({ label: "Banana Plant (Infected)" }),
   ];
-  const view = (objects = detectedObjects) => render.render(loaded.exports.OrthomapFoiSelector, { detectedObjects: objects });
+  const view = (objects = detectedObjects) => render.render(loaded.exports.PlantFilterSelect, { detectedObjects: objects, mode: "analysis", value: loaded.state.selectedFoi, onValueChange: loaded.state.setSelectedFoi });
   let tree = view();
   let trigger = find(tree, "SelectTrigger");
   assert.equal(text(find(trigger, "SelectValue")), "All plants");
@@ -352,6 +365,109 @@ test("crop status keeps the complete count separate from the selected label and 
   tree = view([]); assert.equal(text(find(find(tree, "SelectTrigger"), "Badge")), "0");
   loaded.state.selectedFoi = "none";
   tree = view(); assert.equal(find(find(tree, "SelectTrigger"), "Badge"), undefined);
+});
+
+const stmDetections = [
+  { label: "Coconut Tree", areaCode: "AH-026132", pairId: "1", areaPairId: "1" },
+  { label: "Coconut Tree", areaCode: "AH-026128", pairId: "1", areaPairId: "1" },
+  { label: "Banana Plant (Healthy-looking)", areaCode: "AH-026132", pairId: "2", areaPairId: "2" },
+  { label: "Banana Plant (Infected)", areaCode: "AH-026132", pairId: "3", areaPairId: "3" },
+].map((object, i) => ({ ...object, bbox: { min_lon: 125 + i * .001, max_lon: 125.0002 + i * .001, min_lat: 7, max_lat: 7.0002, cen_lon: 125.0001 + i * .001, cen_lat: 7.0001 } }));
+
+test("inventory selectors expose Banana/Coconut only with matching data and keep analysis banana-only", () => {
+  const loaded = loadComponents("components/maps/shared/plant-filter-select.tsx");
+  const render = runner();
+  const view = (mode, value, objects = stmDetections) => render.render(loaded.exports.PlantFilterSelect, {
+    mode, value, detectedObjects: objects, onValueChange: loaded.state.setSelectedFoi,
+  });
+  const items = tree => nodes(tree).filter(node => node.type === "SelectItem").map(node => node.props.value);
+  let tree = view("inventory", "all");
+  assert.deepEqual(items(tree), ["none", "banana", "coconut", "all"]);
+  assert.equal(text(find(find(tree, "SelectTrigger"), "Badge")), "4");
+  tree = view("inventory", "coconut");
+  assert.equal(text(find(tree, "SelectValue")), "Coconut");
+  assert.equal(text(find(find(tree, "SelectTrigger"), "Badge")), "2");
+  find(tree, "Select").props.onValueChange("banana");
+  assert.equal(loaded.state.selectedFoi, "banana");
+  tree = view("analysis", "coconut");
+  assert.deepEqual(items(tree), ["none", "healthy", "unhealthy", "all"]);
+  assert.equal(find(tree, "Select").props.value, "all");
+  assert.equal(text(find(find(tree, "SelectTrigger"), "Badge")), "2");
+  tree = view("inventory", "coconut", stmDetections.slice(2));
+  assert.deepEqual(items(tree), ["none", "all"], "banana-only clients keep their existing choices");
+  assert.equal(find(tree, "Select").props.value, "all");
+});
+
+test("both map selectors clear stale coconut popups/hover and reset filters when mode or available species changes", () => {
+  for (const [file, exportName] of [["components/maps/ortho-map.tsx", "OrthomapFoiSelector"], ["components/selectors/foi-selector.tsx", "FoiSelector"]]) {
+    const loaded = loadComponents(file, exportName === "OrthomapFoiSelector" ? "\nexport { OrthomapFoiSelector };" : "");
+    loaded.state.surveyMode = "inventory";
+    loaded.state.selectedFoi = "coconut";
+    const render = runner();
+    render.render(loaded.exports[exportName], { detectedObjects: stmDetections }); render.effects();
+    loaded.state.surveyMode = "analysis";
+    loaded.state.hoveredPairId = "AH-026132:1";
+    loaded.state.popupInfo = loaded.state.plantPopupInfo = { pairId: "1", label: "Coconut Tree" };
+    let tree = render.render(loaded.exports[exportName], { detectedObjects: stmDetections }); render.effects();
+    assert.equal(tree.props.value, "all");
+    assert.equal(loaded.state.selectedFoi, "all");
+    assert.equal(loaded.state.hoveredPairId, null);
+    assert.equal(exportName === "FoiSelector" ? loaded.state.popupInfo : loaded.state.plantPopupInfo, null);
+    loaded.state.surveyMode = "inventory";
+    loaded.state.selectedFoi = "coconut";
+    tree = render.render(loaded.exports[exportName], { detectedObjects: stmDetections.slice(2) }); render.effects();
+    assert.equal(tree.props.value, "all");
+  }
+});
+
+test("both maps isolate inventory species, preserve survey identity and exclude coconut geometry from analysis", () => {
+  for (const file of ["components/maps/ortho-map.tsx", "components/maps/survey-map.tsx"]) {
+    const loaded = loadComponents(file, "\nexport { FeaturesOfInterest };\n");
+    const render = runner();
+    const props = { code: "STM", survey: { id: "AH-026132" }, detectedObjects: stmDetections };
+    loaded.state.surveyMode = "inventory";
+    let tree = render.render(loaded.exports.FeaturesOfInterest, props);
+    let inventory = find(tree, "InventoryLayers");
+    assert.equal(inventory.props.data.features.length, 4);
+    assert.deepEqual(inventory.props.data.features.map(f => f.properties.detectionKey).sort(), ["AH-026128:1", "AH-026132:1", "AH-026132:2", "AH-026132:3"]);
+    loaded.state.selectedFoi = "coconut";
+    tree = render.render(loaded.exports.FeaturesOfInterest, props);
+    inventory = find(tree, "InventoryLayers");
+    assert.equal(inventory.props.data.features.length, 2);
+    assert.ok(inventory.props.data.features.every(f => f.properties.plantType === "coconut"));
+    loaded.state.hoveredPairId = "AH-026128:1";
+    tree = render.render(loaded.exports.FeaturesOfInterest, props);
+    const highlight = nodes(tree).find(n => n.type === "Layer" && n.props.id?.endsWith("-selected-bbox-fill"));
+    assert.equal(highlight.props.paint["fill-color"], MAP_COLORS.coconut.base);
+    const bbox = nodes(tree).find(n => n.type === "Source" && n.props.id?.endsWith("-selected-bbox"));
+    assert.equal(bbox.props.data.features[0].geometry.coordinates[0][0][0], stmDetections[1].bbox.min_lon, "repeated pair IDs must highlight the hovered survey");
+    loaded.state.surveyMode = "analysis";
+    tree = render.render(loaded.exports.FeaturesOfInterest, props);
+    assert.equal(find(tree, "InventoryLayers"), undefined);
+    assert.equal(nodes(tree).find(n => n.type === "Source" && n.props.id?.endsWith("-selected-bbox")), undefined);
+    const data = nodes(tree).filter(n => n.type === "Source").flatMap(n => n.props.data?.features ?? []);
+    assert.equal(data.length, 4, "one healthy and one infected point in each heatmap/pin source");
+    assert.ok(data.every(f => !f.properties.label?.includes("Coconut")));
+  }
+});
+
+test("inventory pins and density colors distinguish coconut; labels do not rely on color alone", () => {
+  const loaded = loadComponents("components/maps/shared/inventory-layers.tsx");
+  const data = realGeometry.generateInventoryFeatureCollection(stmDetections, "all");
+  const tree = runner().render(loaded.exports.InventoryLayers, { id: "STM", data, zoomLevels: { heatmapMaxZoom: 17, pinMinZoom: 16.6 } });
+  const layers = nodes(tree).filter(n => n.type === "Layer");
+  assert.equal(layers.length, 3);
+  assert.deepEqual(layers.find(n => n.props.type === "symbol").props.layout["icon-image"], ["match", ["get", "plantType"], "coconut", "pin-coconut", "pin-gray"]);
+  assert.deepEqual(layers.find(n => n.props.id === "STM-coconut-heatmap").props.filter, ["==", ["get", "plantType"], "coconut"]);
+  assert.notEqual(MAP_COLORS.coconut.base, MAP_COLORS.inventory.base);
+  const legend = loadComponents("components/maps/shared/inventory-legend.tsx");
+  const result = runner().render(legend.exports.InventoryLegend, { detectedObjects: stmDetections });
+  assert.match(text(result), /Banana.*Coconut/);
+  assert.equal(runner().render(legend.exports.InventoryLegend, { detectedObjects: stmDetections.slice(2) }), null);
+  const popup = loadComponents("components/maps/ortho-map.tsx", "\nexport { PlantPopup };\n");
+  popup.state.surveyMode = "inventory";
+  popup.state.plantPopupInfo = { centerLng: 125, centerLat: 7, label: "Coconut Tree" };
+  assert.match(text(runner().render(popup.exports.PlantPopup)), /Plant type:Coconut/);
 });
 
 test("individual survey opening uses real boundary bounds, with coordinate and tile fallbacks", () => {

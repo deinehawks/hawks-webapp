@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import fs from "node:fs";
 import { createRequire } from "node:module";
-import { HEALTHY_BANANA_LABEL, INFECTED_BANANA_LABEL, normalizeDetectionLabels } from "../lib/helpers/detection-labels.ts";
+import * as detectionLabels from "../lib/helpers/detection-labels.ts";
+const { HEALTHY_BANANA_LABEL, INFECTED_BANANA_LABEL, normalizeDetectionLabels,
+  COCONUT_TREE_LABEL, countPlantDetections, filterPlantDetections, getDetectionPlantType,
+  getDetectionPlantName, resolveDetectionFilter } = detectionLabels;
 
 test("healthy labels accept hyphens, spaces, capitalization, and repeated whitespace", () => {
   const labels = [
@@ -45,7 +48,8 @@ test("mixed JSON formats feed existing point/line overlays and counts without lo
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   const geometry = {};
   new Function("require", "exports", compiled)((name) => name === "@/lib/types"
-    ? { GeometryType: { Point: "Point", LineString: "LineString" } } : require(name), geometry);
+    ? { GeometryType: { Point: "Point", LineString: "LineString" } }
+    : name === "./detection-labels" ? detectionLabels : require(name), geometry);
   const bbox = { min_lon: 125, max_lon: 126, min_lat: 7, max_lat: 8 };
   const input = [
     { label: HEALTHY_BANANA_LABEL, pairId: "old", areaCode: "AH-026010", bbox },
@@ -83,4 +87,41 @@ test("unhealthy-looking aliases map to infected and never match the healthy clas
   assert.equal(normalized.filter((row) => row.label === HEALTHY_BANANA_LABEL).length, 0);
   assert.deepEqual(input, original);
   assert.deepEqual(normalized.map((row) => row.pairId), input.map((row) => row.pairId));
+});
+
+test("coconut trees are inventory-only, counted separately, and never treated as unhealthy bananas", () => {
+  const input = [
+    { label: "Coconut Tree", areaCode: "AH-026132", pairId: "1" },
+    { label: " coconut  TREE ", areaCode: "AH-026128", pairId: "1" },
+    { label: "Banana Plant (Healthy Looking)", pairId: "2" },
+    { label: "Banana Plant (Unhealthy looking)", pairId: "3" },
+    { label: "Coconut (Healthy Looking)", pairId: "unknown" },
+  ];
+  const original = structuredClone(input);
+  const normalized = normalizeDetectionLabels(input);
+  assert.equal(normalized[1].label, COCONUT_TREE_LABEL);
+  assert.deepEqual(input, original);
+  assert.deepEqual(countPlantDetections(normalized), { healthy: 1, unhealthy: 1, banana: 2, coconut: 2, total: 4 });
+  assert.equal(getDetectionPlantType(COCONUT_TREE_LABEL), "coconut");
+  assert.equal(getDetectionPlantType("Coconut (Healthy Looking)"), null);
+  assert.equal(getDetectionPlantName(COCONUT_TREE_LABEL), "Coconut");
+  assert.equal(getDetectionPlantName(HEALTHY_BANANA_LABEL), "Banana");
+  assert.deepEqual(filterPlantDetections(normalized, "coconut", "inventory"), normalized.slice(0, 2));
+  assert.deepEqual(filterPlantDetections(normalized, "banana", "inventory"), normalized.slice(2, 4));
+  assert.equal(filterPlantDetections(normalized, "all", "inventory").length, 4);
+  assert.deepEqual(filterPlantDetections(normalized, "all", "analysis"), normalized.slice(2, 4));
+  assert.deepEqual(filterPlantDetections(normalized, "healthy", "analysis"), [normalized[2]]);
+  assert.deepEqual(filterPlantDetections(normalized, "unhealthy", "analysis"), [normalized[3]]);
+  assert.deepEqual(filterPlantDetections(normalized, "none", "inventory"), []);
+  assert.deepEqual(countPlantDetections([]), { healthy: 0, unhealthy: 0, banana: 0, coconut: 0, total: 0 });
+});
+
+test("switching modes or surveys resolves incompatible filters without assigning health to coconut", () => {
+  assert.equal(resolveDetectionFilter("coconut", "analysis", true), "all");
+  assert.equal(resolveDetectionFilter("banana", "analysis", true), "all");
+  assert.equal(resolveDetectionFilter("healthy", "inventory", true), "all");
+  assert.equal(resolveDetectionFilter("unhealthy", "inventory", true), "all");
+  assert.equal(resolveDetectionFilter("coconut", "inventory", false), "all");
+  assert.equal(resolveDetectionFilter("coconut", "inventory", true), "coconut");
+  assert.equal(resolveDetectionFilter("none", "inventory", true), "none");
 });

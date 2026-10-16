@@ -5,7 +5,7 @@ import { ALL_SURVEYS, getSurveyChoices, getSurveySelectionData, getSurveyLabel, 
 import { SurveyChoicePopup, type SurveyChoiceLocation } from "./shared/survey-choice-popup";
 import { SurveyDetailsPopup } from "./shared/survey-details-popup";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AlertCircle, Check, Layers, ListFilter, LoaderCircle, Scan, Info } from "lucide-react";
+import { AlertCircle, Check, Layers, LoaderCircle, Scan, Info } from "lucide-react";
 import {
   calculateGlobalCenters,
   findExtremeCoordinates,
@@ -46,14 +46,16 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { generateFeatureCollection } from "@/lib/helpers/geometry";
+import { PlantFilterSelect } from "./shared/plant-filter-select";
+import { countPlantDetections, filterPlantDetections, getDetectionKey, getDetectionPlantName, getDetectionPlantType, resolveDetectionFilter } from "@/lib/helpers/detection-labels";
+import { InventoryLayers } from "./shared/inventory-layers";
+import { InventoryLegend } from "./shared/inventory-legend";
+import { generateInventoryFeatureCollection, generateFeatureCollection } from "@/lib/helpers/geometry";
 import { GeometryType, type ComputerVisionObject } from "@/lib/types";
 import { useOrthoMapStore } from "@/providers/ortho-map-store-provider";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
@@ -209,7 +211,7 @@ const MapEvents = React.memo(
         if (!objectPairId) return;
 
         const clickedObject = detectedObjects.find(
-          (o) => o.pairId === objectPairId,
+          (o) => o.pairId === objectPairId && (!e.features?.[0]?.properties?.areaCode || o.areaCode === e.features[0].properties.areaCode),
         );
         if (!clickedObject) return;
 
@@ -223,14 +225,14 @@ const MapEvents = React.memo(
 
         setPopupInfo(null);
         setChoice(null);
-        setPlantPopupInfo({ pairId, areaId, centerLng, centerLat, label });
+        setPlantPopupInfo({ pairId, areaId, areaCode: clickedObject.areaCode, centerLng, centerLat, label });
       },
       [detectedObjects, setPlantPopupInfo, setPopupInfo],
     );
 
     const handlePinHover = useCallback(
       (e: MapMouseEvent) => {
-        const pairId = e.features?.[0]?.properties?.pairId as
+        const pairId = (e.features?.[0]?.properties?.detectionKey ?? e.features?.[0]?.properties?.pairId) as
           | string
           | undefined;
         setHoveredPairId(pairId || null);
@@ -362,6 +364,7 @@ const InitializeMapImages = React.memo(() => {
     loadSvgImage(PIN_IMAGES.yellow, "pin-yellow");
     loadSvgImage(PIN_IMAGES.red, "pin-red");
     loadSvgImage(PIN_IMAGES.gray, "pin-gray");
+    loadSvgImage(PIN_IMAGES.coconut, "pin-coconut");
   }, [orthomap]);
 
   return null;
@@ -408,7 +411,7 @@ const PlantPopup = React.memo(() => {
         <div className="flex flex-col gap-1">
           {label && (
             <div className="grid grid-cols-2 gap-2">
-              <span>Status:</span>
+              <span>{surveyMode === "inventory" ? "Plant type:" : "Status:"}</span>
               <span
                 className={
                   surveyMode === "inventory"
@@ -419,7 +422,7 @@ const PlantPopup = React.memo(() => {
                 }
               >
                 {surveyMode === "inventory"
-                  ? "Plant"
+                  ? getDetectionPlantName(label)
                   : isHealthy
                     ? "Healthy"
                     : "Infected"}
@@ -494,76 +497,15 @@ SourceLoadingStatus.displayName = "SourceLoadingStatus";
 
 const OrthomapFoiSelector = React.memo(
   ({ detectedObjects }: { detectedObjects: ComputerVisionObject[] }) => {
-    const { selectedFoi, setSelectedFoi } = useOrthoMapStore((state) => state);
-    const counts = useMemo(() => {
-      if (!detectedObjects || !Array.isArray(detectedObjects))
-        return { healthy: 0, unhealthy: 0 };
-      return {
-        healthy: detectedObjects.filter(
-          (obj) => obj.label === "Banana Plant (Healthy-looking)",
-        ).length,
-        unhealthy: detectedObjects.filter(
-          (obj) => obj.label === "Banana Plant (Infected)",
-        ).length,
-      };
-    }, [detectedObjects]);
-
+    const { selectedFoi, setSelectedFoi, setPlantPopupInfo, setHoveredPairId } = useOrthoMapStore(state => state);
     const { surveyMode } = useSurveyModeStore();
-    const selectedLabel = selectedFoi === "all" ? "All plants"
-      : selectedFoi === "healthy" ? "Healthy"
-      : selectedFoi === "unhealthy" ? "Infected"
-      : selectedFoi === "none" ? "No overlay" : "Crop status";
-    const selectedCount = selectedFoi === "all" ? counts.healthy + counts.unhealthy
-      : selectedFoi === "healthy" ? counts.healthy
-      : selectedFoi === "unhealthy" ? counts.unhealthy : null;
-
-    return (
-      <Select value={selectedFoi} onValueChange={setSelectedFoi}>
-        <SelectTrigger className="w-full min-w-0 shrink-0 data-[size=default]:h-11 sm:w-auto sm:min-w-52 sm:data-[size=default]:h-8 [&_[data-slot=select-value]]:flex-1 [&_[data-slot=select-value]]:text-left" id="foi-selector" aria-label="Crop status">
-          <ListFilter aria-hidden="true" className="size-3.5 text-muted-foreground" />
-          <SelectValue placeholder="Crop status">{selectedLabel}</SelectValue>
-          {selectedCount !== null && (
-            <Badge variant="secondary" className="shrink-0 rounded-full tabular-nums" aria-label={`${selectedCount.toLocaleString("en-US")} plants`}>
-              {selectedCount.toLocaleString("en-US")}
-            </Badge>
-          )}
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            <SelectLabel>Crop status</SelectLabel>
-            <SelectItem value="none" className="min-h-11 sm:min-h-8">No overlay</SelectItem>
-            {surveyMode === "analysis" && (
-              <>
-                <SelectItem value="healthy" className="min-h-11 sm:min-h-8">
-                  Healthy
-                  {selectedFoi === "healthy" && (
-                    <Badge variant="secondary" className="shrink-0 rounded-full tabular-nums">
-                      {counts.healthy.toLocaleString("en-US")}
-                    </Badge>
-                  )}
-                </SelectItem>
-                <SelectItem value="unhealthy" className="min-h-11 sm:min-h-8">
-                  Infected
-                  {selectedFoi === "unhealthy" && (
-                    <Badge variant="secondary" className="shrink-0 rounded-full tabular-nums">
-                      {counts.unhealthy.toLocaleString("en-US")}
-                    </Badge>
-                  )}
-                </SelectItem>
-              </>
-            )}
-            <SelectItem value="all" className="min-h-11 sm:min-h-8">
-              All plants
-              {selectedFoi === "all" && (
-                <Badge variant="secondary" className="shrink-0 rounded-full tabular-nums">
-                  {(counts.healthy + counts.unhealthy).toLocaleString("en-US")}
-                </Badge>
-              )}
-            </SelectItem>
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-    );
+    const selection = resolveDetectionFilter(selectedFoi, surveyMode, countPlantDetections(detectedObjects).coconut > 0);
+    useEffect(() => {
+      if (selection !== selectedFoi) setSelectedFoi(selection);
+      setPlantPopupInfo(null);
+      setHoveredPairId(null);
+    }, [selection, selectedFoi, surveyMode, detectedObjects, setSelectedFoi, setPlantPopupInfo, setHoveredPairId]);
+    return <PlantFilterSelect detectedObjects={detectedObjects} mode={surveyMode} value={selection} onValueChange={setSelectedFoi} />;
   },
 );
 
@@ -618,14 +560,9 @@ const FeaturesOfInterest = React.memo(
       };
     }, [detectedObjects]);
 
-    const allBananasFC = useMemo(() => {
-      const healthy = (healthyBananas as any)?.features ?? [];
-      const unhealthy = (unhealthyBananas as any)?.features ?? [];
-      return {
-        type: "FeatureCollection",
-        features: [...healthy, ...unhealthy],
-      };
-    }, [healthyBananas, unhealthyBananas]);
+    const activeFilter = resolveDetectionFilter(selectedFoi, surveyMode, countPlantDetections(detectedObjects).coconut > 0);
+    const activeObjects = useMemo(() => filterPlantDetections(detectedObjects, activeFilter, surveyMode), [detectedObjects, activeFilter, surveyMode]);
+    const allBananasFC = useMemo(() => generateInventoryFeatureCollection(detectedObjects, activeFilter), [detectedObjects, activeFilter]);
 
     const selectedPlantBbox = useMemo<FeatureCollection<
       Polygon,
@@ -634,8 +571,8 @@ const FeaturesOfInterest = React.memo(
       const selectedId = plantPopupInfo?.pairId || hoveredPairId;
       if (!selectedId) return null;
 
-      const selectedObject = detectedObjects.find(
-        (obj) => obj.pairId === selectedId,
+      const selectedObject = activeObjects.find(
+        (obj) => getDetectionKey(obj) === selectedId || (obj.pairId === selectedId && (!plantPopupInfo?.areaCode || obj.areaCode === plantPopupInfo.areaCode)),
       );
       if (!selectedObject) return null;
 
@@ -665,7 +602,7 @@ const FeaturesOfInterest = React.memo(
           },
         ],
       };
-    }, [detectedObjects, plantPopupInfo, hoveredPairId]);
+    }, [activeObjects, plantPopupInfo, hoveredPairId]);
 
     const isHealthy =
       selectedPlantBbox?.features[0]?.properties &&
@@ -673,10 +610,10 @@ const FeaturesOfInterest = React.memo(
         "Healthy",
       );
 
-    // ← inventory always uses inventory color
+    // Inventory highlights identify the species, rather than its health.
     const selectedColor =
       surveyMode === "inventory"
-        ? MAP_COLORS.inventory.base
+        ? getDetectionPlantType(selectedPlantBbox?.features[0]?.properties?.label) === "coconut" ? MAP_COLORS.coconut.base : MAP_COLORS.inventory.base
         : isHealthy
           ? MAP_COLORS.healthy.base
           : MAP_COLORS.unhealthy.base;
@@ -727,32 +664,7 @@ const FeaturesOfInterest = React.memo(
           )}
           {showInventoryPins && (
             <>
-              <Source
-                id={`${code}-inventory`}
-                type="geojson"
-                data={allBananasFC as any}
-              >
-                <Layer
-                  id={`${code}-inventory-heatmap`}
-                  type="heatmap"
-                  maxzoom={allZoomLevels.heatmapMaxZoom}
-                  paint={createHeatmapPaint("inventory")}
-                />
-              </Source>
-
-              <Source
-                id={`${code}-inventory-pins`}
-                type="geojson"
-                data={allBananasFC as any}
-              >
-                <Layer
-                  id={`${code}-inventory-pin`}
-                  type="symbol"
-                  minzoom={allZoomLevels.pinMinZoom}
-                  layout={createPinLayout("pin-gray")}
-                  paint={{ "icon-opacity": 0.9 }}
-                />
-              </Source>
+              <InventoryLayers id={code} data={allBananasFC as FeatureCollection<any>} zoomLevels={allZoomLevels} />
             </>
           )}
         </>
@@ -786,7 +698,7 @@ const FeaturesOfInterest = React.memo(
           </Source>
         )}
 
-        {(selectedFoi === "healthy" || selectedFoi === "all") && (
+        {(activeFilter === "healthy" || activeFilter === "all") && (
           <>
             <Source
               id={`${code}-healthy`}
@@ -816,7 +728,7 @@ const FeaturesOfInterest = React.memo(
           </>
         )}
 
-        {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
+        {(activeFilter === "unhealthy" || activeFilter === "all") && (
           <>
             <Source
               id={`${code}-unhealthy`}
@@ -1212,6 +1124,7 @@ function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjec
 
                   <MapPopup />
                   <PlantPopup />
+                  {surveyMode === "inventory" && selectedFoi && selectedFoi !== "none" && <InventoryLegend detectedObjects={safeDetectedObjects} />}
                   <AnimatePresence>
                     {selectedFoi && selectedFoi !== "none" && (
                       <motion.div
