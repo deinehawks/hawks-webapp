@@ -59,7 +59,7 @@ import { ThreeDimensionalModelSelector } from "@/components/selectors/3d-model-s
 import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
 import { FoiSelector } from "@/components/selectors/foi-selector";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
-import { countPlantDetections, filterPlantDetections, getDetectionKey, getDetectionPlantName, getDetectionPlantType, resolveDetectionFilter } from "@/lib/helpers/detection-labels";
+import { countPlantDetections, filterPlantDetections, findPlantDetection, getPlantDetectionSets, getDetectionKey, getDetectionPlantName, getDetectionPlantType, resolveDetectionFilter } from "@/lib/helpers/detection-labels";
 import { InventoryLayers } from "./shared/inventory-layers";
 import { InventoryLegend } from "./shared/inventory-legend";
 import { generateInventoryFeatureCollection } from "@/lib/helpers/geometry";
@@ -89,6 +89,7 @@ import { createPinLayout } from "@/lib/constants/map-layers";
 type MapCenter = { lng: number; lat: number; zoom: number };
 
 type ObjectPopupInfo = {
+  detectionKey?: string;
   label?: string;
   areaCode?: string;
   pairId: string;
@@ -378,21 +379,15 @@ function SurveyMapEvents({
   detectedObjects: ComputerVisionObject[];
 }) {
   const map = useSurveyMapInstance();
-  const { setPopupInfo, setHoveredPairId } = useSurveyMapStore(
+  const { selectedFoi, setPopupInfo, setHoveredPairId } = useSurveyMapStore(
     (state) => state,
   );
   const { surveyMode } = useSurveyModeStore();
+  const activeObjects = useMemo(() => filterPlantDetections(detectedObjects, selectedFoi, surveyMode), [detectedObjects, selectedFoi, surveyMode]);
 
   const handleBboxClick = useCallback(
     (e: MapMouseEvent) => {
-      const objectPairId = e.features?.[0]?.properties?.pairId as
-        | string
-        | undefined;
-      if (!objectPairId) return;
-
-      const clickedObject = detectedObjects.find(
-        (object) => object.pairId === objectPairId && (!e.features?.[0]?.properties?.areaCode || object.areaCode === e.features[0].properties.areaCode),
-      );
+      const clickedObject = findPlantDetection(activeObjects, e.features?.[0]?.properties ?? {});
       if (!clickedObject) return;
 
       const { pairId, areaPairId: areaId, bbox, label, areaCode } = clickedObject;
@@ -403,9 +398,9 @@ function SurveyMapEvents({
         bbox.max_lat,
       );
 
-      setPopupInfo({ pairId, areaId, areaCode, label, centerLng, centerLat });
+      setPopupInfo({ detectionKey: getDetectionKey(clickedObject), pairId, areaId, areaCode, label, centerLng, centerLat });
     },
-    [detectedObjects, setPopupInfo],
+    [activeObjects, setPopupInfo],
   );
 
   const handlePinHover = useCallback(
@@ -528,36 +523,33 @@ function FeaturesOfInterest({
   const id = survey?.id;
   if (!id) return null;
 
-  const activeFilter = resolveDetectionFilter(selectedFoi, surveyMode, countPlantDetections(detectedObjects).coconut > 0);
+  const counts = useMemo(() => countPlantDetections(detectedObjects), [detectedObjects]);
+  const activeFilter = resolveDetectionFilter(selectedFoi, surveyMode, counts.coconut > 0);
   const activeObjects = useMemo(() => filterPlantDetections(detectedObjects, activeFilter, surveyMode), [detectedObjects, activeFilter, surveyMode]);
   const allBananasFC = useMemo(() => generateInventoryFeatureCollection(detectedObjects, activeFilter), [detectedObjects, activeFilter]);
 
   // --- Analysis mode: split collections ---
+  const analysisObjects = useMemo(() => getPlantDetectionSets(detectedObjects).analysis, [detectedObjects]);
   const healthyBananas = useMemo(
     () =>
       generatePointsWithOffset(
-        detectedObjects,
+        analysisObjects,
         "Banana Plant (Healthy-looking)",
       ),
-    [detectedObjects],
+    [analysisObjects],
   );
 
   const unhealthyBananas = useMemo(
-    () => generatePointsWithOffset(detectedObjects, "Banana Plant (Infected)"),
-    [detectedObjects],
+    () => generatePointsWithOffset(analysisObjects, "Banana Plant (Infected)"),
+    [analysisObjects],
   );
 
   const selectedPlantBbox = useMemo<FeatureCollection<
     Polygon,
     GeoJsonProperties
   > | null>(() => {
-    const selectedId =
-      (popupInfo as ObjectPopupInfo | null)?.pairId || hoveredPairId;
-    if (!selectedId) return null;
-
-    const selectedObject = activeObjects.find(
-      (obj) => getDetectionKey(obj) === selectedId || (obj.pairId === selectedId && (!(popupInfo as ObjectPopupInfo | null)?.areaCode || obj.areaCode === (popupInfo as ObjectPopupInfo).areaCode)),
-    );
+    const selectedObject = findPlantDetection(activeObjects,
+      (popupInfo as ObjectPopupInfo | null) ?? { detectionKey: hoveredPairId });
     if (!selectedObject) return null;
 
     const { min_lon, max_lon, min_lat, max_lat } = selectedObject.bbox;
@@ -1299,6 +1291,7 @@ function SurveyInfo({
     return {
       area: survey.area,
       cropInventory: counts.total,
+      analysisBananas: counts.analysisBanana,
       bananas: counts.banana,
       coconuts: counts.coconut,
       healthy: counts.healthy,
@@ -1346,7 +1339,7 @@ function SurveyInfo({
                 Plants:
               </span>
               <span className="font-semibold">
-                {(surveyMode === "inventory" ? statistics.cropInventory : statistics.bananas).toLocaleString()}
+                {(surveyMode === "inventory" ? statistics.cropInventory : statistics.analysisBananas).toLocaleString()}
               </span>
             </Badge>
           )}

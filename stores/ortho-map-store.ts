@@ -8,6 +8,7 @@ export type OrthoMapState = {
   popupInfo: unknown;
   hoveredPairId: string | null;
   plantPopupInfo: {
+    detectionKey?: string;
     pairId: string;
     areaCode?: string;
     areaId: string;

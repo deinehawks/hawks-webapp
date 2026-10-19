@@ -4,6 +4,7 @@ export type SurveyMapState = {
   activeTab: string;
   selectedFoi: string;
   popupInfo: {
+    detectionKey?: string;
     pairId: string;
     areaCode?: string;
     label?: string;
@@ -25,6 +26,7 @@ export type SurveyMapActions = {
   setSelectedFoi: (selectedFoi: string) => void;
   setPopupInfo: (
     popupInfo: {
+      detectionKey?: string;
       pairId: string;
       areaCode?: string;
       label?: string;

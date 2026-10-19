@@ -52,7 +52,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { PlantFilterSelect } from "./shared/plant-filter-select";
-import { countPlantDetections, filterPlantDetections, getDetectionKey, getDetectionPlantName, getDetectionPlantType, resolveDetectionFilter } from "@/lib/helpers/detection-labels";
+import { countPlantDetections, filterPlantDetections, findPlantDetection, getPlantDetectionSets, getDetectionKey, getDetectionPlantName, getDetectionPlantType, resolveDetectionFilter } from "@/lib/helpers/detection-labels";
 import { InventoryLayers } from "./shared/inventory-layers";
 import { InventoryLegend } from "./shared/inventory-legend";
 import { generateInventoryFeatureCollection, generateFeatureCollection } from "@/lib/helpers/geometry";
@@ -158,9 +158,10 @@ const MapEvents = React.memo(
     detectedObjects: ComputerVisionObject[];
   }) => {
     const { orthomap } = useMap();
-    const { setPopupInfo, setHoveredPairId, setPlantPopupInfo } =
+    const { selectedFoi, setPopupInfo, setHoveredPairId, setPlantPopupInfo } =
       useOrthoMapStore((state) => state);
     const { surveyMode } = useSurveyModeStore();
+    const activeObjects = useMemo(() => filterPlantDetections(detectedObjects, selectedFoi, surveyMode), [detectedObjects, selectedFoi, surveyMode]);
 
     const [choice, setChoice] = useState<SurveyChoiceLocation<SurveyLike> | null>(null);
     const openSurveyPopup = useCallback((survey: SurveyLike) => {
@@ -205,14 +206,7 @@ const MapEvents = React.memo(
 
     const handlePinClick = useCallback(
       (e: MapMouseEvent) => {
-        const objectPairId = e.features?.[0]?.properties?.pairId as
-          | string
-          | undefined;
-        if (!objectPairId) return;
-
-        const clickedObject = detectedObjects.find(
-          (o) => o.pairId === objectPairId && (!e.features?.[0]?.properties?.areaCode || o.areaCode === e.features[0].properties.areaCode),
-        );
+        const clickedObject = findPlantDetection(activeObjects, e.features?.[0]?.properties ?? {});
         if (!clickedObject) return;
 
         const { pairId, areaPairId: areaId, bbox, label } = clickedObject;
@@ -225,9 +219,9 @@ const MapEvents = React.memo(
 
         setPopupInfo(null);
         setChoice(null);
-        setPlantPopupInfo({ pairId, areaId, areaCode: clickedObject.areaCode, centerLng, centerLat, label });
+        setPlantPopupInfo({ detectionKey: getDetectionKey(clickedObject), pairId, areaId, areaCode: clickedObject.areaCode, centerLng, centerLat, label });
       },
-      [detectedObjects, setPlantPopupInfo, setPopupInfo],
+      [activeObjects, setPlantPopupInfo, setPopupInfo],
     );
 
     const handlePinHover = useCallback(
@@ -499,7 +493,8 @@ const OrthomapFoiSelector = React.memo(
   ({ detectedObjects }: { detectedObjects: ComputerVisionObject[] }) => {
     const { selectedFoi, setSelectedFoi, setPlantPopupInfo, setHoveredPairId } = useOrthoMapStore(state => state);
     const { surveyMode } = useSurveyModeStore();
-    const selection = resolveDetectionFilter(selectedFoi, surveyMode, countPlantDetections(detectedObjects).coconut > 0);
+    const counts = useMemo(() => countPlantDetections(detectedObjects), [detectedObjects]);
+    const selection = resolveDetectionFilter(selectedFoi, surveyMode, counts.coconut > 0);
     useEffect(() => {
       if (selection !== selectedFoi) setSelectedFoi(selection);
       setPlantPopupInfo(null);
@@ -544,23 +539,23 @@ const FeaturesOfInterest = React.memo(
     const { surveyMode } = useSurveyModeStore(); // ← add
 
     const { healthyBananas, unhealthyBananas } = useMemo(() => {
-      if (!detectedObjects || !Array.isArray(detectedObjects))
-        return { healthyBananas: "", unhealthyBananas: "" };
+      const analysis = getPlantDetectionSets(detectedObjects).analysis;
       return {
         healthyBananas: generateFeatureCollection(
           GeometryType.Point,
           "Banana Plant (Healthy-looking)",
-          detectedObjects,
+          analysis,
         ),
         unhealthyBananas: generateFeatureCollection(
           GeometryType.Point,
           "Banana Plant (Infected)",
-          detectedObjects,
+          analysis,
         ),
       };
     }, [detectedObjects]);
 
-    const activeFilter = resolveDetectionFilter(selectedFoi, surveyMode, countPlantDetections(detectedObjects).coconut > 0);
+    const counts = useMemo(() => countPlantDetections(detectedObjects), [detectedObjects]);
+    const activeFilter = resolveDetectionFilter(selectedFoi, surveyMode, counts.coconut > 0);
     const activeObjects = useMemo(() => filterPlantDetections(detectedObjects, activeFilter, surveyMode), [detectedObjects, activeFilter, surveyMode]);
     const allBananasFC = useMemo(() => generateInventoryFeatureCollection(detectedObjects, activeFilter), [detectedObjects, activeFilter]);
 
@@ -568,12 +563,8 @@ const FeaturesOfInterest = React.memo(
       Polygon,
       GeoJsonProperties
     > | null>(() => {
-      const selectedId = plantPopupInfo?.pairId || hoveredPairId;
-      if (!selectedId) return null;
-
-      const selectedObject = activeObjects.find(
-        (obj) => getDetectionKey(obj) === selectedId || (obj.pairId === selectedId && (!plantPopupInfo?.areaCode || obj.areaCode === plantPopupInfo.areaCode)),
-      );
+      const selectedObject = findPlantDetection(activeObjects,
+        plantPopupInfo ?? { detectionKey: hoveredPairId });
       if (!selectedObject) return null;
 
       const { min_lon, max_lon, min_lat, max_lat } = selectedObject.bbox;

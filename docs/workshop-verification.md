@@ -284,3 +284,34 @@ of at least 320px, and no JavaScript runtime exceptions. Desktop and mobile
 screenshots were inspected. This preview did not use the signed-in STM session
 or modify its account/data. The supplied file contains 13 coconuts and 11
 bananas in total across AH-026128 and AH-026132.
+
+## Separate inventory and health models - 19 October 2026
+
+The shared detection helper now selects Inventory and Analysis records from one
+combined client JSON. Per survey (`areaCode`), plain `Banana Plant` records take
+precedence for banana inventory. Surveys without that label retain the older
+healthy/infected inventory fallback. `Coconut Tree` remains inventory-only.
+Analysis includes only normalized healthy-looking and infected banana records.
+An overview combines these independently selected survey cohorts; new-model
+records in one survey do not suppress another survey's fallback.
+
+Shared counts distinguish inventory bananas (`banana`) and health-model bananas
+(`analysisBanana`). Dashboard percentages use the health-model denominator.
+Dropdowns, summaries, geometry and interaction lookups use the same mode rules.
+Detection keys include survey, normalized label and pair ID, so models may reuse
+IDs without selecting the wrong bounding box. Uploaded records and Supabase
+remain unchanged; the pending workshop visibility configuration was preserved.
+
+All 76 workshop tests passed, covering aliases, new/legacy/mixed surveys, absent
+model data, coconut isolation, counts, percentages and repeated model IDs on both
+maps. Targeted strict TypeScript checks passed for all nine changed TypeScript
+files. An isolated production build passed with the existing Supabase Edge
+Runtime warnings; all 17 trace manifests exclude workshop datasets.
+
+An isolated browser preview used a temporary combined-model fixture and actual
+application components/local tiles. The new survey showed 8 inventory bananas
+plus 4 coconuts, versus 6 health detections. The legacy survey retained 14 total
+inventory plants and 5 health detections. Overview totals were 26 and 11,
+respectively. Both map pages passed switching and popup checks; a native banana
+pin click highlighted the inventory model's bounding box. Desktop, tablet and
+375px mobile layouts had no horizontal overflow or JavaScript runtime errors.

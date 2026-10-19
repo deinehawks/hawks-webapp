@@ -24,7 +24,7 @@ export function PlantFilterSelect({ detectedObjects, mode, value, onValueChange 
       { value: "banana", label: "Banana", count: counts.banana },
       { value: "coconut", label: "Coconut", count: counts.coconut },
     ] : []),
-    { value: "all", label: "All plants", count: mode === "inventory" ? counts.total : counts.banana },
+    { value: "all", label: "All plants", count: mode === "inventory" ? counts.total : counts.analysisBanana },
   ];
   const current = options.find(option => option.value === selected);
   const label = mode === "inventory" ? "Plant type" : "Crop status";

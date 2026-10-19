@@ -147,7 +147,7 @@ function mapAdapter() {
     on(event, layer, handler) { listeners.set(event + (typeof layer === "string" ? ":" + layer : ""), handler ?? layer); },
     off(event, layer) { listeners.delete(event + (typeof layer === "string" ? ":" + layer : "")); },
     click() { listeners.get("click")?.({ point: { x: 1, y: 1 }, lngLat: { lng: 125.5, lat: 7.5 } }); },
-    fire(event, value) { listeners.get(event)?.(value); },
+    fire(event, value, layer) { listeners.get(event + (layer ? ":" + layer : ""))?.(value); },
     fitBounds(bounds, options) { this.fits.push(bounds); this.cameraCalls.push({ type: "fit", bounds, options }); },
     setPadding(padding) { this.cameraCalls.push({ type: "padding", padding }); },
     flyTo(view) { this.flights.push(view); }, easeTo(view) { this.eases.push(view); },
@@ -178,6 +178,7 @@ function loadComponents(filename, extraExports = "") {
     react: { ...React, ...hooks, memo: (component) => component },
     "@vis.gl/react-maplibre": { Map: "Map", Source: "Source", Layer: "Layer", Popup: "Popup", MapProvider: "MapProvider", useMap: () => ({ orthomap: map, "survey-map": map, current: map }) },
     "@/lib/helpers": helper,
+    "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
     "@/lib/helpers/detection-labels": detectionLabels,
     "@/lib/helpers/geometry": realGeometry,
     "@/lib/types": { GeometryType: { Point: "Point", LineString: "LineString" } },
@@ -429,13 +430,13 @@ test("both maps isolate inventory species, preserve survey identity and exclude 
     let tree = render.render(loaded.exports.FeaturesOfInterest, props);
     let inventory = find(tree, "InventoryLayers");
     assert.equal(inventory.props.data.features.length, 4);
-    assert.deepEqual(inventory.props.data.features.map(f => f.properties.detectionKey).sort(), ["AH-026128:1", "AH-026132:1", "AH-026132:2", "AH-026132:3"]);
+    assert.deepEqual(inventory.props.data.features.map(f => f.properties.detectionKey).sort(), stmDetections.map(detectionLabels.getDetectionKey).sort());
     loaded.state.selectedFoi = "coconut";
     tree = render.render(loaded.exports.FeaturesOfInterest, props);
     inventory = find(tree, "InventoryLayers");
     assert.equal(inventory.props.data.features.length, 2);
     assert.ok(inventory.props.data.features.every(f => f.properties.plantType === "coconut"));
-    loaded.state.hoveredPairId = "AH-026128:1";
+    loaded.state.hoveredPairId = detectionLabels.getDetectionKey(stmDetections[1]);
     tree = render.render(loaded.exports.FeaturesOfInterest, props);
     const highlight = nodes(tree).find(n => n.type === "Layer" && n.props.id?.endsWith("-selected-bbox-fill"));
     assert.equal(highlight.props.paint["fill-color"], MAP_COLORS.coconut.base);
@@ -468,6 +469,99 @@ test("inventory pins and density colors distinguish coconut; labels do not rely 
   popup.state.surveyMode = "inventory";
   popup.state.plantPopupInfo = { centerLng: 125, centerLat: 7, label: "Coconut Tree" };
   assert.match(text(runner().render(popup.exports.PlantPopup)), /Plant type:Coconut/);
+});
+
+const combinedModelDetections = [
+  { label: "Banana Plant (Healthy-looking)", areaCode: ids[0], pairId: "1" },
+  { label: "Banana Plant (Infected)", areaCode: ids[0], pairId: "2" },
+  { label: "Banana Plant", areaCode: ids[0], pairId: "1" },
+  { label: "Banana Plant", areaCode: ids[0], pairId: "2" },
+  { label: "Banana Plant", areaCode: ids[0], pairId: "3" },
+  { label: "Coconut Tree", areaCode: ids[0], pairId: "4" },
+  { label: "Banana Plant (Healthy-looking)", areaCode: ids[1], pairId: "1" },
+].map((object, i) => ({ ...object, areaPairId: object.pairId,
+  bbox: { min_lon: 125 + i * .001, max_lon: 125.0002 + i * .001, min_lat: 7, max_lat: 7.0002 } }));
+
+test("mode dropdown counts match selected geometry for combined models, legacy fallback and survey isolation", () => {
+  const selector = loadComponents("components/maps/shared/plant-filter-select.tsx");
+  for (const file of ["components/maps/ortho-map.tsx", "components/maps/survey-map.tsx"]) {
+    const loaded = loadComponents(file, "\nexport { FeaturesOfInterest };\n");
+    const objects = file.includes("ortho-map") ? combinedModelDetections
+      : getSurveySelectionData(surveys, combinedModelDetections, ids[0]).detectedObjects;
+    for (const [mode, expected] of [["inventory", file.includes("ortho-map") ? 5 : 4], ["analysis", file.includes("ortho-map") ? 3 : 2]]) {
+      loaded.state.surveyMode = mode;
+      const tree = runner().render(loaded.exports.FeaturesOfInterest, { code: "MCS", survey: surveys[0], detectedObjects: objects });
+      const control = runner().render(selector.exports.PlantFilterSelect, { mode, value: "all", detectedObjects: objects, onValueChange() {} });
+      assert.equal(text(find(find(control, "SelectTrigger"), "Badge")), String(expected));
+      if (mode === "inventory") {
+        const features = find(tree, "InventoryLayers").props.data.features;
+        assert.equal(features.length, expected);
+        assert.ok(features.filter(f => f.properties.areaCode === ids[0]).every(f => ["Banana Plant", "Coconut Tree"].includes(f.properties.label)));
+      } else {
+        const sources = nodes(tree).filter(n => n.type === "Source" && /-(healthy|unhealthy)-pins$/.test(n.props.id));
+        const features = sources.flatMap(source => source.props.data.features);
+        assert.equal(features.length, expected);
+        assert.ok(features.every(f => ["Banana Plant (Healthy-looking)", "Banana Plant (Infected)"].includes(f.properties.label)));
+      }
+    }
+  }
+});
+
+test("both map click handlers resolve repeated model IDs inside the active mode and highlight its actual box", () => {
+  const objects = combinedModelDetections.filter(row => row.areaCode === ids[0]);
+  for (const [file, eventName, prefix] of [["components/maps/ortho-map.tsx", "MapEvents", "MCS"], ["components/maps/survey-map.tsx", "SurveyMapEvents", ids[0]]]) {
+    const loaded = loadComponents(file, `\nexport { ${eventName}, FeaturesOfInterest };\n`);
+    const events = runner(), layers = runner();
+    const props = { code: "MCS", survey: surveys[0], surveys: [surveys[0]], detectedObjects: objects, showBoundaries: true, isOverview: false, onChooseSurvey() {} };
+    const popup = () => eventName === "MapEvents" ? loaded.state.plantPopupInfo : loaded.state.popupInfo;
+    for (const [mode, index, layer] of [["inventory", 2, `${prefix}-inventory-pin`], ["analysis", 0, `${prefix}-healthy-pin`]]) {
+      loaded.state.surveyMode = mode;
+      loaded.state.popupInfo = loaded.state.plantPopupInfo = null;
+      events.render(loaded.exports[eventName], props); events.effects();
+      const object = objects[index];
+      const properties = { pairId: object.pairId, areaCode: object.areaCode, label: object.label, detectionKey: detectionLabels.getDetectionKey(object) };
+      loaded.map.fire("click", { features: [{ properties }] }, layer);
+      assert.equal(popup().label, object.label);
+      assert.equal(popup().centerLng, (object.bbox.min_lon + object.bbox.max_lon) / 2);
+      assert.equal(popup().detectionKey, properties.detectionKey);
+      const tree = layers.render(loaded.exports.FeaturesOfInterest, props);
+      const source = nodes(tree).find(n => n.type === "Source" && n.props.id?.endsWith("-selected-bbox"));
+      assert.equal(source.props.data.features[0].geometry.coordinates[0][0][0], object.bbox.min_lon);
+      loaded.state.popupInfo = loaded.state.plantPopupInfo = null;
+      const excluded = objects[mode === "inventory" ? 0 : 2];
+      loaded.map.fire("click", { features: [{ properties: { pairId: excluded.pairId, detectionKey: detectionLabels.getDetectionKey(excluded) } }] }, layer);
+      assert.equal(popup(), null, "inactive model IDs must not open a popup");
+    }
+  }
+});
+
+test("dashboard and survey summaries use separate inventory and analysis totals and percentages", () => {
+  const dashboard = loadComponents("components/section-cards.tsx");
+  dashboard.state.surveyMode = "inventory";
+  let tree = runner().render(dashboard.exports.SectionCards, { surveys, detectedObjects: combinedModelDetections });
+  let cards = nodes(tree).filter(node => node.type?.name === "StatCard");
+  const inventory = cards.find(card => card.props.title === "Total Plants");
+  assert.equal(inventory.props.value, "5");
+  assert.equal(text(inventory.props.footerContent), "Banana: 4 · Coconut: 1");
+  dashboard.state.surveyMode = "analysis";
+  tree = runner().render(dashboard.exports.SectionCards, { surveys, detectedObjects: combinedModelDetections });
+  cards = nodes(tree).filter(node => node.type?.name === "StatCard");
+  const healthy = cards.find(card => card.props.title === "Crop Count: Healthy");
+  const infected = cards.find(card => card.props.title === "Crop Count: Infected");
+  assert.equal(healthy.props.value, "2");
+  assert.equal(healthy.props.progress, 2 / 3);
+  assert.equal(infected.props.value, "1");
+  assert.equal(infected.props.progress, 1 / 3);
+  const detail = loadComponents("components/maps/survey-map.tsx", "\nexport { SurveyInfo };\n");
+  const objects = combinedModelDetections.filter(row => row.areaCode === ids[0]);
+  detail.state.surveyMode = "inventory";
+  tree = runner().render(detail.exports.SurveyInfo, { survey: surveys[0], detectedObjects: objects, activeTab: "ortho" });
+  assert.match(text(tree), /Plants:4/);
+  assert.match(text(tree), /Banana: 3Coconut: 1/);
+  detail.state.surveyMode = "analysis";
+  tree = runner().render(detail.exports.SurveyInfo, { survey: surveys[0], detectedObjects: objects, activeTab: "ortho" });
+  assert.match(text(tree), /Plants:2/);
+  assert.doesNotMatch(text(tree), /Coconut/);
 });
 
 test("individual survey opening uses real boundary bounds, with coordinate and tile fallbacks", () => {

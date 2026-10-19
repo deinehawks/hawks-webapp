@@ -139,3 +139,26 @@ test("all detection pages receive normalized health labels while survey filterin
   assert.equal(detail.filter((o) => o.label.includes("Healthy-looking")).length, 2);
   assert.deepEqual(raw, original);
 });
+
+test("one combined JSON retains both models while normalization and workshop scope stay intact", async () => {
+  const raw = [
+    { areaCode: ids[0], pairId: "1", label: "Banana  Plant" },
+    { areaCode: ids[0], pairId: "1", label: "Banana Plant (Healthy-Looking)" },
+    { areaCode: ids[0], pairId: "2", label: "Banana Plant (Infected)" },
+    { areaCode: ids[1], pairId: "1", label: "Banana Plant (Infected)" },
+    { areaCode: "AH-026012", pairId: "hidden", label: "Banana Plant" },
+  ];
+  const original = structuredClone(raw);
+  const { actions, counters } = loadActions("lib/actions/surveys.ts", "BARBCO2026", policy, raw);
+  const all = await actions.getObjectDetectionData();
+  assert.equal(all.length, 4);
+  assert.equal(all[0].label, detectionLabels.INVENTORY_BANANA_LABEL);
+  assert.equal(all[1].label, detectionLabels.HEALTHY_BANANA_LABEL);
+  assert.equal(counters.downloads, 1);
+  const detail = await actions.getObjectDetectionData(ids[0]);
+  assert.equal(detail.length, 3, "loading must preserve both models rather than choosing one before mode selection");
+  assert.equal(detectionLabels.countPlantDetections(detail).total, 1);
+  assert.equal(detectionLabels.countPlantDetections(detail).analysisBanana, 2);
+  assert.equal(detectionLabels.countPlantDetections(all).total, 2, "overview retains the older survey's fallback");
+  assert.deepEqual(raw, original);
+});

@@ -60,23 +60,10 @@ export function SectionCards({
     [surveys],
   );
 
-  const numHealthyBananas = useMemo(
-    () =>
-      detectedObjects?.filter(
-        (obj) => obj.label === "Banana Plant (Healthy-looking)",
-      ).length ?? 0,
-    [detectedObjects],
-  );
-
-  const numUnhealthyBananas = useMemo(
-    () =>
-      detectedObjects?.filter((obj) => obj.label === "Banana Plant (Infected)")
-        .length ?? 0,
-    [detectedObjects],
-  );
-
-  const totalBananas = numHealthyBananas + numUnhealthyBananas;
   const inventoryCounts = useMemo(() => countPlantDetections(detectedObjects), [detectedObjects]);
+  const numHealthyBananas = inventoryCounts.healthy;
+  const numUnhealthyBananas = inventoryCounts.unhealthy;
+  const totalBananas = inventoryCounts.analysisBanana;
   const healthyBananaPercentage = totalBananas
     ? numHealthyBananas / totalBananas
     : 0;
@@ -242,7 +229,7 @@ export function SectionCards({
                 <div className="line-clamp-1 flex gap-2 font-medium">
                   {inventoryCounts.coconut
                     ? `Banana: ${inventoryCounts.banana.toLocaleString()} · Coconut: ${inventoryCounts.coconut.toLocaleString()}`
-                    : "Healthy + infected combined"}
+                    : "Detected banana plants"}
                 </div>
               }
               progress={1}

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import type { ComputerVisionObject } from "@/lib/types";
 import { countPlantDetections, resolveDetectionFilter } from "@/lib/helpers/detection-labels";
 import { useSurveyMapStore } from "@/providers/survey-map-store-provider";
@@ -9,7 +9,8 @@ import { PlantFilterSelect } from "@/components/maps/shared/plant-filter-select"
 export function FoiSelector({ detectedObjects }: { detectedObjects: ComputerVisionObject[] }) {
   const { selectedFoi, setSelectedFoi, setPopupInfo, setHoveredPairId } = useSurveyMapStore(state => state);
   const { surveyMode } = useSurveyModeStore();
-  const selection = resolveDetectionFilter(selectedFoi, surveyMode, countPlantDetections(detectedObjects).coconut > 0);
+  const counts = useMemo(() => countPlantDetections(detectedObjects), [detectedObjects]);
+  const selection = resolveDetectionFilter(selectedFoi, surveyMode, counts.coconut > 0);
   useEffect(() => {
     if (selection !== selectedFoi) setSelectedFoi(selection);
     setPopupInfo(null);
