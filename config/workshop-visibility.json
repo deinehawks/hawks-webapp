@@ -1,5 +1,9 @@
 {
   "enabled": true,
+  "demoCountMultipliers": {
+    "BARBCO2026": 3.14,
+    "AMSKARBEMCO": 3.0
+  },
   "visibleSurveys": {
     "BARBCO2026": [
       "AH-0260001",
@@ -24,7 +28,9 @@
       "AH-026011"
     ],
     "AMSKARBEMCO": [
-      "AH-026028"
+      "AH-026028",
+      "AH-026127",
+      "AH-026134"
     ],
     "HAWKS": [
       "SD-001"
