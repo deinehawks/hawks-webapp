@@ -8,6 +8,42 @@ const { HEALTHY_BANANA_LABEL, INFECTED_BANANA_LABEL, normalizeDetectionLabels,
   getDetectionPlantName, resolveDetectionFilter, INVENTORY_BANANA_LABEL,
   getPlantDetectionSets, getDetectionKey, findPlantDetection } = detectionLabels;
 
+test("workshop demo counts scale each survey independently with consistent whole-plant totals", () => {
+  const objects = [
+    ...Array.from({ length: 10 }, (_, i) => ({ areaCode: "barbco-1", label: INVENTORY_BANANA_LABEL, pairId: String(i) })),
+    ...Array.from({ length: 10 }, (_, i) => ({ areaCode: "barbco-2", label: INVENTORY_BANANA_LABEL, pairId: String(i) })),
+    { areaCode: "ams", label: HEALTHY_BANANA_LABEL }, { areaCode: "ams", label: INFECTED_BANANA_LABEL },
+    { areaCode: "ams", label: COCONUT_TREE_LABEL }, { areaCode: "other", label: INVENTORY_BANANA_LABEL },
+  ];
+  const original = structuredClone(objects);
+  const factors = { "barbco-1": 3.14, "barbco-2": 3.14, ams: 3 };
+  const scaled = countPlantDetections(objects, factors);
+  assert.deepEqual(scaled, { healthy: 3, unhealthy: 3, analysisBanana: 6, banana: 69, coconut: 3, total: 72 });
+  assert.equal(scaled.total, scaled.banana + scaled.coconut);
+  assert.equal(scaled.analysisBanana, scaled.healthy + scaled.unhealthy);
+  assert.deepEqual(objects, original);
+  assert.equal(countPlantDetections(objects).total, 24);
+  assert.deepEqual(countPlantDetections([], factors), { healthy: 0, unhealthy: 0, analysisBanana: 0, banana: 0, coconut: 0, total: 0 });
+});
+
+test("demo scaling preserves model separation and balances rounded category counts", () => {
+  const objects = [
+    ...Array.from({ length: 3 }, () => ({ areaCode: "survey", label: HEALTHY_BANANA_LABEL })),
+    { areaCode: "survey", label: INFECTED_BANANA_LABEL },
+    ...Array.from({ length: 5 }, () => ({ areaCode: "survey", label: INVENTORY_BANANA_LABEL })),
+  ];
+  const scaled = countPlantDetections(objects, { survey: 3.14 });
+  assert.equal(scaled.total, 16, "only the five plain inventory detections are scaled");
+  assert.equal(scaled.analysisBanana, 13);
+  assert.equal(scaled.healthy + scaled.unhealthy, scaled.analysisBanana);
+  assert.equal(getPlantDetectionSets(objects).inventory.length, 5, "model records remain original");
+  assert.deepEqual(countPlantDetections(objects, {}), countPlantDetections(objects));
+  assert.deepEqual(countPlantDetections(objects, { survey: NaN }), countPlantDetections(objects));
+  assert.equal(detectionLabels.getDemoCountLabel(["survey"], { survey: 3.14 }), "Demo counts · ×3.14");
+  assert.equal(detectionLabels.getDemoCountLabel(["survey", "other"], { survey: 3.14 }), "Demo counts · adjusted per survey");
+  assert.equal(detectionLabels.getDemoCountLabel(["survey"], {}), null);
+});
+
 test("healthy labels accept hyphens, spaces, capitalization, and repeated whitespace", () => {
   const labels = [
     HEALTHY_BANANA_LABEL,

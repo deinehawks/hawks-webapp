@@ -9,6 +9,7 @@ import {
 
 import { formatSurveyArea, formatSurveyDate } from "../lib/helpers/survey-format.ts";
 import * as detectionLabels from "../lib/helpers/detection-labels.ts";
+import * as surveyPriority from "../lib/helpers/survey-priority.ts";
 import { MAP_COLORS } from "../lib/constants/map-colors.ts";
 
 const require = createRequire(import.meta.url);
@@ -32,8 +33,8 @@ const surveys = ids.map((id, i) => ({
   geojson_boundaries: [["125", "7"], ["126", "7"], ["126", "8"], ["125", "7"]],
 }));
 const detections = [
-  { areaCode: ids[0], pairId: "small", label: "Banana Plant (Healthy-looking)" },
-  { areaCode: ids[1], pairId: "large", label: "Banana Plant (Infected)" },
+  { areaCode: ids[0], pairId: "small", label: "Banana Plant (Healthy-looking)", bbox: { min_lon: 125.49, max_lon: 125.51, min_lat: 7.09, max_lat: 7.11 } },
+  { areaCode: ids[1], pairId: "large", label: "Banana Plant (Infected)", bbox: { min_lon: 125.49, max_lon: 125.51, min_lat: 7.09, max_lat: 7.11 } },
   { areaCode: "hidden", pairId: "other" }, { pairId: "unassigned" },
 ];
 const hit = (id) => ({ properties: { survey_id: id } });
@@ -66,6 +67,55 @@ test("overview is ordered and never includes detections outside the available su
   assert.equal(data.selection, ALL_SURVEYS);
   assert.deepEqual(data.surveys, surveys);
   assert.deepEqual(data.detectedObjects, detections.slice(0, 2));
+});
+
+const rectangle = (left, bottom, right, top) => [[left, bottom], [right, bottom], [right, top], [left, top], [left, bottom]];
+const footprint = (id, ring) => ({ id, geometry: { type: "Polygon", coordinates: [ring] } });
+
+test("priority masking follows front-to-back order, including boundary ties and adjacent surveys", () => {
+  const footprints = [footprint(ids[0], rectangle(0, 0, 10, 10)), footprint(ids[1], rectangle(4, 4, 6, 6)), footprint("adjacent", rectangle(10, 0, 20, 10))];
+  const before = structuredClone(footprints);
+  const visible = surveyPriority.createSurveyPriorityMask(footprints);
+  assert.equal(visible(ids[0], 5, 5), false);
+  assert.equal(visible(ids[1], 5, 5), true);
+  assert.equal(visible(ids[0], 2, 2), true);
+  assert.equal(visible(ids[0], 4, 5), false, "front image wins on an edge");
+  assert.equal(visible(ids[0], 4, 4), false, "front image wins on a vertex");
+  assert.equal(visible(ids[0], 10, 5), false, "shared edges have deterministic ownership");
+  assert.equal(visible("adjacent", 10, 5), true);
+  assert.equal(visible("missing", 5, 5), false);
+  assert.equal(visible(ids[0], NaN, 5), false);
+  const reversed = surveyPriority.createSurveyPriorityMask([...footprints].reverse());
+  assert.equal(reversed(ids[0], 5, 5), true);
+  assert.equal(reversed(ids[1], 5, 5), false);
+  assert.deepEqual(footprints, before, "preparation never changes stored boundaries");
+});
+
+test("ray casting respects concave boundaries, holes, multipolygons and open rings", () => {
+  const lower = footprint("back", rectangle(-10, -10, 20, 20));
+  const concave = [[0, 0], [6, 0], [6, 2], [2, 2], [2, 6], [0, 6]];
+  let visible = surveyPriority.createSurveyPriorityMask([lower, footprint("front", concave)]);
+  assert.equal(visible("back", 1, 5), false);
+  assert.equal(visible("back", 5, 5), true, "bounding boxes alone must not hide pins in concave cutouts");
+  const polygon = { id: "front", geometry: { type: "Polygon", coordinates: [rectangle(0, 0, 10, 10), rectangle(3, 3, 7, 7)] } };
+  visible = surveyPriority.createSurveyPriorityMask([lower, polygon]);
+  assert.equal(visible("back", 1, 1), false);
+  assert.equal(visible("back", 5, 5), true, "a hole leaves underlying imagery visible");
+  assert.equal(visible("back", 3, 5), false, "hole edges follow the same boundary rule");
+  visible = surveyPriority.createSurveyPriorityMask([lower, { id: 12, geometry: { type: "MultiPolygon", coordinates: [[rectangle(0, 0, 2, 2)], [rectangle(8, 8, 10, 10)]] } }]);
+  assert.equal(visible("back", 1, 1), false);
+  assert.equal(visible("back", 9, 9), false);
+  assert.equal(visible("back", 5, 5), true);
+  assert.equal(visible("12", 1, 1), true);
+});
+
+test("missing or invalid boundaries do not invent coverage", () => {
+  for (const geometry of [null, { type: "Polygon", coordinates: [] }, { type: "Polygon", coordinates: [[[0, 0], [1, 1], [2, 2]]] }, { type: "Polygon", coordinates: [[[NaN, 0], [1, 0], [1, 1]]] }]) {
+    const visible = surveyPriority.createSurveyPriorityMask([footprint("back", rectangle(0, 0, 10, 10)), { id: "front", geometry }]);
+    assert.equal(visible("back", 1, 1), true);
+    assert.equal(visible("front", 1, 1), true);
+  }
+  assert.equal(surveyPriority.createSurveyPriorityMask([])("back", 1, 1), false);
 });
 
 test("tile URLs retain survey identity and configured folder without fallback to another survey", () => {
@@ -186,6 +236,7 @@ function loadComponents(filename, extraExports = "") {
     "@/lib/constants/map-heatmap": { createHeatmapPaint: type => ({ "heatmap-color": type }) },
     "@/lib/constants/map-layers": { createPinLayout: image => ({ "icon-image": image }) },
     "@/lib/helpers/survey-selection": selection,
+    "@/lib/helpers/survey-priority": surveyPriority,
     "@/lib/helpers/survey-format": { formatSurveyArea, formatSurveyDate },
     "./survey-popup-shell": { SurveyPopupShell: "SurveyPopupShell" },
     "./shared/survey-details-popup": { SurveyDetailsPopup: "SurveyDetailsPopup" },
@@ -286,17 +337,156 @@ test("orthomap switching updates sources, geometry, detections and identity with
   find(tree, "Select").props.onValueChange(ALL_SURVEYS);
   tree = render.render(components.OrthoMapContent, props); render.effects();
   assert.deepEqual(find(tree, "RasterTiles").props.surveys, surveys);
-  assert.deepEqual(find(tree, "FeaturesOfInterest").props.detectedObjects, detections.slice(0, 2));
+  assert.deepEqual(find(tree, "FeaturesOfInterest").props.detectedObjects, [detections[1]], "overview pins follow the front image");
   assert.equal(text(find(tree, "Badge")), "All surveys");
   assert.equal(find(tree, "PopoverContent").props["aria-label"], "Survey images");
   assert.ok(nodes(tree).some((node) => node.props?.["aria-label"] === "Survey images (2)"));
-  assert.match(text(find(tree, "PopoverContent")), /side by side or overlap/);
-  assert.match(text(find(tree, "PopoverContent")), /If images overlap/);
+  assert.match(text(find(tree, "PopoverContent")), /When surveys overlap, the image higher in this list appears in front/);
+  assert.match(text(find(tree, "PopoverContent")), /Only its plants are shown and counted in the overlapping area/);
   assert.match(text(find(tree, "ol")), /In front/);
   assert.ok(text(find(tree, "ol")).indexOf(ids[1]) < text(find(tree, "ol")).indexOf(ids[0]));
   tree = render.render(components.OrthoMapContent, { ...props, surveys: [surveys[0]], detectedObjects: [] });
   assert.deepEqual(find(tree, "FeaturesOfInterest").props.detectedObjects, []);
   assert.match(text(components.default({ ...props, surveys: [] })), /No Survey Data Available/);
+});
+
+const overlapSurveys = [
+  { ...surveys[0], boundaries: rectangle(125, 7, 125.01, 7.01).map(([lng, lat]) => [lat, lng]) },
+  { ...surveys[1], boundaries: rectangle(125.004, 7.004, 125.006, 7.006).map(([lng, lat]) => [lat, lng]) },
+  { ...surveys[0], id: "AH-026012", boundaries: rectangle(125.015, 7, 125.025, 7.01).map(([lng, lat]) => [lat, lng]) },
+];
+const health = detectionLabels.HEALTHY_BANANA_LABEL, infected = detectionLabels.INFECTED_BANANA_LABEL;
+const banana = detectionLabels.INVENTORY_BANANA_LABEL, coconut = detectionLabels.COCONUT_TREE_LABEL;
+const overlapObjects = [
+  [ids[0], health, "1", 125.002, 7.002],
+  [ids[0], health, "2", 125.005, 7.005],
+  [ids[0], banana, "1", 125.005, 7.005],
+  [ids[0], coconut, "3", 125.003, 7.003],
+  [ids[1], infected, "1", 125.005, 7.005],
+  [ids[1], banana, "1", 125.005, 7.005],
+  [ids[1], coconut, "2", 125.0055, 7.0055],
+  ["AH-026012", health, "1", 125.02, 7.002],
+].map(([areaCode, label, pairId, lng, lat]) => ({ areaCode, label, pairId, areaPairId: pairId,
+  bbox: { min_lon: lng - .00001, max_lon: lng + .00001, min_lat: lat - .00001, max_lat: lat + .00001 },
+}));
+
+test("overview counts, pins, heatmaps and click records share masked cohorts in both modes", () => {
+  const loaded = loadComponents("components/maps/ortho-map.tsx", "\nexport { OrthoMapContent, FeaturesOfInterest, MapEvents };\n");
+  const render = runner();
+  const props = { userProfile: {}, surveys: overlapSurveys, detectedObjects: overlapObjects };
+  let tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
+  const mapType = find(tree, "Map").type;
+  find(tree, "Select").props.onValueChange(ALL_SURVEYS);
+  for (const [mode, expected] of [["analysis", [overlapObjects[0], overlapObjects[4], overlapObjects[7]]], ["inventory", [overlapObjects[3], overlapObjects[5], overlapObjects[6], overlapObjects[7]]]]) {
+    loaded.state.surveyMode = mode;
+    loaded.state.selectedFoi = "all";
+    loaded.state.plantPopupInfo = { detectionKey: "stale" }; loaded.state.hoveredPairId = "stale";
+    tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
+    const objects = find(tree, "FeaturesOfInterest").props.detectedObjects;
+    assert.deepEqual(objects, expected);
+    assert.strictEqual(find(tree, "OrthomapFoiSelector").props.detectedObjects, objects);
+    assert.strictEqual(find(tree, "MapEvents").props.detectedObjects, objects);
+    assert.equal(find(tree, "Map").type, mapType);
+    assert.equal(find(tree, "Map").key, null);
+    assert.equal(loaded.state.plantPopupInfo, null);
+    assert.equal(loaded.state.hoveredPairId, null);
+    assert.match(text(find(tree, "PopoverContent")), /Counts also include plants outside your screen/);
+    const selector = loadComponents("components/maps/shared/plant-filter-select.tsx");
+    for (const value of mode === "analysis" ? ["all", "healthy", "unhealthy", "none"] : ["all", "banana", "coconut", "none"]) {
+      loaded.state.selectedFoi = value;
+      const selected = detectionLabels.filterPlantDetections(objects, value, mode);
+      const choices = runner().render(selector.exports.PlantFilterSelect, { detectedObjects: objects, mode, value, onValueChange() {} });
+      if (value !== "none") {
+        const option = nodes(choices).find(node => node.type === "SelectItem" && node.props.value === value);
+        assert.ok(text(option).endsWith(String(selected.length)), `${mode}/${value} count must match map records`);
+      }
+      const layerTree = runner().render(loaded.exports.FeaturesOfInterest, { code: "MCS", detectedObjects: objects });
+      if (mode === "inventory") {
+        assert.equal(find(layerTree, "InventoryLayers")?.props.data.features.length ?? 0, selected.length);
+      } else {
+        for (const kind of ["-pins", "heatmap"]) {
+          const sources = nodes(layerTree).filter(node => node.type === "Source" && (kind === "-pins" ? node.props.id.endsWith("-pins") : !node.props.id.endsWith("-pins")));
+          assert.equal(sources.flatMap(node => node.props.data.features).length, selected.length);
+        }
+      }
+    }
+    loaded.state.selectedFoi = "all";
+    const events = runner();
+    events.render(loaded.exports.MapEvents, find(tree, "MapEvents").props); events.effects();
+    const layer = mode === "inventory" ? "MCS-inventory-pin" : "MCS-healthy-pin";
+    loaded.map.fire("click", { features: [{ properties: { detectionKey: detectionLabels.getDetectionKey(overlapObjects[1]) } }] }, layer);
+    assert.equal(loaded.state.plantPopupInfo, null, "covered pins cannot open stale popups");
+    loaded.map.fire("click", { features: [{ properties: { detectionKey: detectionLabels.getDetectionKey(expected[0]) } }] }, layer);
+    assert.equal(loaded.state.plantPopupInfo.detectionKey, detectionLabels.getDetectionKey(expected[0]));
+  }
+  find(tree, "Select").props.onValueChange(ids[0]);
+  tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
+  assert.deepEqual(find(tree, "FeaturesOfInterest").props.detectedObjects, overlapObjects.filter(object => object.areaCode === ids[0]), "individual surveys retain their complete records");
+});
+
+test("missing front-survey detections never reveal underlying records or trigger inventory fallback", () => {
+  const loaded = loadComponents("components/maps/ortho-map.tsx", "\nexport { OrthoMapContent };\n");
+  const render = runner();
+  const props = { userProfile: {}, surveys: overlapSurveys, detectedObjects: overlapObjects.filter(object => object.areaCode !== ids[1]) };
+  let tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
+  find(tree, "Select").props.onValueChange(ALL_SURVEYS);
+  tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
+  assert.deepEqual(find(tree, "FeaturesOfInterest").props.detectedObjects, [overlapObjects[0], overlapObjects[7]]);
+  assert.match(text(tree), /No analysis data: AH-026011/);
+  loaded.state.surveyMode = "inventory";
+  tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
+  assert.deepEqual(find(tree, "FeaturesOfInterest").props.detectedObjects, [overlapObjects[3], overlapObjects[7]], "hiding all plain bananas must not reactivate the back survey's health model");
+  assert.match(text(tree), /No inventory data: AH-026011/);
+  tree = render.render(loaded.exports.OrthoMapContent, { ...props, detectedObjects: [] }); render.effects();
+  assert.deepEqual(find(tree, "FeaturesOfInterest").props.detectedObjects, []);
+  assert.match(text(tree), /No inventory data/);
+});
+
+test("mask uses actual drawn centers, ignores image-less occluders and caches across pan/filter/mode changes", () => {
+  const loaded = loadComponents("components/maps/ortho-map.tsx", "\nexport { OrthoMapContent };\n");
+  const render = runner();
+  let bboxReads = 0;
+  const object = { ...overlapObjects[0], get bbox() { bboxReads++; return { ...overlapObjects[0].bbox, cen_lon: 125.005, cen_lat: 7.005 }; } };
+  assert.deepEqual(realGeometry.generateFeatureCollection("Point", health, [object]).features[0].geometry.coordinates, [125.005, 7.005]);
+  const props = { userProfile: {}, surveys: overlapSurveys, detectedObjects: [object, overlapObjects[4]] };
+  let tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
+  find(tree, "Select").props.onValueChange(ALL_SURVEYS);
+  tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
+  assert.deepEqual(find(tree, "FeaturesOfInterest").props.detectedObjects, [overlapObjects[4]], "explicit centers take priority over bbox midpoints");
+  const reads = bboxReads;
+  const analysis = find(tree, "FeaturesOfInterest").props.detectedObjects;
+  loaded.map.easeTo({ center: [125, 7], zoom: 22 });
+  loaded.state.selectedFoi = "healthy";
+  tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
+  assert.strictEqual(find(tree, "FeaturesOfInterest").props.detectedObjects, analysis);
+  loaded.state.surveyMode = "inventory";
+  tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
+  loaded.state.surveyMode = "analysis";
+  tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
+  assert.equal(bboxReads, reads, "cached masks must not inspect points again on pan, crop filter or mode switching");
+  tree = render.render(loaded.exports.OrthoMapContent, { ...props, surveys: overlapSurveys.map(survey => survey.id === ids[1] ? { ...survey, ortho: null } : survey) }); render.effects();
+  assert.deepEqual(find(tree, "FeaturesOfInterest").props.detectedObjects, [object], "surveys without imagery cannot cover other surveys or supply overview pins");
+});
+
+test("workshop factors change display counts while pins, dropdown titles and overlap masking stay original", () => {
+  const loaded = loadComponents("components/maps/ortho-map.tsx", "\nexport { OrthoMapContent, OrthomapFoiSelector };\n");
+  const render = runner();
+  const factors = { [ids[0]]: 3.14, [ids[1]]: 3 };
+  const props = { userProfile: {}, surveys: overlapSurveys, detectedObjects: overlapObjects, demoCountMultipliers: factors };
+  let tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
+  find(tree, "Select").props.onValueChange(ALL_SURVEYS);
+  const selector = loadComponents("components/maps/shared/plant-filter-select.tsx");
+  for (const [mode, count, pins] of [["analysis", 7, 3], ["inventory", 10, 4]]) {
+    loaded.state.surveyMode = mode;
+    tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
+    assert.equal(find(tree, "FeaturesOfInterest").props.detectedObjects.length, pins);
+    assert.equal(find(tree, "WorkshopCountNotice"), undefined);
+    const wired = runner().render(loaded.exports.OrthomapFoiSelector, find(tree, "OrthomapFoiSelector").props);
+    assert.strictEqual(wired.props.demoCountMultipliers, factors);
+    const choices = runner().render(selector.exports.PlantFilterSelect, wired.props);
+    assert.equal(text(find(choices, "SelectLabel")), mode === "analysis" ? "Crop status" : "Plant type");
+    assert.equal(find(choices, "Badge").props["aria-label"], `${count} demo plants`);
+  }
 });
 
 test("orthomap boundary chooser isolates a chosen survey and respects the boundary toggle", () => {
@@ -539,12 +729,17 @@ test("dashboard and survey summaries use separate inventory and analysis totals 
   const dashboard = loadComponents("components/section-cards.tsx");
   dashboard.state.surveyMode = "inventory";
   let tree = runner().render(dashboard.exports.SectionCards, { surveys, detectedObjects: combinedModelDetections });
+  assert.match(text(tree), /Counts banana and coconut plants detected in each survey/);
+  assert.match(text(tree), /If surveys overlap, the same plant may be counted more than once/);
   let cards = nodes(tree).filter(node => node.type?.name === "StatCard");
   const inventory = cards.find(card => card.props.title === "Total Plants");
   assert.equal(inventory.props.value, "5");
   assert.equal(text(inventory.props.footerContent), "Banana: 4 · Coconut: 1");
   dashboard.state.surveyMode = "analysis";
   tree = runner().render(dashboard.exports.SectionCards, { surveys, detectedObjects: combinedModelDetections });
+  assert.match(text(tree), /Shows banana plants marked Healthy or Infected by the app/);
+  assert.match(text(tree), /These counts may differ from Inventory/);
+  assert.match(text(tree), /If surveys overlap, the same plant may be counted more than once/);
   cards = nodes(tree).filter(node => node.type?.name === "StatCard");
   const healthy = cards.find(card => card.props.title === "Crop Count: Healthy");
   const infected = cards.find(card => card.props.title === "Crop Count: Infected");
@@ -562,6 +757,20 @@ test("dashboard and survey summaries use separate inventory and analysis totals 
   tree = runner().render(detail.exports.SurveyInfo, { survey: surveys[0], detectedObjects: objects, activeTab: "ortho" });
   assert.match(text(tree), /Plants:2/);
   assert.doesNotMatch(text(tree), /Coconut/);
+  const factors = { [ids[0]]: 3.14, [ids[1]]: 3 };
+  dashboard.state.surveyMode = "inventory";
+  tree = runner().render(dashboard.exports.SectionCards, { surveys, detectedObjects: combinedModelDetections, demoCountMultipliers: factors });
+  cards = nodes(tree).filter(node => node.type?.name === "StatCard");
+  assert.equal(cards.find(card => card.props.title === "Total Plants").props.value, "16");
+  assert.equal(find(tree, "WorkshopCountNotice"), undefined);
+  detail.state.surveyMode = "inventory";
+  tree = runner().render(detail.exports.SurveyInfo, { survey: surveys[0], detectedObjects: objects, activeTab: "ortho", demoCountMultipliers: factors });
+  assert.match(text(tree), /Plants:13/);
+  assert.match(text(tree), /Banana: 10Coconut: 3/);
+  assert.equal(find(tree, "WorkshopCountNotice"), undefined);
+  detail.state.surveyMode = "analysis";
+  tree = runner().render(detail.exports.SurveyInfo, { survey: surveys[0], detectedObjects: objects, activeTab: "ortho", demoCountMultipliers: factors });
+  assert.match(text(tree), /Plants:6/);
 });
 
 test("individual survey opening uses real boundary bounds, with coordinate and tile fallbacks", () => {

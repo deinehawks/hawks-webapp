@@ -9,6 +9,7 @@ import {
 import { OrthoMapStoreProvider } from "@/providers/ortho-map-store-provider";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { getWorkshopDemoCountMultipliers } from "@/lib/workshop-visibility";
 
 export default async function Page(props: { params: { plantation: string } }) {
   const { plantation } = await props.params;
@@ -47,6 +48,7 @@ export default async function Page(props: { params: { plantation: string } }) {
           userProfile={userProfile}
           surveys={surveys}
           detectedObjects={detectedObjects}
+          demoCountMultipliers={getWorkshopDemoCountMultipliers(surveys ?? [])}
         />
       </OrthoMapStoreProvider>
     </div>

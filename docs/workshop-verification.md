@@ -315,3 +315,27 @@ inventory plants and 5 health detections. Overview totals were 26 and 11,
 respectively. Both map pages passed switching and popup checks; a native banana
 pin click highlighted the inventory model's bounding box. Desktop, tablet and
 375px mobile layouts had no horizontal overflow or JavaScript runtime errors.
+
+## Workshop demo count multipliers
+
+`config/workshop-visibility.json` supports a `demoCountMultipliers` object keyed
+by client code. BARBCO2026 uses `3.14`; AMSKARBEMCO uses `3.0`. Factors apply to
+every authorized, visible survey belonging to that client while workshop mode
+is enabled. Other clients retain their original counts.
+
+Dashboard cards, orthomap dropdowns and individual survey summaries show scaled
+Inventory and Analysis counts. These are sample totals for the workshop and may
+exceed the actual map pins. Detection records, pins, bounding boxes, heatmaps,
+datasets and Supabase are unchanged. The on-screen count notice is removed, and
+dropdown headings retain their original Crop status and Plant type wording.
+
+Scaling happens per survey after its model selection and, in the orthomap
+overview, overlap masking. Each survey total rounds to the nearest whole plant.
+Category remainders are balanced so Healthy + Infected equals the Analysis total
+and Banana + Coconut equals the Inventory total. Dashboard totals still add each
+survey separately; the orthomap overview first hides covered detections.
+
+Removing a client's multiplier, setting it to `1`, or disabling workshop mode
+restores its original counts. Reload the page after editing the local config;
+rebuilding is unnecessary. Count multipliers must be finite numeric values of
+at least `1`.

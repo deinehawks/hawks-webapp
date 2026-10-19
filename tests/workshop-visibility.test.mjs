@@ -8,6 +8,7 @@ import {
   isWorkshopSurveyVisible, isWorkshopSurveyIdVisible, isWorkshopClientVisible,
   filterWorkshopSurveys, filterWorkshopClients, filterWorkshopDetectionObjects,
   hiddenWorkshopAssetResponse, applyWorkshopAssetCachePolicy,
+  getWorkshopDemoCountMultipliers,
 } from "../lib/workshop-visibility.ts";
 
 const selected = ["AH-0260001", "AH-0260002", "AH-0260003"];
@@ -127,4 +128,36 @@ test("config normalization allows new workshop data and rejects malformed lists"
   for (const input of [null, [], { enabled: "true", visibleSurveys: {} }, { enabled: true }, { enabled: true, visibleSurveys: { DNG: "*" } }, { enabled: true, visibleSurveys: { DNG: [1] } }]) {
     assert.throws(() => parseWorkshopVisibility(input));
   }
+});
+
+test("demo multipliers are normalized, local to visible authorized surveys and disabled with workshop mode", () => {
+  const input = { enabled: true, visibleSurveys: { BARBCO2026: selected, AMSKARBEMCO: ["AH-026134"], MCS: ["AH-026010"] },
+    demoCountMultipliers: { " barbco2026 ": 3.14, amskarbemco: 3.0 } };
+  const demo = parseWorkshopVisibility(input);
+  const surveys = [{ code: "barbco2026", id: selected[0] }, { code: "BARBCO2026", id: selected[1] }, { code: "AMSKARBEMCO", id: "AH-026134" },
+    { code: "MCS", id: "AH-026010" }, { code: "BARBCO2026", id: "hidden" }];
+  assert.deepEqual(getWorkshopDemoCountMultipliers(surveys, demo), { [selected[0]]: 3.14, [selected[1]]: 3.14, "AH-026134": 3 });
+  assert.deepEqual(getWorkshopDemoCountMultipliers([surveys[2]], demo), { "AH-026134": 3 });
+  assert.deepEqual(getWorkshopDemoCountMultipliers(surveys, { ...demo, enabled: false }), {});
+  assert.deepEqual(getWorkshopDemoCountMultipliers(surveys, policy), {});
+  assert.deepEqual(input.demoCountMultipliers, { " barbco2026 ": 3.14, amskarbemco: 3.0 });
+});
+
+test("invalid demo multipliers are rejected without weakening visibility validation", () => {
+  for (const value of [null, [], "3.14", { BARBCO2026: "3.14" }, { BARBCO2026: 0 }, { BARBCO2026: -1 }, { BARBCO2026: Infinity }, { BARBCO2026: NaN }, { " ": 3 }]) {
+    assert.throws(() => parseWorkshopVisibility({ enabled: true, visibleSurveys: {}, demoCountMultipliers: value }));
+  }
+});
+
+test("demo multiplier edits are reloaded without a rebuild", t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "hawks-workshop-demo-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const filename = path.join(root, "visibility.json");
+  const write = factor => fs.writeFileSync(filename, JSON.stringify({ enabled: true, visibleSurveys: { BARBCO2026: selected }, demoCountMultipliers: { BARBCO2026: factor } }));
+  write(3.14);
+  const read = createWorkshopVisibilityReader(filename), surveys = [{ code: "BARBCO2026", id: selected[0] }];
+  assert.equal(getWorkshopDemoCountMultipliers(surveys, read())[selected[0]], 3.14);
+  write(3);
+  const later = new Date(Date.now() + 2000); fs.utimesSync(filename, later, later);
+  assert.equal(getWorkshopDemoCountMultipliers(surveys, read())[selected[0]], 3);
 });

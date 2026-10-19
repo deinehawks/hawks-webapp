@@ -2,18 +2,20 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { countPlantDetections, resolveDetectionFilter } from "@/lib/helpers/detection-labels";
+import { countPlantDetections, getDemoCountLabel, resolveDetectionFilter, type DemoCountMultipliers } from "@/lib/helpers/detection-labels";
 import type { ComputerVisionObject } from "@/lib/types";
 import { ListFilter } from "lucide-react";
 import { useMemo } from "react";
 
-export function PlantFilterSelect({ detectedObjects, mode, value, onValueChange }: {
+export function PlantFilterSelect({ detectedObjects, mode, value, onValueChange, demoCountMultipliers }: {
   detectedObjects: ComputerVisionObject[];
   mode: string;
   value: string;
   onValueChange: (value: string) => void;
+  demoCountMultipliers?: DemoCountMultipliers;
 }) {
-  const counts = useMemo(() => countPlantDetections(detectedObjects), [detectedObjects]);
+  const counts = useMemo(() => countPlantDetections(detectedObjects, demoCountMultipliers), [detectedObjects, demoCountMultipliers]);
+  const isDemo = useMemo(() => Boolean(getDemoCountLabel(detectedObjects.map(object => object.areaCode), demoCountMultipliers)), [detectedObjects, demoCountMultipliers]);
   const selected = resolveDetectionFilter(value, mode, counts.coconut > 0);
   const options = [
     { value: "none", label: "No overlay", count: null },
@@ -34,7 +36,7 @@ export function PlantFilterSelect({ detectedObjects, mode, value, onValueChange 
       <ListFilter aria-hidden="true" className="size-3.5 text-muted-foreground" />
       <SelectValue placeholder={label}>{current?.label ?? label}</SelectValue>
       {current?.count != null && <Badge variant="secondary" className="shrink-0 rounded-full tabular-nums"
-        aria-label={`${current.count.toLocaleString("en-US")} plants`}>{current.count.toLocaleString("en-US")}</Badge>}
+        aria-label={`${current.count.toLocaleString("en-US")} ${isDemo ? "demo " : ""}plants`}>{current.count.toLocaleString("en-US")}</Badge>}
     </SelectTrigger>
     <SelectContent><SelectGroup><SelectLabel>{label}</SelectLabel>
       {options.map(option => <SelectItem key={option.value} value={option.value} className="min-h-11 sm:min-h-8">

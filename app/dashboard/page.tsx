@@ -15,6 +15,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { getCurrentUserProfile } from "@/lib/actions/profiles";
+import { getWorkshopDemoCountMultipliers } from "@/lib/workshop-visibility";
 
 export default async function Page() {
   const userProfile = await getCurrentUserProfile();
@@ -26,7 +27,7 @@ export default async function Page() {
   return (
     <div className="@container/main flex flex-1 flex-col gap-2">
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-        <SectionCards surveys={surveys} detectedObjects={detectedObjects} />
+        <SectionCards surveys={surveys} detectedObjects={detectedObjects} demoCountMultipliers={getWorkshopDemoCountMultipliers(surveys)} />
         <div className="px-4 lg:px-6 min-h-[600px] h-full">
           <SurveyDataInteractive data={surveys} />
         </div>

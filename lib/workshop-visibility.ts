@@ -4,6 +4,7 @@ import path from "node:path";
 export type WorkshopVisibility = {
   enabled: boolean;
   visibleSurveys: Record<string, string[]>;
+  demoCountMultipliers?: Record<string, number>;
 };
 
 const hiddenPolicy: WorkshopVisibility = { enabled: true, visibleSurveys: {} };
@@ -37,7 +38,34 @@ export function parseWorkshopVisibility(value: unknown): WorkshopVisibility {
       ...ids.map(normalizeId),
     ])];
   }
-  return { enabled: input.enabled, visibleSurveys };
+  const demoCountMultipliers: Record<string, number> = Object.create(null);
+  if (input.demoCountMultipliers !== undefined) {
+    if (!input.demoCountMultipliers || typeof input.demoCountMultipliers !== "object" || Array.isArray(input.demoCountMultipliers)) {
+      throw new Error("Workshop demoCountMultipliers must be an object.");
+    }
+    for (const [code, factor] of Object.entries(input.demoCountMultipliers)) {
+      const normalizedCode = normalizeCode(code);
+      if (!normalizedCode || typeof factor !== "number" || !Number.isFinite(factor) || factor < 1) {
+        throw new Error("Each workshop demo count multiplier must be a finite number of at least 1.");
+      }
+      demoCountMultipliers[normalizedCode] = factor;
+    }
+  }
+  return { enabled: input.enabled, visibleSurveys, demoCountMultipliers };
+}
+
+/** Serialize display-only factors for authorized, visible surveys, never records. */
+export function getWorkshopDemoCountMultipliers(
+  surveys: readonly { id: string | number; code?: string | null }[],
+  policy = getWorkshopVisibility(),
+): Record<string, number> {
+  const factors: Record<string, number> = {};
+  if (!policy.enabled) return factors;
+  for (const survey of surveys) {
+    const factor = policy.demoCountMultipliers?.[normalizeCode(survey.code)];
+    if (factor && factor !== 1 && isWorkshopSurveyVisible(survey.code, survey.id, policy)) factors[String(survey.id)] = factor;
+  }
+  return factors;
 }
 
 /** Small local config only; cache parsed JSON until its metadata changes. */

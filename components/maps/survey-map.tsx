@@ -59,7 +59,7 @@ import { ThreeDimensionalModelSelector } from "@/components/selectors/3d-model-s
 import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
 import { FoiSelector } from "@/components/selectors/foi-selector";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
-import { countPlantDetections, filterPlantDetections, findPlantDetection, getPlantDetectionSets, getDetectionKey, getDetectionPlantName, getDetectionPlantType, resolveDetectionFilter } from "@/lib/helpers/detection-labels";
+import { countPlantDetections, filterPlantDetections, findPlantDetection, getPlantDetectionSets, getDetectionKey, getDetectionPlantName, getDetectionPlantType, resolveDetectionFilter, type DemoCountMultipliers } from "@/lib/helpers/detection-labels";
 import { InventoryLayers } from "./shared/inventory-layers";
 import { InventoryLegend } from "./shared/inventory-legend";
 import { generateInventoryFeatureCollection } from "@/lib/helpers/geometry";
@@ -1279,13 +1279,15 @@ function SurveyInfo({
   survey,
   detectedObjects,
   activeTab,
+  demoCountMultipliers,
 }: {
   survey: any;
   detectedObjects: ComputerVisionObject[];
   activeTab: string;
+  demoCountMultipliers?: DemoCountMultipliers;
 }) {
   const statistics = useMemo(() => {
-    const counts = countPlantDetections(detectedObjects);
+    const counts = countPlantDetections(detectedObjects, demoCountMultipliers);
     const hasOrthoData = survey.ortho != null;
 
     return {
@@ -1298,7 +1300,7 @@ function SurveyInfo({
       infected: counts.unhealthy,
       hasData: hasOrthoData && counts.total > 0,
     };
-  }, [survey, detectedObjects]);
+  }, [survey, detectedObjects, demoCountMultipliers]);
 
   const showStatistics = activeTab === "ortho" && statistics.hasData;
   const { surveyMode } = useSurveyModeStore();
@@ -1402,10 +1404,12 @@ export default function SurveyMap({
   survey,
   detectedObjects,
   fallbackCenter,
+  demoCountMultipliers,
 }: {
   survey: any;
   detectedObjects: ComputerVisionObject[] | null | undefined;
   fallbackCenter?: { lng: number; lat: number };
+  demoCountMultipliers?: DemoCountMultipliers;
 }) {
   const [activeTab, setActiveTab] = useState("ortho");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -1527,7 +1531,7 @@ export default function SurveyMap({
             {isOrtho && <SurveyModeToggle />}
             {isOrtho && (
               <div className="w-full min-w-0 sm:w-auto">
-                <FoiSelector detectedObjects={safeDetectedObjects} />
+                <FoiSelector detectedObjects={safeDetectedObjects} demoCountMultipliers={demoCountMultipliers} />
               </div>
             )}
             {is3D && survey.code && (
@@ -1577,6 +1581,7 @@ export default function SurveyMap({
                   survey={survey}
                   detectedObjects={safeDetectedObjects}
                   activeTab={activeTab}
+                  demoCountMultipliers={demoCountMultipliers}
                 />
               </CardHeader>
 

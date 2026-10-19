@@ -2,6 +2,7 @@ import SurveyMapCaller from "@/components/callers/survey-map-caller";
 import { getUserSurvey } from "@/lib/actions/survey";
 import { getObjectDetectionData } from "@/lib/actions/surveys";
 import { SurveyMapStoreProvider } from "@/providers/survey-map-store-provider";
+import { getWorkshopDemoCountMultipliers } from "@/lib/workshop-visibility";
 
 export default async function Page(props: { params: { surveyId: string } }) {
   const { surveyId } = await props.params;
@@ -19,7 +20,7 @@ export default async function Page(props: { params: { surveyId: string } }) {
   return (
     <div className="@container/main flex flex-1 flex-col gap-2 h-full">
       <SurveyMapStoreProvider>
-        <SurveyMapCaller survey={survey} detectedObjects={detectedObjects} />
+        <SurveyMapCaller survey={survey} detectedObjects={detectedObjects} demoCountMultipliers={getWorkshopDemoCountMultipliers([survey])} />
       </SurveyMapStoreProvider>
     </div>
   );

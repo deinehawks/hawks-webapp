@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ALL_SURVEYS, getSurveyChoices, getSurveySelectionData, getSurveyLabel, getSurveyTileUrl, sortSurveysById, orderSurveyLayers } from "@/lib/helpers/survey-selection";
+import { createSurveyPriorityMask } from "@/lib/helpers/survey-priority";
 import { SurveyChoicePopup, type SurveyChoiceLocation } from "./shared/survey-choice-popup";
 import { SurveyDetailsPopup } from "./shared/survey-details-popup";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -52,7 +53,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { PlantFilterSelect } from "./shared/plant-filter-select";
-import { countPlantDetections, filterPlantDetections, findPlantDetection, getPlantDetectionSets, getDetectionKey, getDetectionPlantName, getDetectionPlantType, resolveDetectionFilter } from "@/lib/helpers/detection-labels";
+import { countPlantDetections, filterPlantDetections, findPlantDetection, getPlantDetectionSets, getDetectionKey, getDetectionPlantName, getDetectionPlantType, getDetectionCenter, resolveDetectionFilter, type DemoCountMultipliers } from "@/lib/helpers/detection-labels";
 import { InventoryLayers } from "./shared/inventory-layers";
 import { InventoryLegend } from "./shared/inventory-legend";
 import { generateInventoryFeatureCollection, generateFeatureCollection } from "@/lib/helpers/geometry";
@@ -123,18 +124,6 @@ function calculateCentroid(coordinates: number[][][]) {
     { x: 0, y: 0 },
   );
   return [sum.x / points.length, sum.y / points.length] as const;
-}
-
-function calculateCentersWithOffset(
-  min_lon: number,
-  max_lon: number,
-  min_lat: number,
-  max_lat: number,
-) {
-  return {
-    centerLng: (min_lon + max_lon) / 2,
-    centerLat: (min_lat + max_lat) / 2,
-  };
 }
 
 // ============================================================================
@@ -210,12 +199,7 @@ const MapEvents = React.memo(
         if (!clickedObject) return;
 
         const { pairId, areaPairId: areaId, bbox, label } = clickedObject;
-        const { centerLng, centerLat } = calculateCentersWithOffset(
-          bbox.min_lon,
-          bbox.max_lon,
-          bbox.min_lat,
-          bbox.max_lat,
-        );
+        const { lon: centerLng, lat: centerLat } = getDetectionCenter(bbox);
 
         setPopupInfo(null);
         setChoice(null);
@@ -490,7 +474,7 @@ const SourceLoadingStatus = React.memo(
 SourceLoadingStatus.displayName = "SourceLoadingStatus";
 
 const OrthomapFoiSelector = React.memo(
-  ({ detectedObjects }: { detectedObjects: ComputerVisionObject[] }) => {
+  ({ detectedObjects, demoCountMultipliers }: { detectedObjects: ComputerVisionObject[]; demoCountMultipliers?: DemoCountMultipliers }) => {
     const { selectedFoi, setSelectedFoi, setPlantPopupInfo, setHoveredPairId } = useOrthoMapStore(state => state);
     const { surveyMode } = useSurveyModeStore();
     const counts = useMemo(() => countPlantDetections(detectedObjects), [detectedObjects]);
@@ -500,7 +484,7 @@ const OrthomapFoiSelector = React.memo(
       setPlantPopupInfo(null);
       setHoveredPairId(null);
     }, [selection, selectedFoi, surveyMode, detectedObjects, setSelectedFoi, setPlantPopupInfo, setHoveredPairId]);
-    return <PlantFilterSelect detectedObjects={detectedObjects} mode={surveyMode} value={selection} onValueChange={setSelectedFoi} />;
+    return <PlantFilterSelect detectedObjects={detectedObjects} mode={surveyMode} value={selection} onValueChange={setSelectedFoi} demoCountMultipliers={demoCountMultipliers} />;
   },
 );
 
@@ -797,10 +781,12 @@ export default function OrthoMap({
   userProfile,
   surveys,
   detectedObjects,
+  demoCountMultipliers,
 }: {
   userProfile: any;
   surveys: SurveyLike[];
   detectedObjects: ComputerVisionObject[] | null | undefined;
+  demoCountMultipliers?: DemoCountMultipliers;
 }) {
   if (!surveys || !Array.isArray(surveys) || surveys.length === 0) {
     return (
@@ -821,13 +807,14 @@ export default function OrthoMap({
     );
   }
 
-  return <OrthoMapContent userProfile={userProfile} surveys={surveys} detectedObjects={detectedObjects} />;
+  return <OrthoMapContent userProfile={userProfile} surveys={surveys} detectedObjects={detectedObjects} demoCountMultipliers={demoCountMultipliers} />;
 }
 
-function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjects }: {
+function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjects, demoCountMultipliers }: {
   userProfile: any;
   surveys: SurveyLike[];
   detectedObjects: ComputerVisionObject[] | null | undefined;
+  demoCountMultipliers?: DemoCountMultipliers;
 }) {
   const orderedSurveys = useMemo(() => sortSurveysById(availableSurveys), [availableSurveys]);
   const [requestedId, setRequestedId] = useState(() => String(orderedSurveys[0].id));
@@ -835,8 +822,9 @@ function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjec
     () => getSurveySelectionData(orderedSurveys, detectedObjects ?? [], requestedId),
     [orderedSurveys, detectedObjects, requestedId],
   );
-  const { selection: activeSurveyId, surveys, detectedObjects: safeDetectedObjects } = selectionData;
+  const { selection: activeSurveyId, surveys } = selectionData;
   const isOverview = activeSurveyId === ALL_SURVEYS;
+  const { surveyMode } = useSurveyModeStore();
   const [showBoundaries, setShowBoundaries] = useState(false);
   const { selectedFoi, setPopupInfo, setPlantPopupInfo, setHoveredPairId } = useOrthoMapStore((state) => state);
   const selectSurvey = useCallback((id: string) => {
@@ -948,6 +936,37 @@ function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjec
     return { areas: areasData, labels: labelsData };
   }, [surveys]);
 
+  const detectionSets = useMemo(() => getPlantDetectionSets(selectionData.detectedObjects), [selectionData.detectedObjects]);
+  const priorityMask = useMemo(() => {
+    const boundaries = new globalThis.Map(boundaryData.areas.features.map(feature => [String(feature.properties?.survey_id), feature.geometry]));
+    return createSurveyPriorityMask(surveys.filter(survey => getSurveyTileUrl(survey)).map(survey => ({
+      id: survey.id, geometry: boundaries.get(String(survey.id)),
+    })));
+  }, [surveys, boundaryData]);
+  const visibleDetectionSets = useMemo(() => {
+    if (!isOverview) return detectionSets;
+    const visible = (object: ComputerVisionObject) => {
+      const { lon, lat } = getDetectionCenter(object.bbox);
+      return priorityMask(object.areaCode, lon, lat);
+    };
+    // Choose each survey's inventory model before masking. Otherwise hiding its
+    // last plain banana could incorrectly reactivate the health-model fallback.
+    return { inventory: detectionSets.inventory.filter(visible), analysis: detectionSets.analysis.filter(visible) };
+  }, [isOverview, detectionSets, priorityMask]);
+  const safeDetectedObjects = isOverview
+    ? surveyMode === "inventory" ? visibleDetectionSets.inventory : visibleDetectionSets.analysis
+    : selectionData.detectedObjects;
+  const missingDetectionSurveys = useMemo(() => {
+    const objects = surveyMode === "inventory" ? detectionSets.inventory : detectionSets.analysis;
+    const idsWithData = new Set(objects.map(object => object.areaCode));
+    return surveys.filter(survey => getSurveyTileUrl(survey) && !idsWithData.has(String(survey.id)));
+  }, [surveys, detectionSets, surveyMode]);
+
+  useEffect(() => {
+    setPlantPopupInfo(null);
+    setHoveredPairId(null);
+  }, [safeDetectedObjects, setPlantPopupInfo, setHoveredPairId]);
+
   const initialViewState = useMemo<MapProps["initialViewState"]>(
     () => ({
       latitude: global_y,
@@ -957,7 +976,6 @@ function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjec
     }),
     [global_x, global_y, bounds],
   );
-  const { surveyMode } = useSurveyModeStore();
 
   useEffect(() => {
     if (!showBoundaries) setPopupInfo(null);
@@ -991,8 +1009,8 @@ function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjec
                         </PopoverTrigger>
                         <PopoverContent align="end" collisionPadding={16} className="w-80 max-w-[calc(100vw-32px)] p-3" aria-label="Survey images">
                           <h3 className="text-sm font-medium">Survey images</h3>
-                          <p className="mt-1 text-sm leading-5 text-muted-foreground">These are the survey images shown on the map. They can be side by side or overlap.</p>
-                          <p className="mb-2 mt-2 text-sm leading-5 text-muted-foreground">If images overlap, those higher in this list appear in front.</p>
+                          <p className="mt-1 text-sm leading-5 text-muted-foreground">When surveys overlap, the image higher in this list appears in front. Only its plants are shown and counted in the overlapping area.</p>
+                          <p className="mb-2 mt-2 text-sm leading-5 text-muted-foreground">Counts also include plants outside your screen.</p>
                           <ol className="max-h-60 space-y-1 overflow-y-auto">
                             {[...surveys].reverse().filter((survey) => getSurveyTileUrl(survey)).map((survey, index) => (
                               <li key={survey.id} className="flex items-center gap-3 rounded-md px-2 py-2 text-sm">
@@ -1036,7 +1054,7 @@ function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjec
                 </div>
                 <SurveyModeToggle compact />
                 <div className="order-4 w-full min-w-0 sm:order-none sm:w-auto">
-                  <OrthomapFoiSelector detectedObjects={safeDetectedObjects} />
+                  <OrthomapFoiSelector detectedObjects={safeDetectedObjects} demoCountMultipliers={demoCountMultipliers} />
                 </div>
                 <Button type="button" size="sm" variant="outline" aria-pressed={showBoundaries}
                   className={`order-3 h-11 sm:order-none sm:h-8 ${showBoundaries ? "bg-accent text-accent-foreground" : ""}`}
@@ -1132,8 +1150,16 @@ function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjec
               </div>
             </CardContent>
 
-            <CardFooter className="px-4 sm:px-5">
+            <CardFooter className="flex-wrap items-center gap-x-4 gap-y-1 px-4 sm:px-5">
               <SourceLoadingStatus key={activeSurveyId} idList={surveyIds} />
+              {isOverview && selectedFoi && selectedFoi !== "none" && (
+                <span className="text-xs leading-5 text-muted-foreground">In overlapping areas, plants follow the survey image in front.</span>
+              )}
+              {selectedFoi && selectedFoi !== "none" && missingDetectionSurveys.length > 0 && (
+                <p role="status" className="w-full break-words text-xs leading-5 text-amber-700 dark:text-amber-400">
+                  No {surveyMode === "inventory" ? "inventory" : "analysis"} data: {missingDetectionSurveys.map(survey => survey.id).join(", ")}. {isOverview && "Plants from images underneath are hidden in overlapping areas."}
+                </p>
+              )}
             </CardFooter>
           </Card>
         </div>
