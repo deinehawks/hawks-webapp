@@ -133,7 +133,7 @@
 }
 
 
-/* Only survey selection/details popups use this surface. */
+/* Shared survey and plant popup surface; keep MapLibre defaults elsewhere. */
 .survey-map-popup {
   width: min(320px, calc(100vw - 32px));
   font-family: var(--font-geist-sans, ui-sans-serif), system-ui, sans-serif;
@@ -142,10 +142,10 @@
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) + 4px);
   background: var(--popover);
   color: var(--popover-foreground);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.1);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12), 0 2px 6px rgb(0 0 0 / 0.04);
   animation: survey-popup-in 120ms ease-out;
 }
 .survey-map-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
@@ -160,6 +160,7 @@
 }
 .survey-map-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--popover); }
 .survey-map-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--popover); }
+.survey-map-popup.maplibregl-popup-anchor-center .maplibregl-popup-tip { display: none; }
 @keyframes survey-popup-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .survey-map-popup .maplibregl-popup-content { animation: none; }

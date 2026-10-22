@@ -16,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
@@ -32,7 +31,6 @@ import {
   Map,
   MapMouseEvent,
   MapProvider,
-  Popup,
   Source,
   useMap,
 } from "@vis.gl/react-maplibre";
@@ -59,7 +57,8 @@ import { ThreeDimensionalModelSelector } from "@/components/selectors/3d-model-s
 import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
 import { FoiSelector } from "@/components/selectors/foi-selector";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
-import { countPlantDetections, filterPlantDetections, findPlantDetection, getPlantDetectionSets, getDetectionKey, getDetectionPlantName, getDetectionPlantType, resolveDetectionFilter, type DemoCountMultipliers } from "@/lib/helpers/detection-labels";
+import { countPlantDetections, filterPlantDetections, findPlantDetection, getPlantDetectionSets, getDetectionKey, getDetectionPlantType, resolveDetectionFilter, type DemoCountMultipliers } from "@/lib/helpers/detection-labels";
+import { PlantDetailsPopup } from "./shared/plant-details-popup";
 import { InventoryLayers } from "./shared/inventory-layers";
 import { InventoryLegend } from "./shared/inventory-legend";
 import { generateInventoryFeatureCollection } from "@/lib/helpers/geometry";
@@ -747,33 +746,9 @@ function ObjectPopup() {
   if (!info) return null;
 
   return (
-    <Popup
-      anchor="bottom"
-      longitude={info.centerLng}
-      latitude={info.centerLat}
-      onClose={() => setPopupInfo(null)}
-      closeOnClick={false}
-    >
-      <div className="flex flex-col w-fit gap-1">
-        <div className="font-semibold">Plant Information</div>
-        <Separator />
-        <div className="flex flex-col">
-          {surveyMode === "inventory" && <div className="grid grid-cols-2 gap-2"><span>Plant type:</span><span className="font-medium">{getDetectionPlantName(info.label)}</span></div>}
-          <div className="grid grid-cols-2 gap-2">
-            <span>Longitude:</span>
-            <span className="text-muted-foreground">
-              {info.centerLng.toFixed(6)}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <span>Latitude:</span>
-            <span className="text-muted-foreground">
-              {info.centerLat.toFixed(6)}
-            </span>
-          </div>
-        </div>
-      </div>
-    </Popup>
+    <PlantDetailsPopup longitude={info.centerLng} latitude={info.centerLat}
+      label={info.label} surveyId={info.areaCode} mode={surveyMode}
+      onClose={() => setPopupInfo(null)} />
   );
 }
 

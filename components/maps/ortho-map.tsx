@@ -5,6 +5,7 @@ import { ALL_SURVEYS, getSurveyChoices, getSurveySelectionData, getSurveyLabel, 
 import { createSurveyPriorityMask } from "@/lib/helpers/survey-priority";
 import { SurveyChoicePopup, type SurveyChoiceLocation } from "./shared/survey-choice-popup";
 import { SurveyDetailsPopup } from "./shared/survey-details-popup";
+import { PlantDetailsPopup } from "./shared/plant-details-popup";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertCircle, Check, Layers, LoaderCircle, Scan, Info } from "lucide-react";
 import {
@@ -17,7 +18,6 @@ import {
   Map,
   MapMouseEvent,
   MapProvider,
-  Popup,
   Source,
   useMap,
 } from "@vis.gl/react-maplibre";
@@ -51,9 +51,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { PlantFilterSelect } from "./shared/plant-filter-select";
-import { countPlantDetections, filterPlantDetections, findPlantDetection, getPlantDetectionSets, getDetectionKey, getDetectionPlantName, getDetectionPlantType, getDetectionCenter, resolveDetectionFilter, type DemoCountMultipliers } from "@/lib/helpers/detection-labels";
+import { countPlantDetections, filterPlantDetections, findPlantDetection, getPlantDetectionSets, getDetectionKey, getDetectionPlantType, getDetectionCenter, resolveDetectionFilter, type DemoCountMultipliers } from "@/lib/helpers/detection-labels";
 import { InventoryLayers } from "./shared/inventory-layers";
 import { InventoryLegend } from "./shared/inventory-legend";
 import { generateInventoryFeatureCollection, generateFeatureCollection } from "@/lib/helpers/geometry";
@@ -368,60 +367,14 @@ const PlantPopup = React.memo(() => {
   const { plantPopupInfo, setPlantPopupInfo } = useOrthoMapStore(
     (state) => state,
   );
-  const { surveyMode } = useSurveyModeStore(); // ← add
+  const { surveyMode } = useSurveyModeStore();
 
   if (!plantPopupInfo) return null;
 
-  const { centerLng, centerLat, label } = plantPopupInfo; // ← destructure label
-  const isHealthy = String(label ?? "").includes("Healthy");
-
   return (
-    <Popup
-      anchor="bottom"
-      longitude={centerLng}
-      latitude={centerLat}
-      onClose={() => setPlantPopupInfo(null)}
-      closeOnClick={false}
-    >
-      <div className="flex flex-col w-fit gap-1 min-w-40">
-        <div className="font-semibold">Plant Information</div>
-        <Separator />
-        <div className="flex flex-col gap-1">
-          {label && (
-            <div className="grid grid-cols-2 gap-2">
-              <span>{surveyMode === "inventory" ? "Plant type:" : "Status:"}</span>
-              <span
-                className={
-                  surveyMode === "inventory"
-                    ? "text-muted-foreground"
-                    : isHealthy
-                      ? "text-green-600 font-medium"
-                      : "text-red-600 font-medium"
-                }
-              >
-                {surveyMode === "inventory"
-                  ? getDetectionPlantName(label)
-                  : isHealthy
-                    ? "Healthy"
-                    : "Infected"}
-              </span>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-2">
-            <span>Longitude:</span>
-            <span className="text-muted-foreground">
-              {centerLng.toFixed(6)}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <span>Latitude:</span>
-            <span className="text-muted-foreground">
-              {centerLat.toFixed(6)}
-            </span>
-          </div>
-        </div>
-      </div>
-    </Popup>
+    <PlantDetailsPopup longitude={plantPopupInfo.centerLng} latitude={plantPopupInfo.centerLat}
+      label={plantPopupInfo.label} surveyId={plantPopupInfo.areaCode} mode={surveyMode}
+      onClose={() => setPlantPopupInfo(null)} />
   );
 });
 

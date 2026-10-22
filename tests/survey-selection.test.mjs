@@ -658,7 +658,10 @@ test("inventory pins and density colors distinguish coconut; labels do not rely 
   const popup = loadComponents("components/maps/ortho-map.tsx", "\nexport { PlantPopup };\n");
   popup.state.surveyMode = "inventory";
   popup.state.plantPopupInfo = { centerLng: 125, centerLat: 7, label: "Coconut Tree" };
-  assert.match(text(runner().render(popup.exports.PlantPopup)), /Plant type:Coconut/);
+  const plant = runner().render(popup.exports.PlantPopup);
+  assert.equal(plant.type, "PlantDetailsPopup");
+  assert.equal(plant.props.label, "Coconut Tree");
+  assert.equal(plant.props.mode, "inventory");
 });
 
 const combinedModelDetections = [
@@ -868,6 +871,44 @@ test("shared details have primary survey identity, wrapping metadata and one lin
   assert.match(text(action), /View details/);
 });
 
+test("shared plant popup identifies species or health and displays coordinates without treating missing status as infected", () => {
+  const popup = loadComponents("components/maps/shared/plant-details-popup.tsx").exports.PlantDetailsPopup;
+  const props = { longitude: 125.7361241, latitude: 7.5675324, surveyId: "AH-026011", onClose() {} };
+  for (const [mode, label, expected] of [
+    ["inventory", "Banana Plant", "Banana"], ["inventory", "Coconut Tree", "Coconut"],
+    ["analysis", "Banana Plant (Healthy Looking)", "Healthy-looking"],
+    ["analysis", "Banana Plant (Unhealthy looking)", "Infected"],
+    ["analysis", undefined, "—"], ["analysis", "Banana Plant", "—"],
+  ]) {
+    const tree = popup({ ...props, mode, label });
+    assert.equal(tree.type, "SurveyPopupShell");
+    assert.equal(tree.props.title, "Plant information");
+    assert.equal(tree.props.description, "Survey AH-026011");
+    assert.equal(tree.props.closeLabel, "Close plant popup");
+    assert.equal(text(find(tree, "Badge")), expected);
+    assert.match(text(tree), /Longitude125.736124Latitude7.567532/);
+    assert.equal(nodes(tree).filter(node => node.type === "dt")[0].props.children, mode === "inventory" ? "Plant type" : "Status");
+  }
+  const unknown = popup({ ...props, longitude: NaN, latitude: Infinity, mode: "inventory" });
+  assert.doesNotMatch(text(unknown), /NaN|Infinity|Infected/);
+});
+
+test("both map pages use the shared plant presentation and closing clears the matching popup state", () => {
+  for (const [file, name, key] of [["components/maps/ortho-map.tsx", "PlantPopup", "plantPopupInfo"], ["components/maps/survey-map.tsx", "ObjectPopup", "popupInfo"]]) {
+    const loaded = loadComponents(file, `\nexport { ${name} };\n`);
+    assert.equal(runner().render(loaded.exports[name]), null);
+    loaded.state.surveyMode = "inventory";
+    loaded.state[key] = { centerLng: 125, centerLat: 7, label: "Coconut Tree", areaCode: "AH-026132" };
+    const tree = runner().render(loaded.exports[name]);
+    assert.equal(tree.type, "PlantDetailsPopup");
+    assert.equal(tree.props.surveyId, "AH-026132");
+    assert.equal(tree.props.longitude, 125);
+    assert.equal(tree.props.mode, "inventory");
+    tree.props.onClose();
+    assert.equal(loaded.state[key], null);
+  }
+});
+
 test("shared popup exposes an accessible dialog and Escape closes it without passing keys to the map", () => {
   const { exports: components } = loadComponents("components/maps/shared/survey-popup-shell.tsx");
   const render = runner();
@@ -882,6 +923,45 @@ test("shared popup exposes an accessible dialog and Escape closes it without pas
   assert.equal(closed, 1); assert.equal(stopped, 1); assert.equal(prevented, 1);
   const close = nodes(tree).find((node) => node.props?.["aria-label"] === "Close survey popup");
   close.props.onClick(); assert.equal(closed, 2);
+});
+
+test("popup sizing centers within short maps, refits on resize and keeps scrolling out of map controls", t => {
+  const loaded = loadComponents("components/maps/shared/survey-popup-shell.tsx");
+  const render = runner(), events = new Map();
+  let height = 320;
+  const container = { clientWidth: 343, get clientHeight() { return height; }, getBoundingClientRect: () => ({ top: 100 }) };
+  loaded.map.getContainer = () => container;
+  loaded.map.project = () => ({ x: 171.5, y: height / 2 });
+  const replacements = {
+    window: { innerWidth: 375, innerHeight: 844, addEventListener: (name, handler) => events.set(name, handler), removeEventListener: name => events.delete(name) },
+    ResizeObserver: class { observe() {} disconnect() {} },
+    HTMLElement: class {},
+    document: { body: {}, activeElement: null },
+    requestAnimationFrame: () => 1,
+    cancelAnimationFrame: () => {},
+  };
+  const originals = Object.fromEntries(Object.keys(replacements).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  t.after(() => {
+    for (const [key, descriptor] of Object.entries(originals)) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
+    }
+  });
+  for (const [key, value] of Object.entries(replacements)) Object.defineProperty(globalThis, key, { configurable: true, value });
+  const props = { longitude: 125, latitude: 7, title: "Survey", children: "Long survey details", footer: "View details", onClose() {} };
+  render.render(loaded.exports.SurveyPopupShell, props); render.effects();
+  let tree = render.render(loaded.exports.SurveyPopupShell, props);
+  assert.equal(tree.props.anchor, "center", "short maps keep the entire popup available instead of clipping its footer");
+  assert.ok(tree.props.style.width <= container.clientWidth - 32);
+  let dialog = nodes(tree).find(node => node.props?.role === "dialog");
+  assert.ok(dialog.props.style.maxHeight <= height - 32);
+  let stopped = 0;
+  for (const event of ["onWheel", "onMouseDown", "onTouchStart"]) dialog.props[event]({ stopPropagation() { stopped++; } });
+  assert.equal(stopped, 3);
+  height = 728; events.get("resize")();
+  tree = render.render(loaded.exports.SurveyPopupShell, props);
+  dialog = nodes(tree).find(node => node.props?.role === "dialog");
+  assert.equal(tree.props.anchor, undefined, "larger maps regain the normal point anchor");
+  assert.ok(dialog.props.style.maxHeight + 22 <= height / 2, "the popup and pointer fit on one side of the click");
 });
 
 test("header boundaries toggle remains explicit and its state does not change selection", () => {
