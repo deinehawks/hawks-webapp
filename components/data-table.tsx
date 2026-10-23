@@ -8,8 +8,6 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
@@ -44,7 +42,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { format } from "date-fns";
+import { formatSurveyArea, formatSurveyDate } from "@/lib/helpers/survey-format";
 import {
   BananaIcon,
   ChevronDownIcon,
@@ -55,22 +53,10 @@ import {
   CircleCheckIcon,
   CircleXIcon,
   ColumnsIcon,
-  MoreVerticalIcon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useId, useState } from "react";
 import { z } from "zod";
-import { Tabs } from "./ui/tabs";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
 import Map, { Layer, Marker, Source } from "@vis.gl/react-maplibre";
 import {
   Sheet,
@@ -85,7 +71,6 @@ import { Separator } from "./ui/separator";
 import { Input } from "./ui/input";
 import { findExtremeCoordinates } from "@/lib/helpers";
 import { TableFacetedFilter } from "./data-table/faceted-filter";
-import { title } from "process";
 import { survey_data_types } from "@/data/survey-types";
 import Link from "next/link";
 
@@ -101,7 +86,7 @@ export const schema = z.object({
   max_x: z.number(),
   min_y: z.number(),
   max_y: z.number(),
-  geojson_boundaries: z.string().array(),
+  geojson_boundaries: z.tuple([z.coerce.number(), z.coerce.number()]).array(),
 });
 
 function includesStringFilter(row: any, key: string, filterValue: string[]) {
@@ -167,7 +152,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
       <TableColumnHeader column={column} title="Flight Date" />
     ),
     cell: ({ row }) => {
-      return <div> {format(row.getValue("flight_date"), "dd MMM yyyy")} </div>;
+      return <div>{formatSurveyDate(row.getValue("flight_date"))}</div>;
     },
   },
   {
@@ -176,22 +161,15 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
       <TableColumnHeader column={column} title="Location" />
     ),
     cell: ({ row }) => {
-      const location: string = row.getValue("location");
-      const barangay = location.split(",").at(0);
-      const city = location.split(",").at(1);
-      const province = location.split(",").at(2);
-
-      return <div className="w-32"> {`${barangay}, ${city}`} </div>;
-      // return <div className="w-32"> {`Davao City`} </div>;
+      const location = row.getValue<string | null>("location");
+      return <div className="w-48 whitespace-normal break-words">{location?.trim() || "—"}</div>;
     },
   },
   {
     accessorKey: "area",
     header: ({ column }) => <TableColumnHeader column={column} title="Area" />,
     cell: ({ row }) => {
-      const area = parseFloat(row.getValue("area"));
-
-      return <div> {area.toFixed(2)} ha </div>;
+      return <div>{formatSurveyArea(row.getValue("area"))}</div>;
     },
   },
   {
@@ -219,34 +197,10 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
     filterFn: includesStringFilter,
     enableSorting: false,
   },
-  {
-    id: "actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="flex size-8 text-muted-foreground cursor-pointer data-[state=open]:bg-muted"
-            size="icon"
-          >
-            <MoreVerticalIcon />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem>Edit</DropdownMenuItem>
-          <DropdownMenuItem>Make a copy</DropdownMenuItem>
-          <DropdownMenuItem>Favorite</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>Delete</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-  },
 ];
 
 export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
-  const [searchInputPlaceholder, setSearchInputPlaceholder] = useState("");
+  const searchId = useId();
 
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -256,22 +210,6 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-
-  useEffect(() => {
-    const handleWindowResize = () => {
-      if (window.innerWidth < 1024) {
-        setSearchInputPlaceholder("ID");
-      } else {
-        setSearchInputPlaceholder("Search by ID");
-      }
-    };
-
-    handleWindowResize();
-
-    window.addEventListener("resize", handleWindowResize);
-
-    return () => window.removeEventListener("resize", handleWindowResize);
-  });
 
   const table = useReactTable({
     data,
@@ -300,19 +238,28 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
   });
 
   const isFiltered = table.getState().columnFilters.length > 0;
+  const clearFilters = () => {
+    table.resetColumnFilters();
+    table.resetRowSelection();
+  };
 
   return (
-    <div className="flex w-full flex-col justify-start gap-6">
-      <div className="flex items-center justify-between px-4 lg:px-6">
-        <div className="flex items-center gap-2">
+    <div className="flex min-w-0 w-full flex-col justify-start gap-4">
+      <div className="flex flex-wrap items-center gap-2 px-4 lg:px-6">
+        <div className="w-full sm:w-64">
+          <Label htmlFor={searchId} className="sr-only">Search surveys by ID</Label>
           <Input
-            placeholder={searchInputPlaceholder}
+            id={searchId}
+            type="search"
+            placeholder="Search surveys by ID"
             value={(table.getColumn("id")?.getFilterValue() as string) ?? ""}
             onChange={(e) =>
               table.getColumn("id")?.setFilterValue(e.target.value)
             }
-            className="h-8 w-12 lg:w-56"
+            className="h-11 w-full sm:h-9"
           />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <TableFacetedFilter
             column={table.getColumn("tags")}
             title="Data Type"
@@ -321,20 +268,17 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
           {isFiltered && (
             <Button
               variant="ghost"
-              onClick={() => {
-                table.resetColumnFilters();
-                table.resetRowSelection();
-              }}
-              className="h-8 hidden md:px-2 lg:px-3 lg:flex"
+              onClick={clearFilters}
+              className="h-11 px-3 sm:h-9"
             >
-              Reset <XIcon />
+              Clear filters <XIcon aria-hidden="true" />
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="h-11 sm:h-9">
                 <ColumnsIcon />
                 <span className="hidden lg:inline">Customize Columns</span>
                 <span className="lg:hidden">Columns</span>
@@ -367,9 +311,10 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
           </DropdownMenu>
         </div>
       </div>
-      <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6 max-w-full">
-        <div className="overflow-hidden rounded-lg border">
+      <div className="relative flex min-w-0 flex-col gap-4 px-4 lg:px-6 max-w-full">
+        <div className="min-w-0 overflow-hidden rounded-lg border">
           <Table>
+            <caption className="sr-only">Available surveys</caption>
             <TableHeader className="sticky top-0 z-10 bg-muted">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -408,23 +353,29 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
+                    colSpan={table.getVisibleLeafColumns().length}
+                    className="h-32 text-center whitespace-normal"
                   >
-                    No results.
+                    <p className="text-sm text-muted-foreground" role="status">
+                      {isFiltered ? "No matching surveys." : "No surveys available."}
+                    </p>
+                    {isFiltered && (
+                      <Button variant="ghost" className="mt-2 h-11 sm:h-9" onClick={clearFilters}>
+                        Clear filters
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               )}
-              <TableRow></TableRow>
             </TableBody>
           </Table>
         </div>
-        <div className="flex items-center justify-between px-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
             {table.getFilteredSelectedRowModel().rows.length} of{" "}
             {table.getFilteredRowModel().rows.length} row(s) selected.
           </div>
-          <div className="flex w-full items-center gap-8 lg:w-fit">
+          <div className="flex w-full flex-wrap items-center gap-3 lg:w-fit lg:gap-6">
             <div className="hidden items-center gap-2 lg:flex">
               <Label htmlFor="rows-per-page" className="text-sm font-medium">
                 Rows per page
@@ -439,7 +390,7 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
                   />
                 </SelectTrigger>
                 <SelectContent side="top">
-                  {[10, 20, 30, , 40, 50, 100].map((pageSize) => (
+                  {[10, 20, 30, 40, 50, 100].map((pageSize) => (
                     <SelectItem key={pageSize} value={`${pageSize}`}>
                       {pageSize}
                     </SelectItem>
@@ -448,9 +399,10 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
               </Select>
             </div>
 
-            <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount()}
+            <div role="status" className="flex w-fit items-center justify-center text-sm font-medium">
+              {table.getPageCount() === 0
+                ? "0 surveys"
+                : `Page ${table.getState().pagination.pageIndex + 1} of ${table.getPageCount()}`}
             </div>
 
             <div className="ml-auto flex items-center gap-2 lg:ml-0">
@@ -465,7 +417,7 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
               </Button>
               <Button
                 variant="outline"
-                className="size-8"
+                className="size-11 sm:size-8"
                 size="icon"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
@@ -475,7 +427,7 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
               </Button>
               <Button
                 variant="outline"
-                className="size-8"
+                className="size-11 sm:size-8"
                 size="icon"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
@@ -522,7 +474,7 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="link" className="text-foreground w-fit px-0 text-left">
+        <Button variant="link" className="h-11 text-foreground w-fit px-0 text-left sm:h-9">
           {survey.id}
         </Button>
       </SheetTrigger>
@@ -539,7 +491,7 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
                 initialViewState={{
                   longitude: centerLng,
                   latitude: centerLat,
-                  bounds: bounds,
+                  bounds: bounds ?? undefined,
                   fitBoundsOptions: { padding: 25 },
                 }}
                 mapStyle={{
@@ -570,8 +522,8 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
                           type: "Polygon",
                           coordinates: [
                             survey.geojson_boundaries.map((pair) => [
-                              parseFloat(pair[0]),
-                              parseFloat(pair[1]),
+                              Number(pair[0]),
+                              Number(pair[1]),
                             ]),
                           ],
                         },
@@ -601,7 +553,7 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
                   No boundary data available
                 </p>
                 <p className="text-xs mt-1">
-                  Upload survey boundaries to view map
+                  The boundary map is unavailable for this survey.
                 </p>
               </div>
             </div>
@@ -611,7 +563,7 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
           <div className="grid gap-2">
             <div className="flex gap-2 font-medium leading-none">
               {/* ADD: Handle null area */}
-              Land Area: {survey.area ? survey.area.toFixed(2) : "N/A"} ha
+              Land area: {formatSurveyArea(survey.area)}
             </div>
             <div className="text-muted-foreground">
               Shown here is the boundary of the drone survey area. This outlines
@@ -632,6 +584,14 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
               <TableRow>
                 <TableCell> Area Code: </TableCell>
                 <TableCell>{survey.area_code || "N/A"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>Flight date:</TableCell>
+                <TableCell>{formatSurveyDate(survey.flight_date)}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>Location:</TableCell>
+                <TableCell className="whitespace-normal break-words">{survey.location?.trim() || "—"}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>Orthomap:</TableCell>
@@ -677,15 +637,14 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
           </Table>
         </div>
         <SheetFooter className="mt-auto flex gap-2 sm:flex-col sm:space-x-0">
-          <Link href={`/dashboard/surveys/${survey.id}`}>
-            <Button className="w-full"> View {survey.id} </Button>
-          </Link>
-          <Link href={`/dashboard/orthomap/${survey.code || ""}`}>
-            <Button variant="outline" className="w-full">
-              {" "}
-              View {survey.code || "Orthomap"}
+          <Button asChild className="h-11 w-full sm:h-9">
+            <Link href={`/dashboard/surveys/${survey.id}`}>View {survey.id}</Link>
+          </Button>
+          {survey.code && (
+            <Button asChild variant="outline" className="h-11 w-full sm:h-9">
+              <Link href={`/dashboard/orthomap/${survey.code}`}>View {survey.code} orthomap</Link>
             </Button>
-          </Link>
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>

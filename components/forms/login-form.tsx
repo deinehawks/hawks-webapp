@@ -51,6 +51,7 @@ export function LoginForm({
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    form.clearErrors("root");
     setIsLoading(true);
 
     try {
@@ -85,7 +86,7 @@ export function LoginForm({
 
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+            <form onSubmit={form.handleSubmit(onSubmit)} aria-busy={isLoading}>
               <div className="grid gap-6">
                 {/* Email */}
                 <FormField
@@ -96,11 +97,11 @@ export function LoginForm({
                       <FormLabel>Email</FormLabel>
                       <FormControl>
                         <Input
-                          id="email"
                           type="email"
                           placeholder="you@example.com"
                           autoComplete="email"
                           disabled={isLoading}
+                          className="h-11 sm:h-9"
                           {...field}
                         />
                       </FormControl>
@@ -115,39 +116,29 @@ export function LoginForm({
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="flex items-center">
-                        <FormLabel>Password</FormLabel>
-                        <Link
-                          href="/auth/forgot-password"
-                          className="ml-auto text-sm underline-offset-4 hover:underline"
-                        >
-                          Forgot your password?
-                        </Link>
-                      </div>
+                      <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <div className="flex flex-col gap-2">
-                          <Input
-                            id="password"
-                            type={passwordInputType}
-                            autoComplete="current-password"
-                            disabled={isLoading}
-                            {...field}
-                          />
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              id="show-password"
-                              disabled={isLoading}
-                              onCheckedChange={togglePasswordInputVisibility}
-                            />
-                            <label
-                              htmlFor="show-password"
-                              className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              Show Password
-                            </label>
-                          </div>
-                        </div>
+                        <Input
+                          type={passwordInputType}
+                          autoComplete="current-password"
+                          disabled={isLoading}
+                          className="h-11 sm:h-9"
+                          {...field}
+                        />
                       </FormControl>
+                      <div className="flex min-h-11 items-center gap-2 sm:min-h-8">
+                        <Checkbox
+                          id="show-password"
+                          disabled={isLoading}
+                          onCheckedChange={togglePasswordInputVisibility}
+                        />
+                        <label
+                          htmlFor="show-password"
+                          className="flex min-h-11 items-center text-sm peer-disabled:cursor-not-allowed peer-disabled:opacity-70 sm:min-h-8"
+                        >
+                          Show password
+                        </label>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -155,14 +146,14 @@ export function LoginForm({
 
                 {/* Root error message */}
                 {form.formState.errors.root && (
-                  <div className="text-sm text-red-500">
+                  <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
                     {form.formState.errors.root.message}
                   </div>
                 )}
 
                 {/* Submit button */}
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Logging in..." : "Login"}
+                <Button type="submit" className="h-11 w-full sm:h-9" disabled={isLoading}>
+                  {isLoading ? "Signing in…" : "Sign in"}
                 </Button>
 
                 {/* Link to signup */}
@@ -181,23 +172,6 @@ export function LoginForm({
         </CardContent>
       </Card>
 
-      <div className="text-muted-foreground text-center text-xs text-balance">
-        By continuing, you agree to our{" "}
-        <Link
-          href="/terms"
-          className="underline underline-offset-4 hover:text-primary"
-        >
-          Terms of Service
-        </Link>{" "}
-        and{" "}
-        <Link
-          href="/privacy"
-          className="underline underline-offset-4 hover:text-primary"
-        >
-          Privacy Policy
-        </Link>
-        .
-      </div>
     </div>
   );
 }

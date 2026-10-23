@@ -206,7 +206,7 @@ function mapAdapter() {
   };
 }
 
-function loadComponents(filename, extraExports = "") {
+function loadComponents(filename, extraExports = "", overrides = {}) {
   const map = mapAdapter();
   const calls = [];
   const state = {
@@ -249,6 +249,8 @@ function loadComponents(filename, extraExports = "") {
     "framer-motion": { AnimatePresence: "AnimatePresence", motion: new Proxy({}, { get: (_, key) => "motion-" + String(key) }) },
     "maplibre-gl/dist/maplibre-gl.css": {},
     "next/link": { __esModule: true, default: "Link" },
+    "next/navigation": { usePathname: () => state.pathname ?? "/dashboard", useParams: () => state.params ?? {} },
+    ...overrides,
   };
   const compiled = ts.transpileModule(fs.readFileSync(filename, "utf8") + extraExports, {
     fileName: filename,
@@ -275,6 +277,149 @@ function text(tree) {
   if (Array.isArray(tree)) return tree.map(text).join("");
   return text(tree.props?.children);
 }
+
+test("navigation identifies the current destination and breadcrumbs only link real parent pages", () => {
+  const dashboard = loadComponents("components/dashboard-nav-link.tsx");
+  for (const pathname of ["/dashboard", "/dashboard/orthomap/MCS", "/dashboard/surveys/AH-026010"]) {
+    dashboard.state.pathname = pathname;
+    const tree = runner().render(dashboard.exports.DashboardNavLink);
+    assert.equal(tree.props.isActive, pathname === "/dashboard");
+    assert.equal(find(tree, "Link").props["aria-current"], pathname === "/dashboard" ? "page" : undefined);
+  }
+  const breadcrumbs = loadComponents("components/header-breadcrumb.tsx");
+  breadcrumbs.state.pathname = "/dashboard/surveys/AH-026010";
+  let tree = runner().render(breadcrumbs.exports.HeaderBreadcrumb);
+  assert.deepEqual(nodes(tree).filter(node => node.type === "Link").map(node => node.props.href), ["/dashboard"]);
+  assert.match(text(tree), /DashboardSurveysAH-026010/);
+  breadcrumbs.state.pathname = "/dashboard";
+  tree = runner().render(breadcrumbs.exports.HeaderBreadcrumb);
+  assert.equal(find(tree, "Link"), undefined, "the current page is not linked to itself");
+});
+
+test("map legend starts compact on phones and preserves manual choices across filters, visibility and resizing", () => {
+  const previousWindow = globalThis.window;
+  try {
+    for (const desktop of [false, true]) {
+      globalThis.window = { matchMedia: () => ({ matches: desktop }) };
+      const legend = loadComponents("components/maps/shared/map-legend.tsx");
+      legend.state.surveyMode = "analysis";
+      const render = runner();
+      let tree = render.render(legend.exports.default, {});
+      let toggle = nodes(tree).find(node => typeof node.props?.["aria-expanded"] === "boolean");
+      assert.equal(toggle.props["aria-expanded"], desktop);
+      assert.equal(nodes(tree).find(node => node.props?.id === toggle.props["aria-controls"]).props.hidden, !desktop);
+      toggle.props.onClick();
+      globalThis.window = { matchMedia: () => ({ matches: !desktop }) };
+      tree = render.render(legend.exports.default, { showHeatmapSection: false });
+      assert.equal(nodes(tree).find(node => typeof node.props?.["aria-expanded"] === "boolean").props["aria-expanded"], !desktop);
+      assert.match(text(tree), /Marked healthy-looking by the app/);
+      assert.match(text(tree), /Marked infected by the app/);
+      assert.doesNotMatch(text(tree), /Plant density/);
+      assert.equal(render.render(legend.exports.default, { visible: false }), null);
+      legend.state.surveyMode = "inventory";
+      assert.equal(render.render(legend.exports.default, {}), null);
+      legend.state.surveyMode = "analysis";
+      tree = render.render(legend.exports.default, {});
+      assert.equal(nodes(tree).find(node => typeof node.props?.["aria-expanded"] === "boolean").props["aria-expanded"], !desktop);
+      let stopped = 0;
+      const event = { stopPropagation: () => stopped++ };
+      for (const handler of ["onPointerDown", "onClick", "onDoubleClick", "onWheel"]) tree.props[handler](event);
+      assert.equal(stopped, 4, "legend interactions stay out of map controls");
+    }
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test("survey table search and clear filters use real filtering, with a helpful empty state and valid pagination", () => {
+  const tanstack = require("@tanstack/react-table");
+  const tableModule = loadComponents("components/data-table.tsx", "\nexport { TableCellViewer };", {
+    "@tanstack/react-table": { ...tanstack, useReactTable(options) {
+      const table = tanstack.createTable(options);
+      table.setOptions(previous => ({ ...previous, state: { ...table.initialState, ...options.state } }));
+      return table;
+    } },
+  });
+  const render = runner();
+  const props = { data: surveys.map(survey => ({ ...survey, tags: ["rgb"] })) };
+  let tree = render.render(tableModule.exports.DataTable, props);
+  const search = find(tree, "Input");
+  assert.equal(find(tree, "Label").props.htmlFor, search.props.id);
+  assert.equal(search.props.type, "search");
+  assert.match(text(tree), /Page 1 of 1/);
+  search.props.onChange({ target: { value: "not-a-survey" } });
+  tree = render.render(tableModule.exports.DataTable, props);
+  assert.match(text(tree), /No matching surveys/);
+  assert.match(text(tree), /0 surveys/);
+  assert.doesNotMatch(text(tree), /Page 1 of 0/);
+  const next = nodes(tree).find(node => text(node) === "Go to next page" && node.type === "Button");
+  assert.equal(next.props.disabled, true);
+  nodes(tree).find(node => node.type === "Button" && text(node) === "Clear filters").props.onClick();
+  tree = render.render(tableModule.exports.DataTable, props);
+  assert.equal(find(tree, "Input").props.value, "");
+  assert.match(text(tree), /Page 1 of 1/);
+  assert.doesNotMatch(text(tree), /No matching|Make a copy|Favorite|Delete/);
+  tree = runner().render(tableModule.exports.DataTable, { data: [] });
+  assert.match(text(tree), /No surveys available/);
+  assert.equal(nodes(tree).filter(node => node.type === "Button" && text(node) === "Clear filters").length, 0);
+  for (const area of [0, null]) {
+    tree = runner().render(tableModule.exports.TableCellViewer, { survey: { ...props.data[0], area, flight_date: "invalid", location: null, geojson_boundaries: [] } });
+    assert.ok(text(tree).includes(`Land area: ${area === 0 ? "0.00 ha" : "—"}`));
+    assert.doesNotMatch(text(tree), /NaN|undefined|Upload survey/);
+    assert.ok(nodes(tree).filter(node => node.type === "Button" && node.props.asChild).length >= 1);
+  }
+});
+
+test("sign-in reports failures, disables submission while pending and offers only working account links", async () => {
+  const errors = {};
+  let release;
+  const result = new Promise(resolve => { release = resolve; });
+  const loginModule = loadComponents("components/forms/login-form.tsx", "", {
+    "react-hook-form": { useForm: () => ({
+      control: {}, formState: { errors }, handleSubmit: fn => fn,
+      clearErrors: key => { delete errors[key]; },
+      setError: (key, value) => { errors[key] = value; },
+    }) },
+    "@/lib/actions/auth": { login: () => result },
+    "../ui/checkbox": { Checkbox: "Checkbox" },
+  });
+  const render = runner();
+  let tree = render.render(loginModule.exports.LoginForm, {});
+  assert.deepEqual(nodes(tree).filter(node => node.type === "Link").map(node => node.props.href), ["/auth/signup"]);
+  assert.equal(text(nodes(tree).find(node => node.props?.type === "submit")), "Sign in");
+  const password = nodes(tree).find(node => node.props?.name === "password").props.render({ field: { name: "password" } });
+  assert.equal(find(password, "FormControl").props.children.type, "Input", "the form label targets the input directly");
+  const pending = find(tree, "form").props.onSubmit({ email: "participant@example.com", password: "fixture" });
+  tree = render.render(loginModule.exports.LoginForm, {});
+  assert.equal(find(tree, "form").props["aria-busy"], true);
+  assert.equal(nodes(tree).find(node => node.props?.type === "submit").props.disabled, true);
+  assert.match(text(tree), /Signing in/);
+  release({ error: "Unable to sign in with these details." });
+  await pending;
+  tree = render.render(loginModule.exports.LoginForm, {});
+  assert.equal(find(tree, "form").props["aria-busy"], false);
+  assert.equal(text(nodes(tree).find(node => node.props?.role === "alert")), "Unable to sign in with these details.");
+});
+
+test("loading status names its screen, respects reduced motion and the error page has a working way back", () => {
+  for (const reduceMotion of [false, true]) {
+    const loading = loadComponents("components/loading-state.tsx", "", {
+      "framer-motion": { useReducedMotion: () => reduceMotion },
+      "lottie-react": { __esModule: true, default: "Lottie" },
+    });
+    const tree = runner().render(loading.exports.LoadingState, { label: "Loading dashboard…" });
+    assert.equal(tree.props.role, "status");
+    assert.match(text(tree), /Loading dashboard/);
+    assert.equal(find(tree, "Lottie").props.autoplay, !reduceMotion);
+    assert.equal(find(tree, "Lottie").props.loop, !reduceMotion);
+  }
+  const error = loadComponents("app/error/page.tsx");
+  const tree = error.exports.default();
+  assert.equal(find(tree, "Link").props.href, "/dashboard");
+  assert.equal(text(find(tree, "Link")), "Back to dashboard");
+  assert.equal(find(tree, "Button").props.asChild, true);
+});
 
 test("dashboard overlap chooser can open either survey and empty clicks dismiss it", () => {
   const loaded = loadComponents("components/maps/dashboard-map.tsx", "\nexport { MapEvents };");

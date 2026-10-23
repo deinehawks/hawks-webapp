@@ -97,10 +97,11 @@ export function NavMain({
             <SidebarMenuButton
               isActive={params.plantation === userProfile.access_code}
               asChild
-              className="transition-colors hover:bg-primary/10"
+              className="h-11 transition-colors hover:bg-primary/10 sm:h-9"
             >
               <Link
                 href={`/dashboard/orthomap/${userProfile.access_code}`}
+                aria-current={params.plantation === userProfile.access_code ? "page" : undefined}
                 className="flex items-center gap-2 px-3 py-2 rounded"
               >
                 <Building2Icon className="size-4" />
@@ -126,7 +127,7 @@ export function NavMain({
                 <CollapsibleTrigger asChild>
                   <SidebarMenuButton
                     tooltip={item.title}
-                    className="flex items-center gap-2 px-3 py-2 rounded transition-colors hover:bg-primary/10"
+                    className="flex h-11 items-center gap-2 px-3 py-2 rounded transition-colors hover:bg-primary/10 sm:h-9"
                   >
                     {item.icon && <item.icon className="size-4" />}
                     <span className="font-medium">{item.title}</span>
@@ -165,10 +166,11 @@ export function NavMain({
                           <SidebarMenuSubButton
                             isActive={id === selectedSurvey}
                             asChild
-                            className="transition-colors hover:bg-primary/10 rounded px-3 py-2 flex items-center justify-between"
+                            className="h-11 transition-colors hover:bg-primary/10 rounded px-3 py-2 flex items-center justify-between sm:h-8"
                           >
                             <Link
                               href={`/dashboard/surveys/${id}`}
+                              aria-current={id === selectedSurvey ? "page" : undefined}
                               className="flex items-center gap-2"
                             >
                               <span>{id}</span>
@@ -221,6 +223,12 @@ export function NavMain({
 
         :global(.animate-fadeIn) {
           animation: fadeIn 0.3s ease-out;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          :global(.animate-fadeIn), :global(.animate-shimmer) {
+            animation: none;
+          }
         }
       `}</style>
     </>

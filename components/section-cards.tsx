@@ -19,10 +19,9 @@ import {
   ChevronUp,
   Minus,
   LayoutList,
-  Stethoscope,
 } from "lucide-react";
 import { useMemo } from "react";
-import { cn } from "@/lib/utils";
+import { SurveyModeToggle } from "@/components/maps/shared/survey-mode-toggle";
 import { countPlantDetections, type DemoCountMultipliers } from "@/lib/helpers/detection-labels";
 
 export function SectionCards({
@@ -34,7 +33,7 @@ export function SectionCards({
   detectedObjects: ComputerVisionObject[];
   demoCountMultipliers?: DemoCountMultipliers;
 }) {
-  const { surveyMode, setSurveyMode } = useSurveyModeStore();
+  const { surveyMode } = useSurveyModeStore();
 
   const getPercentageStatus = (percentage: number) => {
     if (percentage <= 0.2) return "Very Low";
@@ -94,7 +93,7 @@ export function SectionCards({
     progressColor?: string;
   }) => (
     <Card
-      className="@container/card transition-transform duration-300 hover:scale-105 hover:shadow-lg bg-gradient-to-t from-primary/5 to-card dark:bg-card shadow-xs"
+      className="@container/card bg-gradient-to-t from-primary/5 to-card dark:bg-card shadow-xs"
       data-slot="card"
     >
       <CardHeader className="relative">
@@ -158,43 +157,18 @@ export function SectionCards({
           </p>
         </div>
 
-        <div className="flex items-center gap-1 rounded-lg border bg-muted p-1">
-          <button
-            onClick={() => setSurveyMode("analysis")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all",
-              surveyMode === "analysis"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Stethoscope className="h-3 w-3" />
-            Analysis
-          </button>
-          <button
-            onClick={() => setSurveyMode("inventory")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all",
-              surveyMode === "inventory"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <LayoutList className="h-3 w-3" />
-            Inventory
-          </button>
-        </div>
+        <SurveyModeToggle compact />
       </div>
 
       {/* Cards grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="No. of Surveyed Areas"
+          title="Surveys"
           value={surveys.length}
-          description="No. of surveys in the last six months"
+          description="Across all available surveys"
           footerContent={
-            <div className="line-clamp-1 flex gap-2 font-medium">
-              <span>{numNewSurveys} new survey(s)</span>
+            <div className="flex items-center gap-2 font-medium">
+              <span>{numNewSurveys} surveyed in the last 6 months</span>
               {numNewSurveys > 0 ? (
                 <IconTrendingUp className="size-4" />
               ) : (
@@ -205,12 +179,12 @@ export function SectionCards({
         />
 
         <StatCard
-          title="Total Area Surveyed"
+          title="Total surveyed area"
           value={`${surveys.reduce((acc, s) => acc + s.area, 0).toFixed(2)} ha`}
-          description="Land measure of new areas surveyed"
+          description="Area added across all surveys"
           footerContent={
-            <div className="line-clamp-1 flex gap-2 font-medium">
-              <span>{landMeasureNewSurveys.toFixed(1)} ha added</span>
+            <div className="flex items-center gap-2 font-medium">
+              <span>{landMeasureNewSurveys.toFixed(1)} ha surveyed in the last 6 months</span>
               {numNewSurveys > 0 ? (
                 <IconTrendingUp className="size-4" />
               ) : (
@@ -243,8 +217,6 @@ export function SectionCards({
                     : "Detected banana plants"}
                 </div>
               }
-              progress={1}
-              progressColor="hsl(var(--muted-foreground))"
             />
 
             {/* Slot 4 — healthy/infected ratio in a compact split view */}
