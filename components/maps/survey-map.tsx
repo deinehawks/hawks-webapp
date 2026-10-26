@@ -16,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
@@ -32,7 +31,6 @@ import {
   Map,
   MapMouseEvent,
   MapProvider,
-  Popup,
   Source,
   useMap,
 } from "@vis.gl/react-maplibre";
@@ -59,6 +57,11 @@ import { ThreeDimensionalModelSelector } from "@/components/selectors/3d-model-s
 import ThreeDimensionalModelCaller from "@/components/callers/3d-caller";
 import { FoiSelector } from "@/components/selectors/foi-selector";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
+import { countPlantDetections, filterPlantDetections, findPlantDetection, getPlantDetectionSets, getDetectionKey, getDetectionPlantType, resolveDetectionFilter, type DemoCountMultipliers } from "@/lib/helpers/detection-labels";
+import { PlantDetailsPopup } from "./shared/plant-details-popup";
+import { InventoryLayers } from "./shared/inventory-layers";
+import { InventoryLegend } from "./shared/inventory-legend";
+import { generateInventoryFeatureCollection } from "@/lib/helpers/geometry";
 import MapLegend from "@/components/maps/shared/map-legend";
 import {
   OrthoTabContent,
@@ -85,6 +88,9 @@ import { createPinLayout } from "@/lib/constants/map-layers";
 type MapCenter = { lng: number; lat: number; zoom: number };
 
 type ObjectPopupInfo = {
+  detectionKey?: string;
+  label?: string;
+  areaCode?: string;
   pairId: string;
   areaId?: string;
   centerLng: number;
@@ -102,12 +108,14 @@ const DEFAULT_CENTER: MapCenter = {
 };
 
 const MAP_CONFIG = {
-  minZoom: 13,
+  minZoom: 11,
   maxZoom: 23,
   tileSize: 256,
-  orthoMinZoom: 15,
+  orthoMinZoom: 11,
   orthoMaxZoom: 24,
 };
+
+const SURVEY_FIT_OPTIONS = { padding: 24, maxZoom: 20 };
 
 /* -------------------------------------------------------------------------- */
 /* Utilities                                                                  */
@@ -224,6 +232,8 @@ function generatePointsWithOffset(
           pairId: obj.pairId,
           areaPairId: obj.areaPairId,
           label: obj.label,
+          areaCode: obj.areaCode,
+          detectionKey: getDetectionKey(obj),
         },
       };
     });
@@ -290,8 +300,9 @@ const useMapCenter = (survey: any, fallbackCenter: MapCenter) => {
           survey.geojson_boundaries as any,
         );
         if (extremes) {
-          const centerLng = (extremes.minLng + extremes.maxLng) / 2;
-          const centerLat = (extremes.minLat + extremes.maxLat) / 2;
+          const [minLng, minLat, maxLng, maxLat] = extremes as [number, number, number, number];
+          const centerLng = (minLng + maxLng) / 2;
+          const centerLat = (minLat + maxLat) / 2;
 
           if (isValidCoordinate(centerLng, centerLat)) {
             return { lng: centerLng, lat: centerLat, zoom: 17 };
@@ -313,30 +324,26 @@ const useMapCenter = (survey: any, fallbackCenter: MapCenter) => {
 
 const useMapBounds = (survey: any) => {
   return useMemo<LngLatBoundsLike | undefined>(() => {
-    if (!hasValidBoundaries(survey.geojson_boundaries)) return undefined;
-
-    try {
-      const extremes = findExtremeCoordinates(survey.geojson_boundaries as any);
-      if (!extremes) return undefined;
-
-      const { minLng, minLat, maxLng, maxLat } = extremes;
-
-      if (
-        !isValidCoordinate(minLng, minLat) ||
-        !isValidCoordinate(maxLng, maxLat)
-      ) {
-        return undefined;
+    const candidates = [
+      survey.geojson_boundaries,
+      [survey.min_x, survey.min_y, survey.max_x, survey.max_y].every(isValidNumber)
+        ? [[survey.min_x, survey.min_y], [survey.max_x, survey.max_y]] : undefined,
+      [survey.tile_min_x, survey.tile_min_y, survey.tile_max_x, survey.tile_max_y].every(isValidNumber)
+        ? [[survey.tile_min_x, survey.tile_min_y], [survey.tile_max_x, survey.tile_max_y]] : undefined,
+    ];
+    for (const coordinates of candidates) {
+      if (!hasValidBoundaries(coordinates)) continue;
+      try {
+        // The helper returns [west, south, east, north], accepted by MapLibre.
+        const bounds = findExtremeCoordinates(coordinates);
+        if (bounds) return bounds;
+      } catch (error) {
+        console.error("Error calculating bounds:", error);
       }
-
-      return [
-        [minLng, minLat],
-        [maxLng, maxLat],
-      ] satisfies LngLatBoundsLike;
-    } catch (error) {
-      console.error("Error calculating bounds:", error);
-      return undefined;
     }
-  }, [survey.geojson_boundaries]);
+    return undefined;
+  }, [survey.geojson_boundaries, survey.min_x, survey.min_y, survey.max_x, survey.max_y,
+    survey.tile_min_x, survey.tile_min_y, survey.tile_max_x, survey.tile_max_y]);
 };
 
 const useValidationState = (survey: any) => {
@@ -369,24 +376,18 @@ function SurveyMapEvents({
   detectedObjects: ComputerVisionObject[];
 }) {
   const map = useSurveyMapInstance();
-  const { setPopupInfo, setHoveredPairId } = useSurveyMapStore(
+  const { selectedFoi, setPopupInfo, setHoveredPairId } = useSurveyMapStore(
     (state) => state,
   );
   const { surveyMode } = useSurveyModeStore();
+  const activeObjects = useMemo(() => filterPlantDetections(detectedObjects, selectedFoi, surveyMode), [detectedObjects, selectedFoi, surveyMode]);
 
   const handleBboxClick = useCallback(
     (e: MapMouseEvent) => {
-      const objectPairId = e.features?.[0]?.properties?.pairId as
-        | string
-        | undefined;
-      if (!objectPairId) return;
-
-      const clickedObject = detectedObjects.find(
-        (object) => object.pairId === objectPairId,
-      );
+      const clickedObject = findPlantDetection(activeObjects, e.features?.[0]?.properties ?? {});
       if (!clickedObject) return;
 
-      const { pairId, areaPairId: areaId, bbox } = clickedObject;
+      const { pairId, areaPairId: areaId, bbox, label, areaCode } = clickedObject;
       const { centerLng, centerLat } = calculateCentersWithOffset(
         bbox.min_lon,
         bbox.max_lon,
@@ -394,14 +395,14 @@ function SurveyMapEvents({
         bbox.max_lat,
       );
 
-      setPopupInfo({ pairId, areaId, centerLng, centerLat });
+      setPopupInfo({ detectionKey: getDetectionKey(clickedObject), pairId, areaId, areaCode, label, centerLng, centerLat });
     },
-    [detectedObjects, setPopupInfo],
+    [activeObjects, setPopupInfo],
   );
 
   const handlePinHover = useCallback(
     (e: MapMouseEvent) => {
-      const pairId = e.features?.[0]?.properties?.pairId as string | undefined;
+      const pairId = (e.features?.[0]?.properties?.detectionKey ?? e.features?.[0]?.properties?.pairId) as string | undefined;
       setHoveredPairId(pairId || null);
       if (pairId && map) map.getCanvas().style.cursor = "pointer";
     },
@@ -498,6 +499,7 @@ function InitializeMapImages() {
     loadSvgImage(PIN_IMAGES.yellow, "pin-yellow");
     loadSvgImage(PIN_IMAGES.red, "pin-red");
     loadSvgImage(PIN_IMAGES.gray, "pin-gray");
+    loadSvgImage(PIN_IMAGES.coconut, "pin-coconut");
   }, [map]);
 
   return null;
@@ -518,50 +520,33 @@ function FeaturesOfInterest({
   const id = survey?.id;
   if (!id) return null;
 
-  // --- Inventory mode: merge everything into one collection ---
-  const allBananas = useMemo(
-    () =>
-      generatePointsWithOffset(
-        detectedObjects,
-        "Banana Plant (Healthy-looking)",
-      ).features.concat(
-        generatePointsWithOffset(detectedObjects, "Banana Plant (Infected)")
-          .features,
-      ),
-    [detectedObjects],
-  );
-
-  const allBananasFC = useMemo<FeatureCollection<Point, PlantPointProps>>(
-    () => ({ type: "FeatureCollection", features: allBananas }),
-    [allBananas],
-  );
+  const counts = useMemo(() => countPlantDetections(detectedObjects), [detectedObjects]);
+  const activeFilter = resolveDetectionFilter(selectedFoi, surveyMode, counts.coconut > 0);
+  const activeObjects = useMemo(() => filterPlantDetections(detectedObjects, activeFilter, surveyMode), [detectedObjects, activeFilter, surveyMode]);
+  const allBananasFC = useMemo(() => generateInventoryFeatureCollection(detectedObjects, activeFilter), [detectedObjects, activeFilter]);
 
   // --- Analysis mode: split collections ---
+  const analysisObjects = useMemo(() => getPlantDetectionSets(detectedObjects).analysis, [detectedObjects]);
   const healthyBananas = useMemo(
     () =>
       generatePointsWithOffset(
-        detectedObjects,
+        analysisObjects,
         "Banana Plant (Healthy-looking)",
       ),
-    [detectedObjects],
+    [analysisObjects],
   );
 
   const unhealthyBananas = useMemo(
-    () => generatePointsWithOffset(detectedObjects, "Banana Plant (Infected)"),
-    [detectedObjects],
+    () => generatePointsWithOffset(analysisObjects, "Banana Plant (Infected)"),
+    [analysisObjects],
   );
 
   const selectedPlantBbox = useMemo<FeatureCollection<
     Polygon,
     GeoJsonProperties
   > | null>(() => {
-    const selectedId =
-      (popupInfo as ObjectPopupInfo | null)?.pairId || hoveredPairId;
-    if (!selectedId) return null;
-
-    const selectedObject = detectedObjects.find(
-      (obj) => obj.pairId === selectedId,
-    );
+    const selectedObject = findPlantDetection(activeObjects,
+      (popupInfo as ObjectPopupInfo | null) ?? { detectionKey: hoveredPairId });
     if (!selectedObject) return null;
 
     const { min_lon, max_lon, min_lat, max_lat } = selectedObject.bbox;
@@ -590,7 +575,7 @@ function FeaturesOfInterest({
         },
       ],
     };
-  }, [detectedObjects, popupInfo, hoveredPairId]);
+  }, [activeObjects, popupInfo, hoveredPairId]);
 
   const isHealthy =
     selectedPlantBbox?.features[0]?.properties &&
@@ -598,10 +583,10 @@ function FeaturesOfInterest({
       "Healthy",
     );
 
-  // In inventory mode the bbox highlight is always blue
+  // Inventory highlights identify the species, rather than its health.
   const selectedColor =
     surveyMode === "inventory"
-      ? MAP_COLORS.inventory.base
+      ? getDetectionPlantType(selectedPlantBbox?.features[0]?.properties?.label) === "coconut" ? MAP_COLORS.coconut.base : MAP_COLORS.inventory.base
       : isHealthy
         ? MAP_COLORS.healthy.base
         : MAP_COLORS.unhealthy.base;
@@ -621,8 +606,8 @@ function FeaturesOfInterest({
     [allBananasFC.features],
   );
 
-  const showHealthy = selectedFoi === "healthy" || selectedFoi === "all";
-  const showUnhealthy = selectedFoi === "unhealthy" || selectedFoi === "all";
+  const showHealthy = activeFilter === "healthy" || activeFilter === "all";
+  const showUnhealthy = activeFilter === "unhealthy" || activeFilter === "all";
 
   // ── INVENTORY MODE ──────────────────────────────────────────────────────────
   if (surveyMode === "inventory") {
@@ -654,32 +639,7 @@ function FeaturesOfInterest({
         )}
         {showInventoryPins && (
           <>
-            <Source
-              id={`${id}-inventory`}
-              type="geojson"
-              data={allBananasFC as any}
-            >
-              <Layer
-                id={`${id}-inventory-heatmap`}
-                type="heatmap"
-                maxzoom={allZoomLevels.heatmapMaxZoom}
-                paint={createHeatmapPaint("inventory")} // neutral heatmap color
-              />
-            </Source>
-
-            <Source
-              id={`${id}-inventory-pins`}
-              type="geojson"
-              data={allBananasFC as any}
-            >
-              <Layer
-                id={`${id}-inventory-pin`}
-                type="symbol"
-                minzoom={allZoomLevels.pinMinZoom}
-                layout={createPinLayout("pin-gray")}
-                paint={{ "icon-opacity": 0.9 }}
-              />
-            </Source>
+            <InventoryLayers id={id} data={allBananasFC as FeatureCollection<Point>} zoomLevels={allZoomLevels} />
           </>
         )}
       </>
@@ -777,38 +737,16 @@ function FeaturesOfInterest({
 }
 
 function ObjectPopup() {
+  const { surveyMode } = useSurveyModeStore();
   const { popupInfo, setPopupInfo } = useSurveyMapStore((state) => state);
   const info = popupInfo as ObjectPopupInfo | null;
 
   if (!info) return null;
 
   return (
-    <Popup
-      anchor="bottom"
-      longitude={info.centerLng}
-      latitude={info.centerLat}
-      onClose={() => setPopupInfo(null)}
-      closeOnClick={false}
-    >
-      <div className="flex flex-col w-fit gap-1">
-        <div className="font-semibold">Object Information</div>
-        <Separator />
-        <div className="flex flex-col">
-          <div className="grid grid-cols-2 gap-2">
-            <span>Longitude:</span>
-            <span className="text-muted-foreground">
-              {info.centerLng.toFixed(6)}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <span>Latitude:</span>
-            <span className="text-muted-foreground">
-              {info.centerLat.toFixed(6)}
-            </span>
-          </div>
-        </div>
-      </div>
-    </Popup>
+    <PlantDetailsPopup longitude={info.centerLng} latitude={info.centerLat}
+      label={info.label} surveyId={info.areaCode} mode={surveyMode}
+      onClose={() => setPopupInfo(null)} />
   );
 }
 
@@ -931,7 +869,7 @@ function SurveyBoundaries({ survey }: { survey: any }) {
       survey_id: survey.id,
       label: `${survey.access_code ?? ""}-${survey.area_code ?? ""}`,
     },
-    geometry: { type: "Point", coordinates: centroid },
+    geometry: { type: "Point", coordinates: [...centroid] },
   };
 
   const polygonFC: FeatureCollection<Polygon, GeoJsonProperties> = {
@@ -1066,9 +1004,11 @@ function SurveyBoundaryEvents() {
         );
       }
 
-      hoveredFeatureIdRef.current = e.features[0].id;
+      const featureId = e.features[0].id;
+      if (typeof featureId !== "string" && typeof featureId !== "number") return;
+      hoveredFeatureIdRef.current = featureId;
       map.setFeatureState(
-        { source: "survey-boundary", id: hoveredFeatureIdRef.current },
+        { source: "survey-boundary", id: featureId },
         { hover: true },
       );
     },
@@ -1137,7 +1077,6 @@ function MapView({
     selectedFoi != null &&
     selectedFoi !== "" &&
     selectedFoi !== "none";
-  surveyMode === "analysis";
 
   const mapStyle = useMemo<StyleSpecification>(
     () => ({
@@ -1148,6 +1087,7 @@ function MapView({
           type: "raster",
           tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
           tileSize: MAP_CONFIG.tileSize,
+          maxzoom: 19,
           attribution: "&copy; OpenStreetMap Contributors",
         },
       },
@@ -1160,7 +1100,7 @@ function MapView({
     if (hasValidCoordinates && mapBounds) {
       return {
         bounds: mapBounds,
-        fitBoundsOptions: { padding: 20 },
+        fitBoundsOptions: SURVEY_FIT_OPTIONS,
       };
     }
 
@@ -1212,19 +1152,16 @@ function MapView({
 
       if (![minLng, maxLng, minLat, maxLat].every(Number.isFinite)) return;
 
-      const lngBuffer = (maxLng - minLng) * 0.1;
-      const latBuffer = (maxLat - minLat) * 0.1;
-
       try {
         map.fitBounds(
           [
-            [minLng - lngBuffer, minLat - latBuffer],
-            [maxLng + lngBuffer, maxLat + latBuffer],
+            [minLng, minLat],
+            [maxLng, maxLat],
           ],
           {
-            padding: { top: 50, bottom: 50, left: 50, right: 50 },
-            duration: 1500,
-            maxZoom: 19,
+            ...SURVEY_FIT_OPTIONS,
+            duration: 600,
+            linear: true,
           },
         );
         setHasZoomed(true);
@@ -1251,6 +1188,8 @@ function MapView({
   }, [survey.id]);
 
   const codeLower = String(survey.code ?? "").toLowerCase();
+
+  const tileFolder = survey.ortho?.tile_folder ?? "round-corners";
   const flightYear =
     survey.flight_date != null
       ? getYear(new Date(survey.flight_date as any))
@@ -1316,6 +1255,8 @@ function MapView({
 
       {!hasValidCoordinates && hasOrthoTiles && <RegionalViewOverlay />}
 
+      {surveyMode === "inventory" && selectedFoi && selectedFoi !== "none" && <InventoryLegend detectedObjects={detectedObjects} />}
+
       {/* Map Legend */}
       <AnimatePresence>
         {shouldShowLegend && (
@@ -1341,33 +1282,28 @@ function SurveyInfo({
   survey,
   detectedObjects,
   activeTab,
+  demoCountMultipliers,
 }: {
   survey: any;
   detectedObjects: ComputerVisionObject[];
   activeTab: string;
+  demoCountMultipliers?: DemoCountMultipliers;
 }) {
   const statistics = useMemo(() => {
-    let bananas = 0;
-    let healthy = 0;
-    let infected = 0;
-
-    for (const obj of detectedObjects) {
-      const label = String(obj.label ?? "");
-      if (label.includes("Banana")) bananas++;
-      if (label.includes("Healthy-looking")) healthy++;
-      if (label.includes("Infected")) infected++;
-    }
-
+    const counts = countPlantDetections(detectedObjects, demoCountMultipliers);
     const hasOrthoData = survey.ortho != null;
 
     return {
       area: survey.area,
-      cropInventory: bananas,
-      healthy,
-      infected,
-      hasData: hasOrthoData && bananas > 0,
+      cropInventory: counts.total,
+      analysisBananas: counts.analysisBanana,
+      bananas: counts.banana,
+      coconuts: counts.coconut,
+      healthy: counts.healthy,
+      infected: counts.unhealthy,
+      hasData: hasOrthoData && counts.total > 0,
     };
-  }, [survey, detectedObjects]);
+  }, [survey, detectedObjects, demoCountMultipliers]);
 
   const showStatistics = activeTab === "ortho" && statistics.hasData;
   const { surveyMode } = useSurveyModeStore();
@@ -1408,11 +1344,15 @@ function SurveyInfo({
                 Plants:
               </span>
               <span className="font-semibold">
-                {statistics.cropInventory.toLocaleString()}
+                {(surveyMode === "inventory" ? statistics.cropInventory : statistics.analysisBananas).toLocaleString()}
               </span>
             </Badge>
           )}
 
+          {surveyMode === "inventory" && statistics.coconuts > 0 && <>
+            <Badge variant="outline">Banana: {statistics.bananas.toLocaleString()}</Badge>
+            <Badge variant="outline">Coconut: {statistics.coconuts.toLocaleString()}</Badge>
+          </>}
           {/* Only show healthy/infected split in analysis mode */}
           {showHealthBreakdown && (
             <>
@@ -1467,10 +1407,12 @@ export default function SurveyMap({
   survey,
   detectedObjects,
   fallbackCenter,
+  demoCountMultipliers,
 }: {
   survey: any;
   detectedObjects: ComputerVisionObject[] | null | undefined;
   fallbackCenter?: { lng: number; lat: number };
+  demoCountMultipliers?: DemoCountMultipliers;
 }) {
   const [activeTab, setActiveTab] = useState(survey.tile_url || !survey.recording_clouds?.length ? "ortho" : "3d");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -1547,14 +1489,14 @@ export default function SurveyMap({
   const is3D = activeTab === "3d";
 
   return (
-    <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
+    <div className="flex min-w-0 flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
         className="flex flex-1 h-full w-full flex-col gap-6"
       >
         {/* HEADER */}
-        <div className="flex items-center justify-between px-4 lg:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 lg:px-6">
           <Label htmlFor="view-selector" className="sr-only">
             View
           </Label>
@@ -1578,11 +1520,11 @@ export default function SurveyMap({
           </TabsList>
 
           {/* RIGHT-SIDE SELECTORS + SIDEBAR TOGGLE */}
-          <div className="flex items-center gap-3">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-3 sm:w-auto">
             {isOrtho && <SurveyModeToggle />}
             {isOrtho && (
-              <div>
-                <FoiSelector detectedObjects={safeDetectedObjects} />
+              <div className="w-full min-w-0 sm:w-auto">
+                <FoiSelector detectedObjects={safeDetectedObjects} demoCountMultipliers={demoCountMultipliers} />
               </div>
             )}
             {is3D && has3DModel && survey.code && (
@@ -1623,12 +1565,13 @@ export default function SurveyMap({
         {/* MAIN CONTENT */}
         <div className="flex flex-1 h-full px-4 lg:px-6 gap-4">
           <div className="flex flex-1 h-full min-w-0">
-            <Card className="container/card flex flex-1 flex-col h-full relative">
+            <Card className="container/card flex min-w-0 flex-1 flex-col h-full relative">
               <CardHeader>
                 <SurveyInfo
                   survey={survey}
                   detectedObjects={safeDetectedObjects}
                   activeTab={activeTab}
+                  demoCountMultipliers={demoCountMultipliers}
                 />
               </CardHeader>
 

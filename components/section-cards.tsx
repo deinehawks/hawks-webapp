@@ -23,13 +23,16 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { countPlantDetections, type DemoCountMultipliers } from "@/lib/helpers/detection-labels";
 
 export function SectionCards({
   surveys,
   detectedObjects,
+  demoCountMultipliers,
 }: {
   surveys: any[];
   detectedObjects: ComputerVisionObject[];
+  demoCountMultipliers?: DemoCountMultipliers;
 }) {
   const { surveyMode, setSurveyMode } = useSurveyModeStore();
 
@@ -59,22 +62,10 @@ export function SectionCards({
     [surveys],
   );
 
-  const numHealthyBananas = useMemo(
-    () =>
-      detectedObjects?.filter(
-        (obj) => obj.label === "Banana Plant (Healthy-looking)",
-      ).length ?? 0,
-    [detectedObjects],
-  );
-
-  const numUnhealthyBananas = useMemo(
-    () =>
-      detectedObjects?.filter((obj) => obj.label === "Banana Plant (Infected)")
-        .length ?? 0,
-    [detectedObjects],
-  );
-
-  const totalBananas = numHealthyBananas + numUnhealthyBananas;
+  const inventoryCounts = useMemo(() => countPlantDetections(detectedObjects, demoCountMultipliers), [detectedObjects, demoCountMultipliers]);
+  const numHealthyBananas = inventoryCounts.healthy;
+  const numUnhealthyBananas = inventoryCounts.unhealthy;
+  const totalBananas = inventoryCounts.analysisBanana;
   const healthyBananaPercentage = totalBananas
     ? numHealthyBananas / totalBananas
     : 0;
@@ -151,12 +142,21 @@ export function SectionCards({
   return (
     <div className="flex flex-col gap-3 px-4 lg:px-6">
       {/* Mode toggle header */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground font-medium">
-          {surveyMode === "analysis"
-            ? "Health analysis overview"
-            : "Crop inventory overview"}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 basis-56">
+          <p className="text-sm font-medium">
+            {surveyMode === "analysis"
+              ? "Health analysis overview"
+              : "Crop inventory overview"}
+          </p>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+            {surveyMode === "analysis"
+              ? "Shows banana plants marked Healthy or Infected by the app. These counts may differ from Inventory."
+              : inventoryCounts.coconut > 0
+                ? "Counts banana and coconut plants detected in each survey."
+                : "Counts banana plants detected in each survey."}
+          </p>
+        </div>
 
         <div className="flex items-center gap-1 rounded-lg border bg-muted p-1">
           <button
@@ -224,9 +224,9 @@ export function SectionCards({
           <>
             {/* Slot 3 — total count */}
             <StatCard
-              title="Total Banana Plants"
-              value={totalBananas.toLocaleString()}
-              description="All detected plants across all surveys"
+              title={inventoryCounts.coconut ? "Total Plants" : "Total Banana Plants"}
+              value={inventoryCounts.total.toLocaleString()}
+              description="Plant counts added across surveys"
               badge={
                 <Badge
                   variant="outline"
@@ -238,7 +238,9 @@ export function SectionCards({
               }
               footerContent={
                 <div className="line-clamp-1 flex gap-2 font-medium">
-                  Healthy + infected combined
+                  {inventoryCounts.coconut
+                    ? `Banana: ${inventoryCounts.banana.toLocaleString()} · Coconut: ${inventoryCounts.coconut.toLocaleString()}`
+                    : "Detected banana plants"}
                 </div>
               }
               progress={1}
@@ -249,7 +251,7 @@ export function SectionCards({
             <StatCard
               title="Surveys Processed"
               value={surveys.filter((s) => s.ortho != null).length}
-              description="Surveys with orthomosaic and detection data"
+              description="Surveys with aerial map data"
               footerContent={
                 <div className="line-clamp-1 flex gap-2 font-medium">
                   <span>of {surveys.length} total surveys</span>
@@ -262,7 +264,7 @@ export function SectionCards({
             <StatCard
               title="Crop Count: Healthy"
               value={numHealthyBananas.toLocaleString()}
-              description='Detected "healthy-looking" banana plants'
+              description="Banana plants marked Healthy by the app"
               badge={
                 <Badge
                   variant="outline"
@@ -285,7 +287,7 @@ export function SectionCards({
             <StatCard
               title="Crop Count: Infected"
               value={numUnhealthyBananas.toLocaleString()}
-              description='Detected "infected" banana plants'
+              description="Banana plants marked Infected by the app"
               badge={
                 <Badge
                   variant="outline"
@@ -309,6 +311,11 @@ export function SectionCards({
           </>
         )}
       </div>
+      {surveys.length > 1 && (
+        <p role="note" className="text-sm leading-5 text-muted-foreground">
+          Totals add up each survey's results. If surveys overlap, the same plant may be counted more than once.
+        </p>
+      )}
     </div>
   );
 }

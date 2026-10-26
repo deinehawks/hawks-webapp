@@ -11,6 +11,10 @@ export const MAP_COLORS = {
     base: "#06b6d4",
     heatmap: "6, 182, 212",
   },
+  coconut: {
+    base: "#a855f7", // Violet contrasts with foliage, cyan inventory and health colors.
+    heatmap: "168, 85, 247",
+  },
   boundary: "#0ea5e9", // sky-500
   hover: "#06b6d4", // cyan-500
 } as const;
@@ -33,4 +37,4 @@ export const MAP_COLORS = {
   hover: "#a78bfa", // Keep your existing hover color
 } as const; */
 
-export type PlantHealth = "healthy" | "unhealthy" | "inventory";
+export type PlantHealth = "healthy" | "unhealthy" | "inventory" | "coconut";

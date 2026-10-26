@@ -1,6 +1,15 @@
 "use server";
 import { loadRecordingSurveys } from "@/lib/recording/surveys";
+import { filterWorkshopClients } from "@/lib/workshop-visibility";
+
 export async function getAllClients() {
   const surveys = await loadRecordingSurveys();
-  return [...new Map(surveys.filter((s) => s.client).map((s) => [s.client!.id, s.client!])).values()];
+  const clients = [
+    ...new Map(
+      surveys
+        .filter((survey) => survey.client)
+        .map((survey) => [survey.client!.id, survey.client!]),
+    ).values(),
+  ];
+  return filterWorkshopClients(clients);
 }

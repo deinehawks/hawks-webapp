@@ -4,7 +4,10 @@ export type SurveyMapState = {
   activeTab: string;
   selectedFoi: string;
   popupInfo: {
+    detectionKey?: string;
     pairId: string;
+    areaCode?: string;
+    label?: string;
     areaId: string;
     centerLng: number;
     centerLat: number;
@@ -23,7 +26,10 @@ export type SurveyMapActions = {
   setSelectedFoi: (selectedFoi: string) => void;
   setPopupInfo: (
     popupInfo: {
+      detectionKey?: string;
       pairId: string;
+      areaCode?: string;
+      label?: string;
       areaId: string;
       centerLng: number;
       centerLat: number;

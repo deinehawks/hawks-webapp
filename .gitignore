@@ -63,7 +63,9 @@ next-env.d.ts
 # /public/3d/mdahi
 # /public/3d/mxl
 /public/3d
-
 # Private recording selection, verified catalog and local setup
 /.recording/
 /.tmp/
+
+# Local workshop datasets (served at runtime, never bundled)
+/workshop-data/

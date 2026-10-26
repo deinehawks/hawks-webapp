@@ -1,6 +1,13 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { ALL_SURVEYS, getSurveyChoices, getSurveySelectionData, getSurveyLabel, getSurveyTileUrl, sortSurveysById, orderSurveyLayers } from "@/lib/helpers/survey-selection";
+import { createSurveyPriorityMask } from "@/lib/helpers/survey-priority";
+import { SurveyChoicePopup, type SurveyChoiceLocation } from "./shared/survey-choice-popup";
+import { SurveyDetailsPopup } from "./shared/survey-details-popup";
+import { PlantDetailsPopup } from "./shared/plant-details-popup";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertCircle, Check, Layers, LoaderCircle, Scan, Info } from "lucide-react";
 import {
   calculateGlobalCenters,
   findExtremeCoordinates,
@@ -11,16 +18,12 @@ import {
   Map,
   MapMouseEvent,
   MapProvider,
-  Popup,
   Source,
   useMap,
 } from "@vis.gl/react-maplibre";
 import type { MapProps } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type {
-  StyleSpecification,
-  GeoJSONSourceSpecification,
-} from "maplibre-gl";
+import type { StyleSpecification } from "maplibre-gl";
 import type {
   Feature,
   FeatureCollection,
@@ -44,19 +47,17 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateFeatureCollection } from "@/lib/helpers/geometry";
+import { PlantFilterSelect } from "./shared/plant-filter-select";
+import { countPlantDetections, filterPlantDetections, findPlantDetection, getPlantDetectionSets, getDetectionKey, getDetectionPlantType, getDetectionCenter, resolveDetectionFilter, type DemoCountMultipliers } from "@/lib/helpers/detection-labels";
+import { InventoryLayers } from "./shared/inventory-layers";
+import { InventoryLegend } from "./shared/inventory-legend";
+import { generateInventoryFeatureCollection, generateFeatureCollection } from "@/lib/helpers/geometry";
 import { GeometryType, type ComputerVisionObject } from "@/lib/types";
 import { useOrthoMapStore } from "@/providers/ortho-map-store-provider";
-import { getYear } from "date-fns";
-import Link from "next/link";
 import { calculateOptimalZoomLevels } from "@/lib/helpers/map-zoom";
 import MapLegend from "@/components/maps/shared/map-legend";
 import { SurveyModeToggle } from "@/components/maps/shared/survey-mode-toggle";
@@ -67,6 +68,18 @@ import { PIN_IMAGES } from "@/lib/constants/map-icons";
 import { MAP_COLORS } from "@/lib/constants/map-colors";
 import { createHeatmapPaint } from "@/lib/constants/map-heatmap";
 import { createPinLayout } from "@/lib/constants/map-layers";
+
+const ORTHOMAP_STYLE: StyleSpecification = {
+  version: 8,
+  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  sources: {
+    osm: {
+      type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tileSize: 256, maxzoom: 19, attribution: "&copy; OpenStreetMap Contributors",
+    },
+  },
+  layers: [{ id: "osm", type: "raster", source: "osm" }],
+};
 
 // ============================================================================
 // LOCAL TYPES
@@ -79,6 +92,7 @@ type SurveyLike = {
   id: string | number;
   code?: string | null;
   flight_date?: string | Date | null;
+  ortho?: { tile_folder?: string | null } | null;
   boundaries?: unknown[];
   min_y?: number;
   max_y?: number;
@@ -118,18 +132,6 @@ function calculateCentroid(coordinates: number[][][]) {
   return [sum.x / points.length, sum.y / points.length] as const;
 }
 
-function calculateCentersWithOffset(
-  min_lon: number,
-  max_lon: number,
-  min_lat: number,
-  max_lat: number,
-) {
-  return {
-    centerLng: (min_lon + max_lon) / 2,
-    centerLat: (min_lat + max_lat) / 2,
-  };
-}
-
 // ============================================================================
 // MAP COMPONENTS
 // ============================================================================
@@ -140,75 +142,81 @@ const MapEvents = React.memo(
     showBoundaries,
     code,
     detectedObjects,
+    isOverview,
+    onChooseSurvey,
   }: {
+    isOverview: boolean;
+    onChooseSurvey: (id: string) => void;
     surveys: SurveyLike[];
     showBoundaries: boolean;
     code?: string;
     detectedObjects: ComputerVisionObject[];
   }) => {
     const { orthomap } = useMap();
-    const { setPopupInfo, setHoveredPairId, setPlantPopupInfo } =
+    const { selectedFoi, setPopupInfo, setHoveredPairId, setPlantPopupInfo } =
       useOrthoMapStore((state) => state);
     const { surveyMode } = useSurveyModeStore();
+    const activeObjects = useMemo(() => filterPlantDetections(detectedObjects, selectedFoi, surveyMode), [detectedObjects, selectedFoi, surveyMode]);
 
-    const handleMapClick = useCallback(
-      (e: MapMouseEvent) => {
-        if (!showBoundaries || !surveys || !e.features?.length) return;
+    const [choice, setChoice] = useState<SurveyChoiceLocation<SurveyLike> | null>(null);
+    const openSurveyPopup = useCallback((survey: SurveyLike) => {
+      setChoice(null);
+      setPlantPopupInfo(null);
+      if (!survey.boundaries?.length) return;
+      const [lng, lat] = calculateCentroid([
+        transformCoordinatesToLonLatFormat(survey.boundaries as any),
+      ]);
+      setPopupInfo({ ...survey, lat, lng });
+      orthomap?.easeTo({
+        center: [lng, lat], zoom: Math.max(orthomap.getZoom(), 16),
+        offset: [0, 80], duration: 1400,
+      });
+    }, [orthomap, setPopupInfo, setPlantPopupInfo]);
 
-        const surveyId = e.features[0]?.properties?.survey_id;
-        const clickedSurvey = surveys.find(
-          (s) => String(s.id) === String(surveyId),
-        );
+    const chooseSurvey = useCallback((survey: SurveyLike) => {
+      setChoice(null);
+      if (isOverview) onChooseSurvey(String(survey.id));
+      else openSurveyPopup(survey);
+    }, [isOverview, onChooseSurvey, openSurveyPopup]);
 
-        if (clickedSurvey && clickedSurvey.boundaries) {
-          const coordinates = [
-            transformCoordinatesToLonLatFormat(clickedSurvey.boundaries as any),
-          ];
-          const [lng, lat] = calculateCentroid(coordinates);
+    const handleMapClick = useCallback((event: MapMouseEvent) => {
+      if (!orthomap) return;
+      const pinLayers = (surveyMode === "inventory"
+        ? [`${code}-inventory-pin`] : [`${code}-healthy-pin`, `${code}-unhealthy-pin`])
+        .filter((id) => orthomap.getLayer(id));
+      if (pinLayers.length && orthomap.queryRenderedFeatures(event.point, { layers: pinLayers }).length) return;
+      setPopupInfo(null);
+      setChoice(null);
+      if (!showBoundaries || !orthomap.getLayer("area-fills")) return;
+      const candidates = getSurveyChoices(
+        orthomap.queryRenderedFeatures(event.point, { layers: ["area-fills"] }), surveys,
+      );
+      if (candidates.length === 1) openSurveyPopup(candidates[0]);
+      else if (candidates.length > 1) setChoice({
+        longitude: event.lngLat.lng, latitude: event.lngLat.lat, surveys: candidates,
+      });
+    }, [orthomap, surveyMode, code, showBoundaries, surveys, openSurveyPopup, setPopupInfo]);
 
-          setPopupInfo({ ...(clickedSurvey as any), lat, lng });
-
-          orthomap?.flyTo({
-            center: [lng, lat],
-            zoom: Math.max(orthomap.getZoom(), 16),
-            padding: { top: 250, bottom: 25, left: 50, right: 50 },
-            duration: 800,
-            curve: 1.4,
-            essential: true,
-          });
-        }
-      },
-      [surveys, setPopupInfo, orthomap, showBoundaries],
-    );
+    useEffect(() => { setChoice(null); }, [surveys, showBoundaries]);
 
     const handlePinClick = useCallback(
       (e: MapMouseEvent) => {
-        const objectPairId = e.features?.[0]?.properties?.pairId as
-          | string
-          | undefined;
-        if (!objectPairId) return;
-
-        const clickedObject = detectedObjects.find(
-          (o) => o.pairId === objectPairId,
-        );
+        const clickedObject = findPlantDetection(activeObjects, e.features?.[0]?.properties ?? {});
         if (!clickedObject) return;
 
         const { pairId, areaPairId: areaId, bbox, label } = clickedObject;
-        const { centerLng, centerLat } = calculateCentersWithOffset(
-          bbox.min_lon,
-          bbox.max_lon,
-          bbox.min_lat,
-          bbox.max_lat,
-        );
+        const { lon: centerLng, lat: centerLat } = getDetectionCenter(bbox);
 
-        setPlantPopupInfo({ pairId, areaId, centerLng, centerLat, label });
+        setPopupInfo(null);
+        setChoice(null);
+        setPlantPopupInfo({ detectionKey: getDetectionKey(clickedObject), pairId, areaId, areaCode: clickedObject.areaCode, centerLng, centerLat, label });
       },
-      [detectedObjects, setPlantPopupInfo],
+      [activeObjects, setPlantPopupInfo, setPopupInfo],
     );
 
     const handlePinHover = useCallback(
       (e: MapMouseEvent) => {
-        const pairId = e.features?.[0]?.properties?.pairId as
+        const pairId = (e.features?.[0]?.properties?.detectionKey ?? e.features?.[0]?.properties?.pairId) as
           | string
           | undefined;
         setHoveredPairId(pairId || null);
@@ -230,11 +238,7 @@ const MapEvents = React.memo(
           ? [`${code}-inventory-pin`]
           : [`${code}-unhealthy-pin`, `${code}-healthy-pin`];
 
-      const boundaryLayers = ["area-fills"];
-
-      boundaryLayers.forEach((layer) =>
-        orthomap.on("click", layer, handleMapClick),
-      );
+      orthomap.on("click", handleMapClick);
       pinLayers.forEach((layer) => orthomap.on("click", layer, handlePinClick));
       pinLayers.forEach((layer) => {
         orthomap.on("mouseenter", layer, handlePinHover);
@@ -242,9 +246,7 @@ const MapEvents = React.memo(
       });
 
       return () => {
-        boundaryLayers.forEach((layer) =>
-          orthomap.off("click", layer, handleMapClick),
-        );
+        orthomap.off("click", handleMapClick);
         pinLayers.forEach((layer) =>
           orthomap.off("click", layer, handlePinClick),
         );
@@ -263,11 +265,46 @@ const MapEvents = React.memo(
       handlePinLeave,
     ]);
 
-    return null;
+    return choice ? <SurveyChoicePopup choice={choice} onChoose={chooseSurvey}
+      onClose={() => setChoice(null)} /> : null;
   },
 );
 
 MapEvents.displayName = "MapEvents";
+
+// Keep the map mounted while fitting and ordering newly selected sources.
+const ActiveSurveyView = React.memo(({ bounds, rasterIds }: {
+  bounds: any;
+  rasterIds: string[];
+}) => {
+  const { orthomap } = useMap();
+  const sourceKey = rasterIds.join("|");
+  useEffect(() => {
+    if (orthomap && bounds) {
+      // Popup positioning must not reduce the space available to the next survey.
+      orthomap.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+      orthomap.fitBounds(bounds, {
+        padding: 24, duration: 600, maxZoom: 20, linear: true,
+      });
+    }
+  }, [orthomap, bounds]);
+
+  useEffect(() => {
+    if (!orthomap) return;
+    let ordering = false;
+    const order = () => {
+      if (ordering || !orthomap.getLayer("area-fills")) return;
+      ordering = true;
+      try { orderSurveyLayers(orthomap, rasterIds); }
+      finally { ordering = false; }
+    };
+    order();
+    orthomap.on("styledata", order);
+    return () => { orthomap.off("styledata", order); };
+  }, [orthomap, sourceKey]);
+  return null;
+});
+ActiveSurveyView.displayName = "ActiveSurveyView";
 
 const InitializeMapImages = React.memo(() => {
   const { orthomap } = useMap();
@@ -311,6 +348,7 @@ const InitializeMapImages = React.memo(() => {
     loadSvgImage(PIN_IMAGES.yellow, "pin-yellow");
     loadSvgImage(PIN_IMAGES.red, "pin-red");
     loadSvgImage(PIN_IMAGES.gray, "pin-gray");
+    loadSvgImage(PIN_IMAGES.coconut, "pin-coconut");
   }, [orthomap]);
 
   return null;
@@ -325,126 +363,8 @@ const MapPopup = React.memo(() => {
   if (!info) return null;
 
   return (
-    <AnimatePresence mode="wait">
-      <Popup
-        key={info.id}
-        anchor="bottom"
-        longitude={info.lng}
-        latitude={info.lat}
-        onClose={() => setPopupInfo(null)}
-        closeOnClick={false}
-        closeOnMove={false}
-        maxWidth="none"
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 12, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 12, scale: 0.95 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="rounded-xl overflow-hidden shadow-xl border border-border bg-card w-full max-w-85"
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.07 }}
-            className="bg-primary px-4 py-3.5 border-b"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <div className="text-[11px] uppercase tracking-wider text-primary-foreground/70 font-medium mb-1">
-                  Survey Area
-                </div>
-                <div className="text-lg font-semibold text-primary-foreground">
-                  {`${info.access_code ?? ""}-${info.area_code ?? ""}`}
-                </div>
-              </div>
-              <div className="text-xs px-2.5 py-1 bg-primary-foreground/20 text-primary-foreground rounded-md font-medium">
-                #{info.id}
-              </div>
-            </div>
-          </motion.div>
-
-          <div className="bg-card px-4 py-3.5 space-y-3">
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.11 }}
-            >
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border/50">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full bg-primary" />
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Area
-                  </span>
-                </div>
-                <span className="text-base font-bold text-foreground">
-                  {Number(info.area ?? 0).toFixed(2)} ha
-                </span>
-              </div>
-            </motion.div>
-
-            {(info.flight_date || info.location || info.tags) && (
-              <>
-                <Separator />
-                <motion.div
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
-                  className="space-y-2"
-                >
-                  {info.flight_date && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">
-                        Flight date
-                      </span>
-                      <span className="text-sm font-semibold text-foreground">
-                        {new Date(info.flight_date).toLocaleDateString()}
-                      </span>
-                    </div>
-                  )}
-                  {info.location && (
-                    <div className="flex justify-between items-center gap-3">
-                      <span className="text-sm text-muted-foreground">
-                        Location
-                      </span>
-                      <span
-                        className="text-sm font-semibold text-foreground truncate max-w-[180px]"
-                        title={info.location}
-                      >
-                        {info.location}
-                      </span>
-                    </div>
-                  )}
-                  {info.tags && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">
-                        Type
-                      </span>
-                      <span className="text-xs font-semibold text-foreground uppercase px-2 py-0.5 bg-muted rounded">
-                        {info.tags}
-                      </span>
-                    </div>
-                  )}
-                </motion.div>
-              </>
-            )}
-
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.18 }}
-              className="pt-1"
-            >
-              <Link href={`/dashboard/surveys/${info.id}`}>
-                <button className="w-full px-4 py-2.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold shadow-sm">
-                  View Details →
-                </button>
-              </Link>
-            </motion.div>
-          </div>
-        </motion.div>
-      </Popup>
-    </AnimatePresence>
+    <SurveyDetailsPopup survey={info} longitude={info.lng} latitude={info.lat}
+      onClose={() => setPopupInfo(null)} />
   );
 });
 
@@ -454,214 +374,99 @@ const PlantPopup = React.memo(() => {
   const { plantPopupInfo, setPlantPopupInfo } = useOrthoMapStore(
     (state) => state,
   );
-  const { surveyMode } = useSurveyModeStore(); // ← add
+  const { surveyMode } = useSurveyModeStore();
 
   if (!plantPopupInfo) return null;
 
-  const { centerLng, centerLat, label } = plantPopupInfo; // ← destructure label
-  const isHealthy = String(label ?? "").includes("Healthy");
-
   return (
-    <Popup
-      anchor="bottom"
-      longitude={centerLng}
-      latitude={centerLat}
-      onClose={() => setPlantPopupInfo(null)}
-      closeOnClick={false}
-    >
-      <div className="flex flex-col w-fit gap-1 min-w-40">
-        <div className="font-semibold">Plant Information</div>
-        <Separator />
-        <div className="flex flex-col gap-1">
-          {label && (
-            <div className="grid grid-cols-2 gap-2">
-              <span>Status:</span>
-              <span
-                className={
-                  surveyMode === "inventory"
-                    ? "text-muted-foreground"
-                    : isHealthy
-                      ? "text-green-600 font-medium"
-                      : "text-red-600 font-medium"
-                }
-              >
-                {surveyMode === "inventory"
-                  ? "Plant"
-                  : isHealthy
-                    ? "Healthy"
-                    : "Infected"}
-              </span>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-2">
-            <span>Longitude:</span>
-            <span className="text-muted-foreground">
-              {centerLng.toFixed(6)}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <span>Latitude:</span>
-            <span className="text-muted-foreground">
-              {centerLat.toFixed(6)}
-            </span>
-          </div>
-        </div>
-      </div>
-    </Popup>
+    <PlantDetailsPopup longitude={plantPopupInfo.centerLng} latitude={plantPopupInfo.centerLat}
+      label={plantPopupInfo.label} surveyId={plantPopupInfo.areaCode} mode={surveyMode}
+      onClose={() => setPlantPopupInfo(null)} />
   );
 });
 
 PlantPopup.displayName = "PlantPopup";
 
 const SourceLoadingStatus = React.memo(
-  ({ idList }: { idList: Array<string | number> }) => {
-    const { areAllSourcesLoaded, setAreAllSourcesLoaded } = useOrthoMapStore(
-      (state) => state,
-    );
+  ({ idList }: { idList: string[] }) => {
     const { orthomap } = useMap();
+    const [status, setStatus] = useState<"loading" | "loaded" | "error" | "empty">("loading");
+    const sourceKey = idList.join("|");
 
     useEffect(() => {
       if (!orthomap) return;
-
-      const handleIdle = () => setAreAllSourcesLoaded(true);
-      orthomap.on("idle", handleIdle);
-
-      return () => {
-        orthomap.off("idle", handleIdle);
+      let failed = false;
+      setStatus(idList.length ? "loading" : "empty");
+      const update = () => {
+        if (!idList.length) return setStatus("empty");
+        if (failed) return setStatus("error");
+        const loaded = idList.every((id) => orthomap.getSource(id) && orthomap.isSourceLoaded(id));
+        setStatus(loaded ? "loaded" : "loading");
       };
-    }, [orthomap, setAreAllSourcesLoaded]);
+      const error = (event: { sourceId?: string }) => {
+        if (event.sourceId && idList.includes(event.sourceId)) {
+          failed = true;
+          setStatus("error");
+        }
+      };
+      orthomap.on("sourcedata", update);
+      orthomap.on("idle", update);
+      orthomap.on("error", error);
+      update();
+      return () => {
+        orthomap.off("sourcedata", update);
+        orthomap.off("idle", update);
+        orthomap.off("error", error);
+      };
+    }, [orthomap, sourceKey]);
 
-    return (
-      <div className="text-sm text-muted-foreground">
-        {areAllSourcesLoaded ? "All sources loaded." : "Loading map sources..."}
-      </div>
-    );
+    const Icon = status === "loading" ? LoaderCircle : status === "loaded" ? Check
+      : status === "error" ? AlertCircle : Info;
+    return <div role="status" aria-live="polite"
+      className={`flex items-center gap-1.5 text-xs ${status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+      <Icon aria-hidden="true" className={`size-3.5 shrink-0 ${status === "loading" ? "animate-spin motion-reduce:animate-none" : ""}`} />
+      {status === "loaded" ? "Ready" : status === "error" ? "Some imagery unavailable"
+        : status === "empty" ? "No imagery" : "Loading imagery…"}
+    </div>;
   },
 );
 
 SourceLoadingStatus.displayName = "SourceLoadingStatus";
 
 const OrthomapFoiSelector = React.memo(
-  ({ detectedObjects }: { detectedObjects: ComputerVisionObject[] }) => {
-    const { selectedFoi, setSelectedFoi } = useOrthoMapStore((state) => state);
-    const [placeholder, setPlaceholder] = useState("feature of interest");
-
-    useEffect(() => {
-      const updatePlaceholder = () =>
-        setPlaceholder(window.innerWidth < 768 ? "FOI" : "feature of interest");
-      updatePlaceholder();
-      window.addEventListener("resize", updatePlaceholder);
-      return () => window.removeEventListener("resize", updatePlaceholder);
-    }, []);
-
-    const counts = useMemo(() => {
-      if (!detectedObjects || !Array.isArray(detectedObjects))
-        return { healthy: 0, unhealthy: 0 };
-      return {
-        healthy: detectedObjects.filter(
-          (obj) => obj.label === "Banana Plant (Healthy-looking)",
-        ).length,
-        unhealthy: detectedObjects.filter(
-          (obj) => obj.label === "Banana Plant (Infected)",
-        ).length,
-      };
-    }, [detectedObjects]);
-
+  ({ detectedObjects, demoCountMultipliers }: { detectedObjects: ComputerVisionObject[]; demoCountMultipliers?: DemoCountMultipliers }) => {
+    const { selectedFoi, setSelectedFoi, setPlantPopupInfo, setHoveredPairId } = useOrthoMapStore(state => state);
     const { surveyMode } = useSurveyModeStore();
-
-    return (
-      <Select value={selectedFoi} onValueChange={setSelectedFoi}>
-        <SelectTrigger className="w-fit" id="foi-selector">
-          <Label>Crop Status:</Label>
-          <SelectValue placeholder={`Select ${placeholder}`} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            <SelectLabel>Feature of Interest</SelectLabel>
-            <SelectItem value="none">None</SelectItem>
-            {surveyMode === "analysis" && (
-              <>
-                <SelectItem value="healthy">
-                  Healthy Banana
-                  {selectedFoi === "healthy" && (
-                    <Badge variant="secondary" className="ml-2 rounded-full">
-                      {counts.healthy}
-                    </Badge>
-                  )}
-                </SelectItem>
-                <SelectItem value="unhealthy">
-                  Unhealthy Banana
-                  {selectedFoi === "unhealthy" && (
-                    <Badge variant="secondary" className="ml-2 rounded-full">
-                      {counts.unhealthy}
-                    </Badge>
-                  )}
-                </SelectItem>
-              </>
-            )}
-            <SelectItem value="all">
-              All
-              {selectedFoi === "all" && (
-                <Badge variant="secondary" className="ml-2 rounded-full">
-                  {counts.healthy + counts.unhealthy}
-                </Badge>
-              )}
-            </SelectItem>
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-    );
+    const counts = useMemo(() => countPlantDetections(detectedObjects), [detectedObjects]);
+    const selection = resolveDetectionFilter(selectedFoi, surveyMode, counts.coconut > 0);
+    useEffect(() => {
+      if (selection !== selectedFoi) setSelectedFoi(selection);
+      setPlantPopupInfo(null);
+      setHoveredPairId(null);
+    }, [selection, selectedFoi, surveyMode, detectedObjects, setSelectedFoi, setPlantPopupInfo, setHoveredPairId]);
+    return <PlantFilterSelect detectedObjects={detectedObjects} mode={surveyMode} value={selection} onValueChange={setSelectedFoi} demoCountMultipliers={demoCountMultipliers} />;
   },
 );
 
 OrthomapFoiSelector.displayName = "OrthomapFoiSelector";
 
-const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => {
-  const surveyTiles = useMemo(() => {
-    return surveys
-      .filter((survey) => survey.tile_url && survey.code && survey.flight_date)
-      .map((survey) => ({
-        id: survey.id,
-        code: String(survey.code).toLowerCase(),
-        year: getYear(new Date(survey.flight_date as any)),
-        tileUrl: survey.tile_url!,
-        minZoom: survey.min_zoom,
-        maxZoom: survey.max_zoom,
-      }));
-  }, [surveys]);
-
-  return (
-    <>
-      {surveyTiles.map((tile) => (
-        <Source
-          key={tile.id}
-          id={String(tile.id)}
-          type="raster"
-          tiles={[tile.tileUrl]}
-          scheme="tms"
-          tileSize={256}
-          minzoom={tile.minZoom}
-          maxzoom={tile.maxZoom}
-        >
-          <Layer
-            id={String(tile.id)}
-            type="raster"
-            source={String(tile.id)}
-            minzoom={10}
-            maxzoom={24}
-            paint={{
-              // PERFORMANCE: Fade in tiles faster for snappier feel
-              "raster-fade-duration": 150, // Default is 300ms
-              // Optional: Reduce resampling for sharper tiles at non-integer zooms
-              "raster-resampling": "nearest", // or "linear" for smoother
-            }}
-          />
+const RasterTiles = React.memo(({ surveys }: { surveys: SurveyLike[] }) => (
+  <>
+    {surveys.map((survey) => {
+      const url = getSurveyTileUrl(survey);
+      if (!url) return null;
+      return (
+        <Source key={survey.id} id={String(survey.id)} type="raster"
+          tiles={[url]} scheme="tms" tileSize={256}
+          minzoom={survey.min_zoom ?? 11} maxzoom={survey.max_zoom ?? 24}>
+          <Layer id={String(survey.id)} type="raster" source={String(survey.id)}
+            beforeId="area-fills" minzoom={11} maxzoom={24}
+            paint={{ "raster-fade-duration": 150, "raster-resampling": "linear" }} />
         </Source>
-      ))}
-    </>
-  );
-});
-
+      );
+    })}
+  </>
+));
 RasterTiles.displayName = "RasterTiles";
 
 // FIXED: Memoized FeaturesOfInterest component with proper layer ordering
@@ -679,41 +484,32 @@ const FeaturesOfInterest = React.memo(
     const { surveyMode } = useSurveyModeStore(); // ← add
 
     const { healthyBananas, unhealthyBananas } = useMemo(() => {
-      if (!detectedObjects || !Array.isArray(detectedObjects))
-        return { healthyBananas: "", unhealthyBananas: "" };
+      const analysis = getPlantDetectionSets(detectedObjects).analysis;
       return {
         healthyBananas: generateFeatureCollection(
           GeometryType.Point,
           "Banana Plant (Healthy-looking)",
-          detectedObjects,
+          analysis,
         ),
         unhealthyBananas: generateFeatureCollection(
           GeometryType.Point,
           "Banana Plant (Infected)",
-          detectedObjects,
+          analysis,
         ),
       };
     }, [detectedObjects]);
 
-    const allBananasFC = useMemo(() => {
-      const healthy = (healthyBananas as any)?.features ?? [];
-      const unhealthy = (unhealthyBananas as any)?.features ?? [];
-      return {
-        type: "FeatureCollection",
-        features: [...healthy, ...unhealthy],
-      };
-    }, [healthyBananas, unhealthyBananas]);
+    const counts = useMemo(() => countPlantDetections(detectedObjects), [detectedObjects]);
+    const activeFilter = resolveDetectionFilter(selectedFoi, surveyMode, counts.coconut > 0);
+    const activeObjects = useMemo(() => filterPlantDetections(detectedObjects, activeFilter, surveyMode), [detectedObjects, activeFilter, surveyMode]);
+    const allBananasFC = useMemo(() => generateInventoryFeatureCollection(detectedObjects, activeFilter), [detectedObjects, activeFilter]);
 
     const selectedPlantBbox = useMemo<FeatureCollection<
       Polygon,
       GeoJsonProperties
     > | null>(() => {
-      const selectedId = plantPopupInfo?.pairId || hoveredPairId;
-      if (!selectedId) return null;
-
-      const selectedObject = detectedObjects.find(
-        (obj) => obj.pairId === selectedId,
-      );
+      const selectedObject = findPlantDetection(activeObjects,
+        plantPopupInfo ?? { detectionKey: hoveredPairId });
       if (!selectedObject) return null;
 
       const { min_lon, max_lon, min_lat, max_lat } = selectedObject.bbox;
@@ -742,7 +538,7 @@ const FeaturesOfInterest = React.memo(
           },
         ],
       };
-    }, [detectedObjects, plantPopupInfo, hoveredPairId]);
+    }, [activeObjects, plantPopupInfo, hoveredPairId]);
 
     const isHealthy =
       selectedPlantBbox?.features[0]?.properties &&
@@ -750,10 +546,10 @@ const FeaturesOfInterest = React.memo(
         "Healthy",
       );
 
-    // ← inventory always uses inventory color
+    // Inventory highlights identify the species, rather than its health.
     const selectedColor =
       surveyMode === "inventory"
-        ? MAP_COLORS.inventory.base
+        ? getDetectionPlantType(selectedPlantBbox?.features[0]?.properties?.label) === "coconut" ? MAP_COLORS.coconut.base : MAP_COLORS.inventory.base
         : isHealthy
           ? MAP_COLORS.healthy.base
           : MAP_COLORS.unhealthy.base;
@@ -804,32 +600,7 @@ const FeaturesOfInterest = React.memo(
           )}
           {showInventoryPins && (
             <>
-              <Source
-                id={`${code}-inventory`}
-                type="geojson"
-                data={allBananasFC as any}
-              >
-                <Layer
-                  id={`${code}-inventory-heatmap`}
-                  type="heatmap"
-                  maxzoom={allZoomLevels.heatmapMaxZoom}
-                  paint={createHeatmapPaint("inventory")}
-                />
-              </Source>
-
-              <Source
-                id={`${code}-inventory-pins`}
-                type="geojson"
-                data={allBananasFC as any}
-              >
-                <Layer
-                  id={`${code}-inventory-pin`}
-                  type="symbol"
-                  minzoom={allZoomLevels.pinMinZoom}
-                  layout={createPinLayout("pin-gray")}
-                  paint={{ "icon-opacity": 0.9 }}
-                />
-              </Source>
+              <InventoryLayers id={code} data={allBananasFC as FeatureCollection<any>} zoomLevels={allZoomLevels} />
             </>
           )}
         </>
@@ -863,7 +634,7 @@ const FeaturesOfInterest = React.memo(
           </Source>
         )}
 
-        {(selectedFoi === "healthy" || selectedFoi === "all") && (
+        {(activeFilter === "healthy" || activeFilter === "all") && (
           <>
             <Source
               id={`${code}-healthy`}
@@ -893,7 +664,7 @@ const FeaturesOfInterest = React.memo(
           </>
         )}
 
-        {(selectedFoi === "unhealthy" || selectedFoi === "all") && (
+        {(activeFilter === "unhealthy" || activeFilter === "all") && (
           <>
             <Source
               id={`${code}-unhealthy`}
@@ -931,32 +702,6 @@ FeaturesOfInterest.displayName = "FeaturesOfInterest";
 
 const BoundaryLayers = React.memo(
   ({ showBoundaries }: { showBoundaries: boolean }) => {
-    const { orthomap } = useMap();
-
-    useEffect(() => {
-      if (!orthomap || !showBoundaries) return;
-
-      const moveLayersToTop = () => {
-        try {
-          if (
-            orthomap.getLayer("boundary-glow") &&
-            orthomap.getLayer("boundary-borders")
-          ) {
-            orthomap.moveLayer("boundary-glow");
-            orthomap.moveLayer("boundary-borders");
-          }
-        } catch (e) {
-          console.warn("Error moving boundary layers:", e);
-        }
-      };
-
-      moveLayersToTop();
-      orthomap.on("styledata", moveLayersToTop);
-      return () => {
-        orthomap.off("styledata", moveLayersToTop);
-      };
-    }, [orthomap, showBoundaries]);
-
     return (
       <>
         <Layer
@@ -996,9 +741,11 @@ BoundaryLayers.displayName = "BoundaryLayers";
 export default function OrthoMap({
   surveys,
   detectedObjects,
+  demoCountMultipliers,
 }: {
   surveys: SurveyLike[];
   detectedObjects: ComputerVisionObject[] | null | undefined;
+  demoCountMultipliers?: DemoCountMultipliers;
 }) {
   if (!surveys || !Array.isArray(surveys) || surveys.length === 0) {
     return (
@@ -1019,18 +766,47 @@ export default function OrthoMap({
     );
   }
 
-  const safeDetectedObjects = useMemo(
-    () => detectedObjects ?? [],
-    [detectedObjects],
+  return <OrthoMapContent surveys={surveys} detectedObjects={detectedObjects} demoCountMultipliers={demoCountMultipliers} />;
+}
+
+function OrthoMapContent({ surveys: availableSurveys, detectedObjects, demoCountMultipliers }: {
+  surveys: SurveyLike[];
+  detectedObjects: ComputerVisionObject[] | null | undefined;
+  demoCountMultipliers?: DemoCountMultipliers;
+}) {
+  const orderedSurveys = useMemo(() => sortSurveysById(availableSurveys), [availableSurveys]);
+  const [requestedId, setRequestedId] = useState(() => String(orderedSurveys[0].id));
+  const selectionData = useMemo(
+    () => getSurveySelectionData(orderedSurveys, detectedObjects ?? [], requestedId),
+    [orderedSurveys, detectedObjects, requestedId],
   );
-
+  const { selection: activeSurveyId, surveys } = selectionData;
+  const isOverview = activeSurveyId === ALL_SURVEYS;
+  const { surveyMode } = useSurveyModeStore();
   const [showBoundaries, setShowBoundaries] = useState(false);
-  const { selectedFoi, setPopupInfo } = useOrthoMapStore((state) => state);
+  const { selectedFoi, setPopupInfo, setPlantPopupInfo, setHoveredPairId } = useOrthoMapStore((state) => state);
+  const selectSurvey = useCallback((id: string) => {
+    setPopupInfo(null);
+    setPlantPopupInfo(null);
+    setHoveredPairId(null);
+    setRequestedId(id);
+  }, [setPopupInfo, setPlantPopupInfo, setHoveredPairId]);
 
-  const surveyIds = useMemo(() => surveys.map((s) => s.id), [surveys]);
-  const client = surveys[0]?.client;
-  const clientCode = client?.code || surveys[0]?.code || "Client";
-  const clientName = client?.name || clientCode;
+  useEffect(() => {
+    setRequestedId(activeSurveyId);
+    setPopupInfo(null);
+    setPlantPopupInfo(null);
+    setHoveredPairId(null);
+  }, [activeSurveyId, setPopupInfo, setPlantPopupInfo, setHoveredPairId]);
+
+  const surveyIds = useMemo(
+    () => surveys.filter((survey) => getSurveyTileUrl(survey)).map((survey) => String(survey.id)),
+    [surveys],
+  );
+  const client = availableSurveys[0]?.client;
+  const organizationLabel = [client?.code, client?.name]
+    .filter(Boolean)
+    .join(" · ") || "Organization";
 
   const { global_x, global_y } = useMemo(
     () =>
@@ -1072,7 +848,7 @@ export default function OrthoMap({
     }
   }, [surveys]);
 
-  const mapStyle = useMemo<StyleSpecification>(() => {
+  const boundaryData = useMemo(() => {
     const areaFeatures: Feature<Polygon, GeoJsonProperties>[] = surveys
       .filter((survey) => Array.isArray(survey.boundaries) && survey.boundaries.length >= 4)
       .map((survey) => {
@@ -1085,7 +861,7 @@ export default function OrthoMap({
           properties: {
             survey_id: survey.id,
             latitude: Number(((survey.max_y ?? 0) + (survey.min_y ?? 0)) / 2),
-            label: `${survey.access_code ?? ""}-${survey.area_code ?? ""}`,
+            label: `${survey.id} · ${getSurveyLabel(survey)}`,
           },
           geometry: {
             type: "Polygon",
@@ -1119,89 +895,49 @@ export default function OrthoMap({
       features: labelFeatures,
     };
 
-    return {
-      version: 8,
-      sources: {
-        osm: {
-          type: "raster",
-          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-          tileSize: 256,
-          attribution: "&copy; OpenStreetMap Contributors",
-        },
-        areas: {
-          type: "geojson",
-          data: areasData,
-          generateId: true,
-        } satisfies GeoJSONSourceSpecification,
-        "area-labels": {
-          type: "geojson",
-          data: labelsData,
-        } satisfies GeoJSONSourceSpecification,
-      },
-      layers: [
-        { id: "osm", type: "raster", source: "osm" },
-        {
-          id: "area-fills",
-          type: "fill",
-          source: "areas",
-          paint: {
-            "fill-color": [
-              "case",
-              ["boolean", ["feature-state", "hover"], false],
-              MAP_COLORS.boundary,
-              MAP_COLORS.hover,
-            ],
-            "fill-opacity": [
-              "case",
-              ["boolean", ["feature-state", "hover"], false],
-              0.7,
-              0.4,
-            ],
-          },
-        },
-        {
-          id: "area-labels",
-          type: "symbol",
-          source: "area-labels",
-          layout: {
-            "text-field": ["get", "label"],
-            "text-size": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              13,
-              10,
-              16,
-              14,
-              20,
-              18,
-            ],
-            "text-anchor": "center",
-            "text-allow-overlap": true,
-            "text-ignore-placement": true,
-            visibility: "none",
-          },
-          paint: {
-            "text-color": "#ffffff",
-            "text-halo-color": MAP_COLORS.boundary,
-            "text-halo-width": 2,
-            "text-halo-blur": 1,
-          },
-        },
-      ],
-    };
+    return { areas: areasData, labels: labelsData };
   }, [surveys]);
+
+  const detectionSets = useMemo(() => getPlantDetectionSets(selectionData.detectedObjects), [selectionData.detectedObjects]);
+  const priorityMask = useMemo(() => {
+    const boundaries = new globalThis.Map(boundaryData.areas.features.map(feature => [String(feature.properties?.survey_id), feature.geometry]));
+    return createSurveyPriorityMask(surveys.filter(survey => getSurveyTileUrl(survey)).map(survey => ({
+      id: survey.id, geometry: boundaries.get(String(survey.id)),
+    })));
+  }, [surveys, boundaryData]);
+  const visibleDetectionSets = useMemo(() => {
+    if (!isOverview) return detectionSets;
+    const visible = (object: ComputerVisionObject) => {
+      const { lon, lat } = getDetectionCenter(object.bbox);
+      return priorityMask(object.areaCode, lon, lat);
+    };
+    // Choose each survey's inventory model before masking. Otherwise hiding its
+    // last plain banana could incorrectly reactivate the health-model fallback.
+    return { inventory: detectionSets.inventory.filter(visible), analysis: detectionSets.analysis.filter(visible) };
+  }, [isOverview, detectionSets, priorityMask]);
+  const safeDetectedObjects = isOverview
+    ? surveyMode === "inventory" ? visibleDetectionSets.inventory : visibleDetectionSets.analysis
+    : selectionData.detectedObjects;
+  const missingDetectionSurveys = useMemo(() => {
+    const objects = surveyMode === "inventory" ? detectionSets.inventory : detectionSets.analysis;
+    const idsWithData = new Set(objects.map(object => object.areaCode));
+    return surveys.filter(survey => getSurveyTileUrl(survey) && !idsWithData.has(String(survey.id)));
+  }, [surveys, detectionSets, surveyMode]);
+
+  useEffect(() => {
+    setPlantPopupInfo(null);
+    setHoveredPairId(null);
+  }, [safeDetectedObjects, setPlantPopupInfo, setHoveredPairId]);
 
   const initialViewState = useMemo<MapProps["initialViewState"]>(
     () => ({
       latitude: global_y,
       longitude: global_x,
       bounds: bounds ?? undefined,
-      fitBoundsOptions: { padding: 20 },
+      fitBoundsOptions: { padding: 24, maxZoom: 20 },
     }),
     [global_x, global_y, bounds],
   );
-  const { surveyMode } = useSurveyModeStore();
 
   useEffect(() => {
     if (!showBoundaries) setPopupInfo(null);
@@ -1211,48 +947,94 @@ export default function OrthoMap({
     <div className="flex flex-1 flex-col h-full gap-4 py-4 md:gap-6 md:py-6">
       <style>{PIN_ANIMATION_STYLES}</style>
 
-      <Tabs
-        defaultValue="orthomap"
-        className="flex w-full flex-col justify-start gap-6"
-      >
-        <div className="flex items-center justify-between px-4 lg:px-6">
-          <TabsList>
-            <TabsTrigger value="orthomap">Orthomap</TabsTrigger>
-          </TabsList>
-          <div className="flex items-center gap-2">
-            <SurveyModeToggle />
-            <div>
-              <OrthomapFoiSelector detectedObjects={safeDetectedObjects} />
-            </div>
-            <Button
-              size="sm"
-              variant={showBoundaries ? "default" : "outline"}
-              onClick={() => setShowBoundaries((v) => !v)}
-            >
-              {showBoundaries ? "Hide" : "Show"} Boundaries
-            </Button>
-          </div>
-        </div>
-      </Tabs>
-
       <MapProvider>
-        <div className="flex flex-1 h-full px-4 lg:px-6">
-          <Card className="@container/card flex flex-1 flex-col h-full relative">
-            <CardHeader>
-              <CardTitle>{clientName}</CardTitle>
-              <CardDescription>
-                {clientCode} &middot; {surveys.length} {surveys.length === 1 ? "survey" : "surveys"}
-              </CardDescription>
+        <div className="flex min-w-0 flex-1 px-4 lg:px-6">
+          <Card className="@container/card relative flex min-w-0 flex-1 flex-col gap-3 py-4">
+            <CardHeader className="gap-3 px-4 sm:px-5">
+              <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <CardTitle className="text-base leading-6">Orthomap</CardTitle>
+                  <CardDescription className="mt-0.5 text-xs">
+                    {organizationLabel}
+                  </CardDescription>
+                </div>
+                <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs" aria-live="polite">
+                  <span className="text-muted-foreground">Viewing:</span>
+                  {isOverview ? (
+                    <>
+                      <Badge variant="secondary" className="rounded-md font-normal">All surveys</Badge>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button type="button" variant="outline" size="sm" className="h-11 sm:h-8" aria-label={`Survey images (${surveyIds.length})`}>
+                            <Layers aria-hidden="true" className="size-3.5" /> Survey images ({surveyIds.length})
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" collisionPadding={16} className="w-80 max-w-[calc(100vw-32px)] p-3" aria-label="Survey images">
+                          <h3 className="text-sm font-medium">Survey images</h3>
+                          <p className="mt-1 text-sm leading-5 text-muted-foreground">When surveys overlap, the image higher in this list appears in front. Only its plants are shown and counted in the overlapping area.</p>
+                          <p className="mb-2 mt-2 text-sm leading-5 text-muted-foreground">Counts also include plants outside your screen.</p>
+                          <ol className="max-h-60 space-y-1 overflow-y-auto">
+                            {[...surveys].reverse().filter((survey) => getSurveyTileUrl(survey)).map((survey, index) => (
+                              <li key={survey.id} className="flex items-center gap-3 rounded-md px-2 py-2 text-sm">
+                                <span className="w-3 shrink-0 tabular-nums text-muted-foreground">{index + 1}</span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block break-words font-medium">{survey.id}</span>
+                                  <span className="text-muted-foreground">{getSurveyLabel(survey)}</span>
+                                </span>
+                                {index === 0 && surveyIds.length > 1 && <Badge variant="outline" className="rounded font-normal">In front</Badge>}
+                              </li>
+                            ))}
+                            {surveyIds.length === 0 && <li className="py-2 text-sm text-muted-foreground">No survey images available</li>}
+                          </ol>
+                        </PopoverContent>
+                      </Popover>
+                    </>
+                  ) : <span className="font-medium">{surveys[0].id}<span className="ml-1.5 font-normal text-muted-foreground">{getSurveyLabel(surveys[0])}</span></span>}
+                </div>
+              </div>
+
+              <div className="flex min-w-0 flex-wrap items-center gap-2 border-t pt-3" role="group" aria-label="Orthomap controls">
+                <div className="w-full min-w-0 sm:w-64">
+                  <Label htmlFor="orthomap-survey" className="sr-only">Survey</Label>
+                  <Select value={activeSurveyId} onValueChange={selectSurvey}>
+                    <SelectTrigger id="orthomap-survey" aria-label="Survey" className="w-full min-w-0 data-[size=default]:h-11 sm:data-[size=default]:h-8 [&_[data-slot=select-value]]:flex-1 [&_[data-slot=select-value]]:text-left">
+                      <Layers aria-hidden="true" className="size-3.5 text-muted-foreground" />
+                      <SelectValue>{isOverview ? "All surveys" : activeSurveyId}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent align="start" collisionPadding={16} className="max-w-[calc(100vw-32px)]">
+                      {orderedSurveys.map((survey) => (
+                        <SelectItem key={survey.id} value={String(survey.id)} className="min-h-11 sm:min-h-8">
+                          <span className="flex flex-wrap gap-x-2">
+                            <span>{survey.id}</span>
+                            <span className="text-muted-foreground">{getSurveyLabel(survey)}</span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                      <SelectItem value={ALL_SURVEYS} className="min-h-11 sm:min-h-8">All surveys</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <SurveyModeToggle compact />
+                <div className="order-4 w-full min-w-0 sm:order-none sm:w-auto">
+                  <OrthomapFoiSelector detectedObjects={safeDetectedObjects} demoCountMultipliers={demoCountMultipliers} />
+                </div>
+                <Button type="button" size="sm" variant="outline" aria-pressed={showBoundaries}
+                  className={`order-3 h-11 sm:order-none sm:h-8 ${showBoundaries ? "bg-accent text-accent-foreground" : ""}`}
+                  onClick={() => setShowBoundaries((value) => !value)}>
+                  <Scan aria-hidden="true" className="size-3.5" /> Boundaries
+                </Button>
+              </div>
             </CardHeader>
 
-            <CardContent className="flex-1 relative">
-              <div className="h-full flex">
+            <CardContent className="relative flex min-h-80 min-w-0 flex-1 flex-col px-4 sm:px-5">
+              <div className="isolate flex min-h-80 min-w-0 flex-1 overflow-hidden rounded-lg bg-muted">
                 <Map
                   id="orthomap"
+                  style={{ width: "100%", height: "100%", minHeight: 320 }}
                   initialViewState={initialViewState}
-                  minZoom={13}
+                  minZoom={11}
                   maxZoom={23}
-                  mapStyle={mapStyle}
+                  mapStyle={ORTHOMAP_STYLE}
                   // PERFORMANCE: Optimize map rendering
                   renderWorldCopies={false} // Disable world duplication
                   maxTileCacheSize={500} // Increase tile cache (default ~50)
@@ -1272,34 +1054,23 @@ export default function OrthoMap({
                 >
                   <InitializeMapImages />
 
-                  {surveys
-                    .filter((survey) => survey.tile_url && survey.code && survey.flight_date)
-                    .map((survey) => (
-                      <Source
-                        key={survey.id}
-                        id={String(survey.id)}
-                        type="raster"
-                        tiles={[
-                          survey.tile_url!,
-                        ]}
-                        scheme="tms"
-                        tileSize={256}
-                        minzoom={survey.min_zoom}
-                        maxzoom={survey.max_zoom}
-                      >
-                        <Layer
-                          id={String(survey.id)}
-                          type="raster"
-                          source={String(survey.id)}
-                          minzoom={10}
-                          maxzoom={24}
-                          paint={{
-                            "raster-fade-duration": 150,
-                            "raster-resampling": "linear",
-                          }}
-                        />
-                      </Source>
-                    ))}
+                  <Source id="areas" type="geojson" data={boundaryData.areas} generateId={true}>
+                    <Layer id="area-fills" type="fill"
+                      paint={{ "fill-color": MAP_COLORS.boundary, "fill-opacity": showBoundaries ? 0.08 : 0 }} />
+                  </Source>
+                  <Source id="area-labels" type="geojson" data={boundaryData.labels}>
+                    <Layer id="area-labels" type="symbol" layout={{
+                      "text-field": ["get", "label"], "text-size": ["interpolate", ["linear"], ["zoom"], 13, 10, 16, 14, 20, 18],
+                      "text-anchor": "center", "text-allow-overlap": true, "text-ignore-placement": true,
+                      visibility: showBoundaries ? "visible" : "none",
+                    }} paint={{
+                      "text-color": "#ffffff", "text-halo-color": MAP_COLORS.boundary,
+                      "text-halo-width": 2, "text-halo-blur": 1,
+                    }} />
+                  </Source>
+
+                  <RasterTiles surveys={surveys} />
+                  <ActiveSurveyView bounds={bounds} rasterIds={surveyIds} />
 
                   {surveys.length > 0 && surveys[0].code && (
                     <FeaturesOfInterest
@@ -1312,6 +1083,8 @@ export default function OrthoMap({
                   <BoundaryLayers showBoundaries={showBoundaries} />
 
                   <MapEvents
+                    isOverview={isOverview}
+                    onChooseSurvey={selectSurvey}
                     surveys={surveys}
                     showBoundaries={showBoundaries}
                     code={
@@ -1322,6 +1095,7 @@ export default function OrthoMap({
 
                   <MapPopup />
                   <PlantPopup />
+                  {surveyMode === "inventory" && selectedFoi && selectedFoi !== "none" && <InventoryLegend detectedObjects={safeDetectedObjects} />}
                   <AnimatePresence>
                     {selectedFoi && selectedFoi !== "none" && (
                       <motion.div
@@ -1330,7 +1104,7 @@ export default function OrthoMap({
                         exit={{ opacity: 0, y: 10 }}
                         transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
                       >
-                        <MapLegend selectedFoi={selectedFoi} />
+                        <MapLegend />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -1338,8 +1112,16 @@ export default function OrthoMap({
               </div>
             </CardContent>
 
-            <CardFooter>
-              <SourceLoadingStatus idList={surveyIds} />
+            <CardFooter className="flex-wrap items-center gap-x-4 gap-y-1 px-4 sm:px-5">
+              <SourceLoadingStatus key={activeSurveyId} idList={surveyIds} />
+              {isOverview && selectedFoi && selectedFoi !== "none" && (
+                <span className="text-xs leading-5 text-muted-foreground">In overlapping areas, plants follow the survey image in front.</span>
+              )}
+              {selectedFoi && selectedFoi !== "none" && missingDetectionSurveys.length > 0 && (
+                <p role="status" className="w-full break-words text-xs leading-5 text-amber-700 dark:text-amber-400">
+                  No {surveyMode === "inventory" ? "inventory" : "analysis"} data: {missingDetectionSurveys.map(survey => survey.id).join(", ")}. {isOverview && "Plants from images underneath are hidden in overlapping areas."}
+                </p>
+              )}
             </CardFooter>
           </Card>
         </div>

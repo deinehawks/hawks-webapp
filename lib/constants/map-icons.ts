@@ -1,6 +1,16 @@
+import { MAP_COLORS } from "./map-colors";
+
 const PIN_FILL_OPACITY = 1;
 
 export const PIN_IMAGES = {
+  coconut: `<svg width="40" height="56" viewBox="0 0 40 56" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 3C11.72 3 5 9.72 5 18c0 9.5 15 33 15 33s15-23.5 15-33c0-8.28-6.72-15-15-15z"
+      fill="${MAP_COLORS.coconut.base}" stroke="#000" stroke-width="4"/>
+    <path d="M20 3C11.72 3 5 9.72 5 18c0 9.5 15 33 15 33s15-23.5 15-33c0-8.28-6.72-15-15-15z"
+      fill="none" stroke="#fff" stroke-width="2.5"/>
+    <circle cx="20" cy="18" r="6" fill="#fff" stroke="#000" stroke-width="2"/>
+    <circle cx="20" cy="18" r="3.5" fill="${MAP_COLORS.coconut.base}"/>
+  </svg>`,
   yellow: `<svg width="40" height="56" viewBox="0 0 40 56" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <filter id="shadow-yellow" x="-50%" y="-50%" width="200%" height="200%">

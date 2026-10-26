@@ -10,6 +10,7 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  { ignores: ["workshop-data/**"] },
   ...compat.config({
     extends: ["next/core-web-vitals", "next/typescript"],
     rules: {

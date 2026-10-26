@@ -1,5 +1,6 @@
 import { Feature, FeatureCollection } from "geojson";
 import { ComputerVisionObject, GeometryType } from "@/lib/types";
+import { filterPlantDetections, getDetectionKey, getDetectionPlantType, getDetectionCenter } from "./detection-labels";
 
 /**
  * Generates a FeatureCollection of either points or lines from ComputerVisionObjects,
@@ -13,52 +14,20 @@ export function generateFeatureCollection(
   featureOfInterestLabel: string,
   data: ComputerVisionObject[]
 ): FeatureCollection {
-  /**
-   * Helper function to extract or calculate center coordinates from bounding box.
-   *
-   * Supports two data formats:
-   * 1. Pre-calculated center: Uses cen_lon and cen_lat if available
-   * 2. Bounding box format: Calculates center from min/max values (other datasets)
-   *    - Center longitude = (min_lon + max_lon) / 2
-   *    - Center latitude = (min_lat + max_lat) / 2
-   *
-   * @param bbox - Bounding box object with either (cen_lon, cen_lat) or (min_lon, max_lon, min_lat, max_lat)
-   * @returns Object with lon and lat properties representing the center point
-   */
-  const getCenter = (bbox: any) => {
-    // Check if pre-calculated center coordinates are provided
-    if (bbox.cen_lon !== undefined && bbox.cen_lat !== undefined) {
-      return { lon: bbox.cen_lon, lat: bbox.cen_lat };
-    }
-
-    // Calculate center from bounding box min/max values
-    if (
-      bbox.min_lon !== undefined &&
-      bbox.max_lon !== undefined &&
-      bbox.min_lat !== undefined &&
-      bbox.max_lat !== undefined
-    ) {
-      return {
-        lon: (bbox.min_lon + bbox.max_lon) / 2, // Midpoint between left and right edges
-        lat: (bbox.min_lat + bbox.max_lat) / 2, // Midpoint between bottom and top edges
-      };
-    }
-
-    // Fallback if neither format is available to prevent errors
-    return { lon: 0, lat: 0 };
-  };
-
   if (geometryType === GeometryType.Point) {
     const features: Feature[] = data
       .filter((object) => object.label === featureOfInterestLabel)
       .map((foi) => {
-        const { lon: cen_lon, lat: cen_lat } = getCenter(foi.bbox);
+        const { lon: cen_lon, lat: cen_lat } = getDetectionCenter(foi.bbox);
         return {
           type: "Feature",
           properties: {
             pairId: foi.pairId,
             areaId: foi.areaPairId,
             areaCode: foi.areaCode,
+            detectionKey: getDetectionKey(foi),
+            plantType: getDetectionPlantType(foi.label),
+            label: foi.label,
           },
           geometry: {
             type: "Point",
@@ -78,7 +47,7 @@ export function generateFeatureCollection(
       .filter((object) => object.label === featureOfInterestLabel)
       .flatMap((obj) => {
         const { min_lon, max_lon, min_lat, max_lat } = obj.bbox;
-        const { lon: cen_lon, lat: cen_lat } = getCenter(obj.bbox);
+        const { lon: cen_lon, lat: cen_lat } = getDetectionCenter(obj.bbox);
 
         // Calculate halfway points between center and min/max for lat and lon
         const halfMinLat = (cen_lat + min_lat) / 2;
@@ -149,5 +118,15 @@ export function generateFeatureCollection(
   return {
     type: "FeatureCollection",
     features: [],
+  };
+}
+
+/** Inventory contains supported species only; health remains a separate overlay. */
+export function generateInventoryFeatureCollection(data: ComputerVisionObject[], selection: string): FeatureCollection {
+  const objects = filterPlantDetections(data, selection, "inventory");
+  const labels = [...new Set(objects.map(object => object.label))];
+  return {
+    type: "FeatureCollection",
+    features: labels.flatMap(label => generateFeatureCollection(GeometryType.Point, label, objects).features),
   };
 }
