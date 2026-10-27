@@ -33,7 +33,7 @@ type NavSurvey = {
   code: string;
   created_at?: string | null;
   flight_date?: string | null;
-  client: { name: string } | null;
+  client: { name: string | null } | null;
 };
 
 type NavProfile = { role?: string | null } | null;
@@ -53,17 +53,24 @@ export function NavMain({
   userProfile?: NavProfile;
 }) {
   const params = useParams();
-  const selectedSurvey = typeof params.surveyId === "string" ? params.surveyId : undefined;
-  const selectedPlantation = typeof params.plantation === "string" ? params.plantation : undefined;
+  const selectedSurvey =
+    typeof params.surveyId === "string" ? params.surveyId : undefined;
+  const selectedPlantation =
+    typeof params.plantation === "string" ? params.plantation : undefined;
   const isPlatformAdmin = userProfile?.role === "platform_admin";
   const sixMonthsAgo = subMonths(new Date(), 6);
 
   const sortedSurveys = useMemo(
-    () => [...surveys].sort((a, b) => a.code.localeCompare(b.code) || a.id.localeCompare(b.id)),
+    () =>
+      [...surveys].sort(
+        (a, b) => a.code.localeCompare(b.code) || a.id.localeCompare(b.id),
+      ),
     [surveys],
   );
   const codes = useMemo(
-    () => [...new Set(sortedSurveys.map((survey) => survey.code).filter(Boolean))],
+    () => [
+      ...new Set(sortedSurveys.map((survey) => survey.code).filter(Boolean)),
+    ],
     [sortedSurveys],
   );
 
@@ -73,7 +80,10 @@ export function NavMain({
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
+              <SidebarMenuButton
+                asChild
+                className="h-11 transition-colors hover:bg-primary/10 sm:h-9"
+              >
                 <Link href="/dashboard/recording">
                   <ClipboardCheckIcon />
                   <span>Recording checklist</span>
@@ -92,10 +102,11 @@ export function NavMain({
               <SidebarMenuButton
                 isActive={selectedPlantation === code}
                 asChild
-                className="transition-colors hover:bg-primary/10"
+                className="h-11 transition-colors hover:bg-primary/10 sm:h-9"
               >
                 <Link
                   href={`/dashboard/orthomap/${encodeURIComponent(code)}`}
+                  aria-current={selectedPlantation === code ? "page" : undefined}
                   className="flex items-center gap-2 rounded px-3 py-2"
                 >
                   <Building2Icon className="size-4" />
@@ -113,7 +124,10 @@ export function NavMain({
           <Collapsible asChild defaultOpen className="group/collapsible">
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
-                <SidebarMenuButton className="flex items-center gap-2 rounded px-3 py-2 transition-colors hover:bg-primary/10">
+                <SidebarMenuButton
+                  tooltip="Areas"
+                  className="flex h-11 items-center gap-2 rounded px-3 py-2 transition-colors hover:bg-primary/10 sm:h-9"
+                >
                   <SquareTerminalIcon className="size-4" />
                   <span className="font-medium">Areas</span>
                   <Badge variant="secondary" className="ml-auto">
@@ -148,10 +162,15 @@ export function NavMain({
                             <SidebarMenuSubButton
                               isActive={survey.id === selectedSurvey}
                               asChild
-                              className="rounded px-3 py-2 transition-colors hover:bg-primary/10"
+                              className="flex h-11 items-center justify-between rounded px-3 py-2 transition-colors hover:bg-primary/10 sm:h-8"
                             >
                               <Link
                                 href={`/dashboard/surveys/${encodeURIComponent(survey.id)}`}
+                                aria-current={
+                                  survey.id === selectedSurvey
+                                    ? "page"
+                                    : undefined
+                                }
                                 className="flex items-center gap-2"
                               >
                                 <span>{survey.id}</span>
@@ -193,6 +212,12 @@ export function NavMain({
 
         :global(.animate-fadeIn) {
           animation: fadeIn 0.3s ease-out;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          :global(.animate-fadeIn) {
+            animation: none;
+          }
         }
       `}</style>
     </>

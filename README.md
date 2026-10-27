@@ -227,6 +227,47 @@ to an unused preview filename, then rename `odm.original.pcd` back to
 `odm.pcd`. The original MCS exports still need conversion to work with the
 current browser loader.
 
+### LAZ workshop previews
+
+UEMPC AH-026139, MCS AH-026138, and DNG AH-026137 each use a 10,000,000-point
+`odm.pcd` preview in their existing 3D folders for lighter workshop navigation.
+These previews are sampled directly from the original LAZ files.
+The previous 70% versions (47,817,179, 44,330,451, and 42,013,552 points)
+are preserved as `odm.70pct.pcd`, with their reports in
+`odm.70pct.conversion.json`. The original LAZ remains beside them, and
+the active `odm.conversion.json`
+records the source/output hashes, retained count, color mapping, and local
+coordinate origin. Coordinates are translated near zero to preserve float32
+precision; the origin in the report restores their original position.
+
+These files use lossless LZF-compressed binary PCD after point sampling.
+The viewer's `WorkshopPCDLoader` reads only the header as text and preallocates
+position buffers, avoiding the original reader's string/array-size limits.
+Normalized RGB byte buffers preserve the existing colors with less memory.
+ASCII and other legacy layouts continue through the established parser.
+
+Use the code containing this reader fix for the preserved higher-density files.
+After replacing a dataset preview, hard-refresh the 3D page (`Ctrl+F5`) to clear
+the previously loaded model from the browser. A dataset-only replacement does
+not require rebuilding; changes to the reader code do require a production
+rebuild. The 10-million-point files use less memory and rendering work, while
+the higher-density backups remain available for later use.
+
+### 3D navigation performance
+
+The viewer renders only when the camera or scene changes and uses a pixel
+ratio of 1 to limit work on high-resolution displays. During rotation, panning,
+zooming, or automatic fitting, clouds above 2,000,000 points temporarily draw
+an evenly distributed 2,000,000-point subset. Every loaded point returns after
+180 ms without camera movement. The dataset files and their colors are
+unchanged; smaller clouds always display all their points.
+
+Camera clipping is fitted to the centered cloud, avoiding the extra cost of
+logarithmic depth rendering. Ordinary UI updates preserve the camera view;
+changing surveys or resizing the viewer fits the cloud again. Performance
+still depends on the device and viewport size. Rebuild and restart production
+to apply these renderer changes, or hard-refresh when using `npm run dev`.
+
 
 ## Overlapping surveys and orthomap selection
 
