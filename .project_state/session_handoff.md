@@ -11,8 +11,9 @@ ported into `lib/recording/surveys.ts` with its two tests; `stash@{0}` is still
 unchanged as recovery evidence. Recording tests pass 32/32 and workshop/UI
 tests pass 107/107. Next route type generation and the production build pass;
 standalone TypeScript and lint retain the documented legacy V2 failures.
-Complete authenticated browser smoke before considering the branch ready. No
-push or external mutation has occurred.
+Anonymous local HTTP smoke passes for login/root and protected-dashboard
+redirect. Complete authenticated responsive/map/3D smoke before considering
+the branch ready. No push or external mutation has occurred.
 
 The approved dynamic-reader change is complete locally. V2 now calls
 `list_authorized_published_survey_assets()`, queries only the returned survey

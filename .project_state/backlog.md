@@ -9,6 +9,8 @@ Current V2 consolidation gates:
 - Smoke the current branch at `127.0.0.1:3200` for login, responsive dashboard,
   multi-client navigation, survey table, Orthomap, authorized point cloud,
   empty scope and cross-scope denial.
+- Completed the anonymous subset: login/root return 200 and dashboard redirects
+  to login. Authenticated and real-asset checks remain pending.
 - Keep `development`, `main`, staging, assets, services and remotes unchanged;
   push only after explicit approval.
 

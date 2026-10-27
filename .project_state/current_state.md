@@ -12,7 +12,9 @@ separate working-tree change; the recovery stash remains intact. Recording
 tests pass 32/32 and workshop/UI tests pass 107/107. Next route type generation
 and the production build pass. Standalone TypeScript reports only the
 documented legacy V2 baseline; lint remains blocked by the existing invalid
-`prefer const` configuration. Authenticated browser smoke remains pending.
+`prefer const` configuration. Local HTTP smoke passes: login and root return
+200, and an anonymous dashboard request redirects to login. Authenticated
+responsive/map/3D smoke remains pending.
 
 Dynamic-publishing compatibility is implemented locally. V2 no longer reads
 `.recording/selection.json`, `catalog.json`, or output bindings when loading
