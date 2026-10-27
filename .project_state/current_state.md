@@ -1,5 +1,18 @@
 # Current state
-Last updated: 2026-10-05.
+Last updated: 2026-10-27.
+
+V2 consolidation is active on `integration/v2-latest`. Merge commit
+`ea2d410e` combines `fix/v2-recording-compat` with the three remaining
+`ui/ux-polish-v2` commits. Conflict resolution preserved multi-client/RLS-aware
+navigation, nullable survey metadata, protected published point-cloud URLs and
+the 5 GiB gate while adopting the latest responsive UI, accessibility states,
+map presentation, custom PCD reader and reduced-motion rendering path. The
+saved grant-only presentation-client fix has been ported from `stash@{0}` as a
+separate working-tree change; the recovery stash remains intact. Recording
+tests pass 32/32 and workshop/UI tests pass 107/107. Next route type generation
+and the production build pass. Standalone TypeScript reports only the
+documented legacy V2 baseline; lint remains blocked by the existing invalid
+`prefer const` configuration. Authenticated browser smoke remains pending.
 
 Dynamic-publishing compatibility is implemented locally. V2 no longer reads
 `.recording/selection.json`, `catalog.json`, or output bindings when loading
@@ -25,7 +38,8 @@ recording tests pass 29/29. V2 was restarted and is healthy through
 
 This repository is **asimov-hawks V2**, the separate local recording application.
 Independent clone at E:/dev/projects/webapps/asimov-hawks/asimov-hawks V2;
-baseline 8e0e157c; branch fix/v2-recording-compat. Changes are uncommitted.
+baseline 8e0e157c; branch `integration/v2-latest`. The UI merge is committed
+locally; the grant-only fix and state updates are pending their focused commit.
 The original checkout at .../V2/asimov-hawks is **asimov-hawks V3**; its folder,
 branch, files and services were preserved.
 

@@ -132,6 +132,8 @@ test("no published assets produces an empty dashboard without static catalog fil
 });
 async function adaptedSurvey({
   clientCode = "demo",
+  clientVisible = true,
+  cloudClientCode = clientCode,
   current = true,
   variant = "round-corners",
   cloudCode = null,
@@ -140,7 +142,10 @@ async function adaptedSurvey({
   bindingCode = cloudCode,
 } = {}) {
   const row = {
-    id: "AH-026001", client: { id: "client", code: "DEMO", name: "Demo" },
+    id: "AH-026001", client_id: "client",
+    client: clientVisible
+      ? { id: "client", code: "DEMO", name: "Demo" }
+      : null,
     orthos: current ? [{ id: "AH-026001", survey_id: "AH-026001", is_current: true, tile_folder: variant }] : [],
     ortho: current ? "AH-026001" : null,
     point_cloud: pointCloudPointer,
@@ -175,7 +180,7 @@ async function adaptedSurvey({
     output_type: "point_cloud",
     artifact_code: bindingCode,
     dataset_year: 2026,
-    client_code: clientCode,
+    client_code: cloudClientCode,
     route_template: "/asimov-hawks/3d/demo/2026/AH-026001/original.pcd",
     tile_folder: null,
     min_zoom: null,
@@ -199,6 +204,27 @@ test("adapter uses verified bounds without inventing survey dates or boundaries"
   assert.equal(row.min_x, 125); assert.equal(row.max_y, 8);
   assert.equal(row.boundaries.length, 0); assert.equal(row.geojson_boundaries.length, 0);
   assert.equal(row.flight_date, undefined); assert.equal(row.recording_ready, false);
+  assert.equal(row.recording_clouds.length, 0);
+});
+test("grant-only survey uses the authorized discovery client code", async () => {
+  const row = await adaptedSurvey({ clientVisible: false });
+  assert.equal(row.client.id, "client");
+  assert.equal(row.client.code, "demo");
+  assert.equal(row.client.name, "demo");
+  assert.equal(row.code, "demo");
+  assert.equal(row.access_code, "demo");
+  assert.match(row.tile_url, /\/tiles\/demo\/2026\/AH-026001\//);
+});
+test("grant-only survey rejects conflicting discovery client codes", async () => {
+  const row = await adaptedSurvey({
+    clientVisible: false,
+    cloudCode: "AH-026001",
+    cloudClientCode: "other",
+    pointCloudPointer: "AH-026001",
+  });
+  assert.equal(row.client, null);
+  assert.equal(row.code, "");
+  assert.equal(row.tile_url, null);
   assert.equal(row.recording_clouds.length, 0);
 });
 test("published assets cannot invent a current output", async () => {

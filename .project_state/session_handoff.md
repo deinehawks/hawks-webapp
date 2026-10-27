@@ -1,5 +1,18 @@
 # Session handoff
-Last updated: 2026-10-05.
+Last updated: 2026-10-27.
+
+Resume on `integration/v2-latest`. Local merge commit `ea2d410e` integrates
+`origin/ui/ux-polish-v2` into the recording-compatible V2 line. Four conflicts
+were resolved by retaining the protected dynamic-output contract, multi-client
+navigation, nullable survey handling and PCD size/error gates while accepting
+the new responsive UI, accessibility behavior and point-cloud loader/rendering
+performance work. The saved grant-only client fallback has been manually
+ported into `lib/recording/surveys.ts` with its two tests; `stash@{0}` is still
+unchanged as recovery evidence. Recording tests pass 32/32 and workshop/UI
+tests pass 107/107. Next route type generation and the production build pass;
+standalone TypeScript and lint retain the documented legacy V2 failures.
+Complete authenticated browser smoke before considering the branch ready. No
+push or external mutation has occurred.
 
 The approved dynamic-reader change is complete locally. V2 now calls
 `list_authorized_published_survey_assets()`, queries only the returned survey
@@ -25,7 +38,8 @@ then confirm V3 Access Preview reports only AH-026032. Do not conceal an
 incorrect staging authorization state with another V2-only filter.
 
 Work in this V2 repository, not the original V3 migration checkout.
-Branch fix/v2-recording-compat, baseline 8e0e157c; nothing committed or pushed.
+Branch `integration/v2-latest`, baseline 8e0e157c; the UI merge is committed
+locally at `ea2d410e`, and nothing has been pushed.
 Read RECORDING-SETUP.md before starting services.
 
 Configuration already ran successfully; do not rerun it over existing files.

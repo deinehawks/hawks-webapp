@@ -45,6 +45,28 @@ function resolvePointCloudUrl(asset: PublishedAsset): string | null {
     : null;
 }
 
+function resolvePresentationClient(row: Row, assets: PublishedAsset[]) {
+  if (row.client?.code.trim()) return row.client;
+  if (!row.client_id) return null;
+
+  const discoveredCodes = new Map<string, string>();
+  for (const asset of assets) {
+    const code = asset.client_code.trim();
+    if (code) discoveredCodes.set(code.toLowerCase(), code);
+  }
+  if (discoveredCodes.size !== 1) return null;
+
+  const [code] = discoveredCodes.values();
+  if (!code) return null;
+  return {
+    id: row.client_id,
+    code,
+    // The client name remains protected by client RLS. V2 needs only a safe
+    // presentation label for navigation and detection-file lookup.
+    name: code,
+  };
+}
+
 export const loadRecordingSurveys = cache(async () => {
   const { supabase } = await requireRecordingAccount();
   const { data: assetData, error: assetError } = await supabase.rpc(
@@ -67,6 +89,7 @@ export const loadRecordingSurveys = cache(async () => {
     throw new Error("Failed to load recording surveys.", { cause: error });
   return (data as Row[]).map((row) => {
     const surveyAssets = assets.filter((asset) => asset.survey_id === row.id);
+    const client = resolvePresentationClient(row, surveyAssets);
     const ortho = row.ortho
       ? (row.orthos.find((item) => item.is_current && item.id === row.ortho) ??
         null)
@@ -76,7 +99,7 @@ export const loadRecordingSurveys = cache(async () => {
           (item) => item.is_current && item.code === row.point_cloud,
         ) ?? null)
       : null;
-    const clientCode = row.client?.code.toLowerCase() ?? "";
+    const clientCode = client?.code.toLowerCase() ?? "";
     const tileAsset = surveyAssets.find(
       (asset) =>
         asset.output_type === "orthomosaic" &&
@@ -107,8 +130,9 @@ export const loadRecordingSurveys = cache(async () => {
     const { orthos: _orthos, point_clouds: _clouds, ...survey } = row;
     return {
       ...survey,
-      code: row.client?.code ?? "",
-      access_code: row.client?.code ?? "", // V2 presentation only, never authorization.
+      client,
+      code: client?.code ?? "",
+      access_code: client?.code ?? "", // V2 presentation only, never authorization.
       tags: row.tags ?? [],
       boundaries: row.boundaries ?? [],
       geojson_boundaries: row.geojson_boundaries ?? [],

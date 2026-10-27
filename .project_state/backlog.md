@@ -1,5 +1,16 @@
 # Backlog
-Last updated: 2026-10-05.
+Last updated: 2026-10-27.
+
+Current V2 consolidation gates:
+- Commit the restored grant-only presentation-client fallback and state update
+  after focused review.
+- Completed: regenerated Next route types and passed the production build.
+  Standalone TypeScript and lint retain the documented legacy V2 failures.
+- Smoke the current branch at `127.0.0.1:3200` for login, responsive dashboard,
+  multi-client navigation, survey table, Orthomap, authorized point cloud,
+  empty scope and cross-scope denial.
+- Keep `development`, `main`, staging, assets, services and remotes unchanged;
+  push only after explicit approval.
 
 Dynamic V3-backed discovery is locally complete. Pending: wait for the separate
 V3 migration review/rehearsal/staging approval, then restart V2 and smoke an

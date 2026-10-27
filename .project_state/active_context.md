@@ -1,5 +1,14 @@
 # Active context
-Last updated: 2026-10-05.
+Last updated: 2026-10-27.
+
+Finish the local V2-only consolidation on `integration/v2-latest`. The latest
+V2 UI/performance branch is merged at `ea2d410e`, and the saved grant-only
+presentation-client fallback is restored without widening RLS. Preserve the
+original stash until the final commit and validation are complete. Recording
+tests pass 32/32 and workshop/UI tests pass 107/107. Next route type generation
+and the production build pass; standalone TypeScript and lint retain only their
+documented legacy V2 failures. Next smoke login/dashboard/navigation/Orthomap/
+3D. Do not merge V3 `development`, mutate staging, push, or alter assets/services.
 
 Current priority is the V3 staging migration gate, not another V2 allowlist
 edit. This V2 checkout now dynamically displays only assets returned by the
