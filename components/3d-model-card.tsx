@@ -1,6 +1,5 @@
 import { three_dimensional_models } from "@/data/3d-models";
 import { useSurveyMapStore } from "@/providers/survey-map-store-provider";
-import { ThreeDimensionalAxesHelperSwitch } from "./selectors/3d-model-selector";
 
 export function ThreeDimensionalModelCard() {
   const { selected3dModel } = useSurveyMapStore((state) => state);
@@ -28,10 +27,6 @@ export function ThreeDimensionalModelCard() {
         )}
       </div>
 
-      {/* Controls */}
-      <div className="pt-2 border-t">
-        <ThreeDimensionalAxesHelperSwitch />
-      </div>
     </div>
   );
 }

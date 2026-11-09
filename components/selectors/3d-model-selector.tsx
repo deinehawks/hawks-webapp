@@ -32,14 +32,21 @@ export function ThreeDimensionalModelSelector({
 
   // Auto-pick a sensible default when data becomes available
   useEffect(() => {
-    if (isDisabled) return;
-    if (selected3dModel) return;
+    if (isDisabled) {
+      if (!hasPointCloud && selected3dModel) setSelected3dModel("");
+      return;
+    }
+    const available = (hasLidarModel && selected3dModel === "pcd-lidar") ||
+      (hasPhotogrammetryModel && selected3dModel === "pcd-odm") ||
+      (!hasLidarModel && !hasPhotogrammetryModel && selected3dModel === "pcd");
+    if (available) return;
 
     if (hasLidarModel) setSelected3dModel("pcd-lidar");
     else if (hasPhotogrammetryModel) setSelected3dModel("pcd-odm");
     else setSelected3dModel("pcd"); // fallback when type is unknown
   }, [
     isDisabled,
+    hasPointCloud,
     selected3dModel,
     hasLidarModel,
     hasPhotogrammetryModel,
@@ -62,7 +69,7 @@ export function ThreeDimensionalModelSelector({
   return (
     <div className="w-fit">
       <Select value={selected3dModel} onValueChange={setSelected3dModel}>
-        <SelectTrigger className="w-fit" id="3d-model-selector">
+        <SelectTrigger className="h-11! w-full min-w-0 sm:w-fit" id="3d-model-selector" aria-label="3D model type">
           <Label>Model:</Label>
           <SelectValue placeholder="Select 3D model" />
         </SelectTrigger>
@@ -93,18 +100,17 @@ export function ThreeDimensionalModelSelector({
 }
 
 export function ThreeDimensionalAxesHelperSwitch() {
-  const { show3dAxesHelper, setShow3dAxesHelper } = useSurveyMapStore(
-    (state) => state
-  );
+  const show3dAxesHelper = useSurveyMapStore((state) => state.show3dAxesHelper);
+  const setShow3dAxesHelper = useSurveyMapStore((state) => state.setShow3dAxesHelper);
 
   return (
-    <div className="flex items-center gap-2 mt-4">
+    <div className="flex min-h-11 items-center gap-3">
       <Switch
         id="3d-axes-helper-switch"
         checked={show3dAxesHelper}
         onCheckedChange={setShow3dAxesHelper}
       />
-      <Label htmlFor="3d-axes-helper-switch">Show Axes Helper</Label>
+      <Label htmlFor="3d-axes-helper-switch" className="flex min-h-11 items-center">Show axes</Label>
     </div>
   );
 }

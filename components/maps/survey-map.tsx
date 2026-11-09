@@ -1561,12 +1561,12 @@ export default function SurveyMap({
               </CardHeader>
 
               <CardContent className="flex-1 relative">
-                {!shouldShowMap ? (
+                {!shouldShowMap && !is3D ? (
                   <NoMapDataFallback />
                 ) : (
-                  <div className="flex h-96 lg:h-full">
+                  <div className={is3D ? "flex h-[72vh] min-h-[540px] max-h-[900px]" : "flex h-96 lg:h-full"}>
                     {is3D ? (
-                      <div className="flex h-full w-full min-w-0 bg-primary">
+                      <div className="flex h-full w-full min-w-0">
                         <ThreeDimensionalModelCaller survey={survey} />
                       </div>
                     ) : (

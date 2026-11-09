@@ -339,3 +339,43 @@ Removing a client's multiplier, setting it to `1`, or disabling workshop mode
 restores its original counts. Reload the page after editing the local config;
 rebuilding is unnecessary. Count multipliers must be finite numeric values of
 at least `1`.
+
+## 3D navigation - 9 November 2026
+
+Implemented on `feat/3d-viewer-navigation`, created from `ui/ux-polish-v2`
+before implementation. Merge back remains pending the user's smoke test and
+explicit confirmation. Existing workshop visibility edits were preserved.
+
+The viewer now has zoom, Fit survey, Top view, 3D view, fullscreen, and a
+Controls guide containing the axes switch. Orbit navigation uses Z-up with
+above-target-plane limits, gentler speeds, and damping. New models start in a
+fitted angled view. UI updates and resizing preserve camera position. Preset
+transitions take 300 ms, can be interrupted, and respect reduced motion.
+Keyboard commands are scoped to the viewport. Missing files offer Retry with
+focus restoration, and 3D availability no longer depends on orthomosaic data.
+
+All 121 workshop tests passed, including new camera math, interruption,
+limits, reduced-motion, toolbar, keyboard, source-selection, retry, and
+3D-without-orthomosaic regressions. Targeted TypeScript checks passed for all
+eight changed TypeScript files. The final isolated production build passed;
+all 17 trace manifests exclude workshop datasets.
+The normal ESLint command is blocked by the existing `prefer const` rule name
+in the repository configuration; no lint configuration was changed.
+
+An isolated browser harness used the actual viewer, caller, store, and theme
+styles with UEMPC AH-026139, MCS AH-026138, DNG AH-026137 (10M points each),
+and the older MCS AH-026010 (4M points). Mouse and Shift-drag navigation,
+wheel/trackpad events, scoped keyboard commands, preset states, fullscreen,
+help portals, axes changes, focus restoration, and viewport resizing passed.
+Desktop, tablet, and 375px light/dark layouts showed no horizontal overflow.
+Basic emulated one-finger rotation and two-finger movement/pinch passed.
+Fullscreen refusal, a deliberately failed file request with retry, no-model,
+reduced-motion, and unavailable-WebGL states were checked. Deliberate failure
+scenarios produce their expected browser errors and recover through the UI.
+LiDAR selection used an RGB fixture at its LiDAR URL to verify wiring; it did
+not replace or modify any LiDAR dataset.
+
+The movement preview remains capped at 2M points; full loaded detail returns
+after settling, and demand rendering stops at rest. These checks do not claim
+a particular FPS on the presenter's GPU. Signed-in application use and native
+mouse/trackpad feel remain part of the user's smoke test before merging.

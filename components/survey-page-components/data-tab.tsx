@@ -109,17 +109,16 @@ export function ThreeDTabContent({ survey }: ThreeDTabContentProps) {
         ) : !hasPointCloud ? (
           <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Processing in progress</AlertTitle>
+            <AlertTitle>No 3D available</AlertTitle>
             <AlertDescription>
-              The 3D point cloud for this survey is not yet available. It may
-              still be processing.
+              No 3D available for this survey.
             </AlertDescription>
           </Alert>
         ) : (
           <div className="space-y-4">
             <div>
               <div className="relative min-h-75 rounded-lg bg-card/50 p-4">
-                <ThreeDimensionalModelCard pcd={survey.point_cloud as any} />
+                <ThreeDimensionalModelCard />
               </div>
             </div>
           </div>

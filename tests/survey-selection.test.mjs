@@ -1123,3 +1123,111 @@ test("header boundaries toggle remains explicit and its state does not change se
   assert.equal(find(tree, "Select").props.value, ids[0]);
   assert.equal(find(tree, "MapEvents").props.showBoundaries, true);
 });
+
+test("3D toolbar wires accessible zoom, fit, preset and fullscreen controls and disables camera actions while loading", () => {
+  const loaded = loadComponents("components/threejs/viewer-controls.tsx", "", {
+    "@radix-ui/react-popover": { Portal: "Portal", Content: "Content" },
+    "@radix-ui/react-tooltip": { Portal: "Portal", Content: "Content" },
+  });
+  const calls = [], container = {};
+  const props = { ready: true, activeView: "top", container, fullscreen: false, fullscreenAvailable: true,
+    onZoom: value => calls.push(["zoom", value]), onView: value => calls.push(["view", value]), onFullscreen: () => calls.push(["fullscreen"]) };
+  const render = runner();
+  let tree = render.render(loaded.exports.ViewerControls, props);
+  const buttons = nodes(tree).filter(node => node.type === "Button");
+  buttons.find(node => node.props["aria-label"] === "Zoom in").props.onClick();
+  buttons.find(node => node.props["aria-label"] === "Zoom out").props.onClick();
+  for (const label of ["Fit survey", "Top view", "3D view", "Full screen"]) buttons.find(node => text(node) === label).props.onClick();
+  assert.deepEqual(calls, [["zoom", true], ["zoom", false], ["view", "fit"], ["view", "top"], ["view", "3d"], ["fullscreen"]]);
+  assert.equal(buttons.find(node => text(node) === "Top view").props["aria-pressed"], true);
+  assert.equal(buttons.find(node => text(node) === "3D view").props["aria-pressed"], false);
+  assert.equal(find(tree, "Portal").props.container, container, "help remains inside the fullscreen element");
+  assert.match(text(tree), /Shift|Keyboard|Touch|Fit survey/);
+  tree = render.render(loaded.exports.ViewerControls, { ...props, ready: false, fullscreenAvailable: false });
+  assert.equal(nodes(tree).filter(node => node.type === "Button" && node.props.disabled).length, 5);
+  assert.doesNotMatch(text(tree), /Full screen/);
+});
+
+function load3DViewer() {
+  const cleared = [];
+  const loaded = loadComponents("components/threejs/3d-model.tsx", "", {
+    "@react-three/fiber": { Canvas: "Canvas", useLoader: { clear: (...args) => cleared.push(args) } },
+    "@react-three/drei": { OrbitControls: "OrbitControls" },
+    "framer-motion": { useReducedMotion: () => false },
+  });
+  loaded.state.selected3dModel = "pcd-odm";
+  return { ...loaded, cleared };
+}
+
+test("3D viewer scopes keyboard commands to its viewport and preserves ready state across ordinary UI renders", () => {
+  const loaded = load3DViewer(), render = runner(), calls = [];
+  const props = { survey: { id: "AH-026139", code: "UEMPC", flight_date: "2026-06-02" } };
+  let tree = render.render(loaded.exports.ThreeDimensionalModel, props);
+  const resource = nodes(tree).find(node => node.type?.name === "PointCloud");
+  resource.props.navigation.current = { view: value => calls.push(["view", value]), zoom: value => calls.push(["zoom", value]), pan: (...args) => calls.push(["pan", ...args]) };
+  resource.props.onReady();
+  tree = render.render(loaded.exports.ThreeDimensionalModel, props);
+  assert.equal(find(tree, "ViewerControls").props.ready, true);
+  const viewport = nodes(tree).find(node => node.props?.tabIndex === 0);
+  let prevented = 0, stopped = 0;
+  const currentTarget = { tagName: "DIV" };
+  const key = (key, target = currentTarget, extras = {}) => viewport.props.onKeyDown({ key, target, currentTarget,
+    preventDefault() { prevented++; }, stopPropagation() { stopped++; }, ...extras });
+  key("ArrowRight"); key("+"); key("-"); key("f");
+  assert.deepEqual(calls, [["pan", 1, 0, 320], ["zoom", true], ["zoom", false], ["view", "fit"]]);
+  assert.equal(prevented, 4); assert.equal(stopped, 4);
+  for (const tagName of ["INPUT", "BUTTON", "TEXTAREA"]) key("f", { tagName });
+  key("f", currentTarget, { ctrlKey: true }); key("f", currentTarget, { metaKey: true });
+  assert.equal(calls.length, 4, "form fields, toolbar controls and browser shortcuts are isolated");
+  loaded.state.show3dAxesHelper = true;
+  tree = render.render(loaded.exports.ThreeDimensionalModel, props);
+  assert.equal(find(tree, "ViewerControls").props.ready, true);
+  assert.ok(find(tree, "axesHelper"));
+  tree = render.render(loaded.exports.ThreeDimensionalModel, { survey: { ...props.survey, id: "AH-026138" } });
+  assert.equal(find(tree, "ViewerControls").props.ready, false, "a new URL cannot reuse the previous file's ready status");
+});
+
+test("3D loading failures have a scoped retry and surveys without a selected model retain the empty state", () => {
+  const loaded = load3DViewer(), render = runner();
+  const props = { survey: { id: "AH-026139", code: "UEMPC", flight_date: "2026-06-02" } };
+  let tree = render.render(loaded.exports.ThreeDimensionalModel, props);
+  assert.match(text(tree), /Loading 3D model/);
+  nodes(tree).find(node => node.type?.name === "CloudBoundary" && !node.props.fallback).props.onError();
+  tree = render.render(loaded.exports.ThreeDimensionalModel, props);
+  assert.match(text(tree), /Couldn’t load this 3D model/);
+  assert.equal(find(tree, "ViewerControls").props.ready, false);
+  nodes(tree).find(node => node.type === "Button" && text(node) === "Retry").props.onClick();
+  assert.equal(loaded.cleared.length, 1); assert.match(loaded.cleared[0][1], /\/uempc\/2026\/AH-026139\/odm\.pcd$/);
+  tree = render.render(loaded.exports.ThreeDimensionalModel, props);
+  assert.match(text(tree), /Loading 3D model/);
+  assert.doesNotMatch(text(tree), /Couldn’t load/);
+  loaded.state.selected3dModel = "";
+  tree = render.render(loaded.exports.ThreeDimensionalModel, props);
+  assert.equal(text(tree), "No 3D available for this survey.");
+});
+
+test("a survey's available 3D viewer is independent of orthomosaic tiles and boundaries", () => {
+  const loaded = loadComponents("components/maps/survey-map.tsx"), render = runner();
+  const props = { survey: { id: "AH-026139", code: "UEMPC", flight_date: "2026-06-02", ortho: null, point_cloud: {}, tags: "RGB" }, detectedObjects: [] };
+  let tree = render.render(loaded.exports.default, props);
+  assert.ok(nodes(tree).find(node => node.type?.name === "NoMapDataFallback"));
+  find(tree, "Tabs").props.onValueChange("3d");
+  tree = render.render(loaded.exports.default, props);
+  assert.equal(nodes(tree).find(node => node.type?.name === "NoMapDataFallback"), undefined);
+  assert.ok(find(tree, "default"), "the dynamically loaded 3D viewer is rendered");
+});
+
+test("3D source selection retains available choices and clears a stale source when its data disappears", () => {
+  const loaded = loadComponents("components/selectors/3d-model-selector.tsx"), render = runner();
+  loaded.state.selected3dModel = "pcd-odm";
+  loaded.state.setSelected3dModel = value => { loaded.state.selected3dModel = value; };
+  const props = { code: "MCS", hasPointCloud: true, hasPhotogrammetryModel: true, hasLidarModel: true };
+  render.render(loaded.exports.ThreeDimensionalModelSelector, props); render.effects();
+  assert.equal(loaded.state.selected3dModel, "pcd-odm");
+  render.render(loaded.exports.ThreeDimensionalModelSelector, { ...props, hasPhotogrammetryModel: false }); render.effects();
+  assert.equal(loaded.state.selected3dModel, "pcd-lidar");
+  render.render(loaded.exports.ThreeDimensionalModelSelector, { ...props, hasPointCloud: false }); render.effects();
+  assert.equal(loaded.state.selected3dModel, "");
+  render.render(loaded.exports.ThreeDimensionalModelSelector, { ...props, hasPhotogrammetryModel: false, hasLidarModel: false }); render.effects();
+  assert.equal(loaded.state.selected3dModel, "pcd");
+});
