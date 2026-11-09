@@ -1126,7 +1126,7 @@ test("header boundaries toggle remains explicit and its state does not change se
 
 test("3D toolbar wires accessible zoom, fit, preset and fullscreen controls and disables camera actions while loading", () => {
   const loaded = loadComponents("components/threejs/viewer-controls.tsx", "", {
-    "@radix-ui/react-popover": { Portal: "Portal", Content: "Content" },
+    "@radix-ui/react-popover": { Portal: "Portal", Content: "Content", Close: "Close" },
     "@radix-ui/react-tooltip": { Portal: "Portal", Content: "Content" },
   });
   const calls = [], container = {};
@@ -1141,7 +1141,10 @@ test("3D toolbar wires accessible zoom, fit, preset and fullscreen controls and 
   assert.deepEqual(calls, [["zoom", true], ["zoom", false], ["view", "fit"], ["view", "top"], ["view", "3d"], ["fullscreen"]]);
   assert.equal(buttons.find(node => text(node) === "Top view").props["aria-pressed"], true);
   assert.equal(buttons.find(node => text(node) === "3D view").props["aria-pressed"], false);
-  assert.equal(find(tree, "Portal").props.container, container, "help remains inside the fullscreen element");
+  assert.equal(find(tree, "Portal").props.container, undefined, "normal help escapes page query containers so it stays anchored to its trigger");
+  const fullscreenTree = render.render(loaded.exports.ViewerControls, { ...props, fullscreen: true });
+  assert.equal(find(fullscreenTree, "Portal").props.container, container, "fullscreen help stays inside the top-layer viewer");
+  assert.ok(nodes(tree).some(node => node.props?.["aria-label"] === "Close controls"));
   assert.match(text(tree), /Shift|Keyboard|Touch|Fit survey/);
   tree = render.render(loaded.exports.ViewerControls, { ...props, ready: false, fullscreenAvailable: false });
   assert.equal(nodes(tree).filter(node => node.type === "Button" && node.props.disabled).length, 5);
