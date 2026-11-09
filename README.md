@@ -263,10 +263,36 @@ an evenly distributed 2,000,000-point subset. Every loaded point returns after
 unchanged; smaller clouds always display all their points.
 
 Camera clipping is fitted to the centered cloud, avoiding the extra cost of
-logarithmic depth rendering. Ordinary UI updates preserve the camera view;
-changing surveys or resizing the viewer fits the cloud again. Performance
-still depends on the device and viewport size. Rebuild and restart production
+logarithmic depth rendering. Ordinary UI updates, resizing, and fullscreen
+transitions preserve the camera view. Changing models starts a fitted angled
+view. Performance still depends on the device and viewport size. Rebuild and restart production
 to apply these renderer changes, or hard-refresh when using `npm run dev`.
+
+### 3D navigation
+
+Left-drag rotates around the survey, right-drag or Shift-left-drag moves the
+view, and the mouse wheel or trackpad scrolling zooms. Navigation keeps source
+elevation (Z) upright and restricts orbiting to above the target plane. Gentle
+damping stops when the view settles; reduced-motion preferences disable it.
+
+The toolbar provides reversible zoom steps, **Fit survey**, **Top view**,
+**3D view**, fullscreen, and a **Controls** guide with the **Show axes** switch.
+Fit survey recenters and frames the whole cloud while retaining its angle;
+the two presets reframe it at their named angles. Clicking or tabbing into the
+model enables arrow-key movement, `+`/`-` zoom, and `F` to fit. These shortcuts
+do not apply to forms or toolbar controls. On touch devices, one finger rotates
+and two fingers move/pinch to zoom.
+
+Fullscreen includes the model identity and toolbar. Escape closes help or
+exits fullscreen; controls and camera position remain available afterwards.
+Missing files have a Retry action that reloads only the selected model.
+An available 3D model can be viewed without orthomosaic tiles or boundaries.
+
+In V2, model choices come from the authorized published-output reader through
+`recording_clouds`. The viewer uses those exact URLs, including their years and
+custom PCD filenames; a missing flight date does not block a published model.
+The existing 5 GiB admission limit remains in place. Navigation controls do not
+change publication authorization or make multi-GiB rendering guarantees.
 
 
 ## Overlapping surveys and orthomap selection

@@ -1,5 +1,19 @@
 # Current state
-Last updated: 2026-10-27.
+Last updated: 2026-11-09.
+
+The smoke-tested `feat/3d-viewer-navigation` branch is integrated locally
+into `integration/v2-latest`. Its compact popup fix is included. Conflict
+resolution retains V2's `recording_clouds` selection, exact published URLs,
+nullable survey metadata, protected delivery, and 5 GiB admission limit.
+The source branch's client/year/odm.pcd URL construction is not used in V2.
+Recording/access tests pass 32/32 and workshop/UI tests pass 123/123. Targeted
+TypeScript checks pass for all eight changed TypeScript files. The production
+build passes with isolated placeholder public configuration and Supabase
+network access blocked; all 19 traces exclude workshop datasets. No staging
+data, assets, services, or authorization code was changed. Existing workshop
+configuration edits remain in the original workstation checkout.
+
+Earlier consolidation context follows for historical reference.
 
 V2 consolidation is active on `integration/v2-latest`. Merge commit
 `ea2d410e` combines `fix/v2-recording-compat` with the three remaining

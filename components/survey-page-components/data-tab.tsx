@@ -118,7 +118,7 @@ export function ThreeDTabContent({ survey }: ThreeDTabContentProps) {
           <div className="space-y-4">
             <div>
               <div className="relative min-h-75 rounded-lg bg-card/50 p-4">
-                <ThreeDimensionalModelCard pcd={survey.point_cloud as any} />
+                <ThreeDimensionalModelCard />
               </div>
             </div>
           </div>

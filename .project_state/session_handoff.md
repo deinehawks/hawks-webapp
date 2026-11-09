@@ -1,5 +1,22 @@
 # Session handoff
-Last updated: 2026-10-27.
+Last updated: 2026-11-09.
+
+The smoke-tested 3D navigation feature and compact Controls popup are now
+integrated locally into `integration/v2-latest` in the separate
+`hawks-webapp-v2-navigation` worktree. Preserve V2's exact `recording_clouds`
+URLs, protected asset flow, nullable metadata, and 5 GiB gate. Validation:
+32 recording/access tests, 123 workshop/UI tests, eight changed TypeScript
+files with zero diagnostics, successful production build, and 19 dataset-free
+traces. A real-cloud browser fixture passed custom published filenames/year,
+missing-date loading, preset views, compact help, source switching, and
+empty/oversized publication guards. No staging, dataset, or running-service
+changes were made. No push has been performed. Rebuild with the approved real
+V2 environment before deployment; this worktree's validation build used
+placeholder public configuration with database network access blocked.
+
+The original workshop checkout remains on the feature branch with the user's
+uncommitted `config/workshop-visibility.json` edits preserved. Earlier handoff
+notes below are historical; existing staging rollout gates still apply.
 
 Resume on `integration/v2-latest`. Local merge commit `ea2d410e` integrates
 `origin/ui/ux-polish-v2` into the recording-compatible V2 line. Four conflicts
