@@ -468,6 +468,11 @@ test("orthomap switching updates sources, geometry, detections and identity with
     assert.ok(text(tree).includes(id));
     assert.equal(find(tree, "SelectTrigger").props["aria-label"], "Survey");
   };
+  assert.equal(find(tree, "Select").props.value, ALL_SURVEYS);
+  assert.deepEqual(find(tree, "RasterTiles").props.surveys, surveys);
+  assert.deepEqual(find(tree, "SourceLoadingStatus").props.idList, ids);
+  find(tree, "Select").props.onValueChange(ids[0]);
+  tree = render.render(components.OrthoMapContent, props); render.effects();
   check(ids[0]);
   const originalMapType = find(tree, "Map").type;
   const originalMapStyle = find(tree, "Map").props.mapStyle;
@@ -500,6 +505,25 @@ const overlapSurveys = [
   { ...surveys[1], boundaries: rectangle(125.004, 7.004, 125.006, 7.006).map(([lng, lat]) => [lat, lng]) },
   { ...surveys[0], id: "AH-026012", boundaries: rectangle(125.015, 7, 125.025, 7.01).map(([lng, lat]) => [lat, lng]) },
 ];
+
+test("fresh orthomap openings default to all available surveys without retaining the previous individual selection", () => {
+  const loaded = loadComponents("components/maps/ortho-map.tsx", "\nexport { OrthoMapContent };\n");
+  const props = { surveys: [...surveys].reverse(), detectedObjects: detections, userProfile: {} };
+  const firstVisit = runner();
+  let tree = firstVisit.render(loaded.exports.OrthoMapContent, props);
+  assert.equal(find(tree, "Select").props.value, ALL_SURVEYS);
+  assert.deepEqual(find(tree, "RasterTiles").props.surveys, surveys);
+  find(tree, "Select").props.onValueChange(ids[1]);
+  tree = firstVisit.render(loaded.exports.OrthoMapContent, props);
+  assert.equal(find(tree, "Select").props.value, ids[1]);
+  tree = runner().render(loaded.exports.OrthoMapContent, props);
+  assert.equal(find(tree, "Select").props.value, ALL_SURVEYS);
+  assert.deepEqual(find(tree, "RasterTiles").props.surveys, surveys);
+  assert.deepEqual(find(tree, "SourceLoadingStatus").props.idList, ids);
+  tree = runner().render(loaded.exports.OrthoMapContent, { ...props, surveys: [surveys[0]] });
+  assert.equal(find(tree, "Select").props.value, ALL_SURVEYS);
+  assert.deepEqual(find(tree, "RasterTiles").props.surveys, [surveys[0]]);
+});
 const health = detectionLabels.HEALTHY_BANANA_LABEL, infected = detectionLabels.INFECTED_BANANA_LABEL;
 const banana = detectionLabels.INVENTORY_BANANA_LABEL, coconut = detectionLabels.COCONUT_TREE_LABEL;
 const overlapObjects = [
@@ -521,6 +545,8 @@ test("overview counts, pins, heatmaps and click records share masked cohorts in 
   const props = { userProfile: {}, surveys: overlapSurveys, detectedObjects: overlapObjects };
   let tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
   const mapType = find(tree, "Map").type;
+  find(tree, "Select").props.onValueChange(ids[0]);
+  tree = render.render(loaded.exports.OrthoMapContent, props); render.effects();
   find(tree, "Select").props.onValueChange(ALL_SURVEYS);
   for (const [mode, expected] of [["analysis", [overlapObjects[0], overlapObjects[4], overlapObjects[7]]], ["inventory", [overlapObjects[3], overlapObjects[5], overlapObjects[6], overlapObjects[7]]]]) {
     loaded.state.surveyMode = mode;
@@ -1120,7 +1146,7 @@ test("header boundaries toggle remains explicit and its state does not change se
   tree = render.render(loaded.exports.OrthoMapContent, props);
   const active = nodes(tree).find((node) => node.type === "Button" && typeof node.props["aria-pressed"] === "boolean");
   assert.equal(active.props["aria-pressed"], true);
-  assert.equal(find(tree, "Select").props.value, ids[0]);
+  assert.equal(find(tree, "Select").props.value, ALL_SURVEYS);
   assert.equal(find(tree, "MapEvents").props.showBoundaries, true);
 });
 

@@ -295,7 +295,8 @@ Click an overlapping area on the dashboard to choose a survey by its ID, area
 label, flight date and available area measurement. A single match opens its
 details directly; clicking empty map space dismisses the survey popup.
 
-The orthomap opens with the first survey ordered by ID (AH-026010 for MCS).
+The orthomap opens in **All surveys**, showing all surveys available on that
+page. A fresh page opening restores this overview after an individual selection.
 Use the Survey dropdown to switch. The persistent Viewing label identifies the
 active imagery, and boundaries, detection overlays and detection counts follow
 the same selection. Switching clears old popups and fits the chosen area while

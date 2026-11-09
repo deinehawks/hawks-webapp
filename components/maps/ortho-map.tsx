@@ -770,7 +770,7 @@ function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjec
   demoCountMultipliers?: DemoCountMultipliers;
 }) {
   const orderedSurveys = useMemo(() => sortSurveysById(availableSurveys), [availableSurveys]);
-  const [requestedId, setRequestedId] = useState(() => String(orderedSurveys[0].id));
+  const [requestedId, setRequestedId] = useState(ALL_SURVEYS);
   const selectionData = useMemo(
     () => getSurveySelectionData(orderedSurveys, detectedObjects ?? [], requestedId),
     [orderedSurveys, detectedObjects, requestedId],
