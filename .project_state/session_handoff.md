@@ -1,6 +1,21 @@
 # Session Handoff
 
-Last updated: 2026-10-05
+Last updated: 2026-11-19
+
+Current branch: `fix/minio-startup-ux` in an isolated worktree based on
+`development`. The dirty `workshop-survey-improvements` checkout was not
+modified.
+
+The MinIO daily-start improvement is implemented and installed locally. The
+new one-time installer copies the guarded helper, read-only status command,
+launcher, and credential-free machine config to a stable local-app-data
+runtime and creates `Start ASIMOV Storage` on the desktop. The launcher requests
+UAC, writes timestamped local logs, and preserves the full UUID/XFS/capacity/
+container/bucket/asset contract. Focused tests pass 4/4, installer `-WhatIf`
+passes, installed status reports READY, and the repeat launcher run preserved
+the healthy container ID and start time. No commit, push, upload, database,
+production, WebODM, or pipeline action occurred. Next review/integrate this
+focused branch, then resume Individual Signup Approval acceptance separately.
 
 Resume V3 from `development`. Session closeout commit message:
 `fix(publishing): harden RPC grants and complete staging rollout`.

@@ -259,7 +259,7 @@ function Assert-DockerAutoStartDisabled {
     Where-Object { $_.Name -ieq 'AutoStart' } |
     Select-Object -First 1
   if ($null -eq $autoStartProperty -or [bool]$autoStartProperty.Value) {
-    throw 'Docker Desktop automatic startup must be disabled before using this helper.'
+    throw 'Docker Desktop automatic startup is enabled. Run npm run minio-storage:install from elevated PowerShell after quitting Docker Desktop, or disable Start Docker Desktop when you sign in.'
   }
 
   $runKey = Get-ItemProperty -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
@@ -267,7 +267,7 @@ function Assert-DockerAutoStartDisabled {
     Where-Object { $_.Name -eq [string]$script:StorageConfig.dockerAutoStartRunValue } |
     Select-Object -First 1
   if ($null -ne $runProperty -and -not [string]::IsNullOrWhiteSpace([string]$runProperty.Value)) {
-    throw 'The Docker Desktop Windows Run entry is still enabled.'
+    throw 'The Docker Desktop Windows Run entry is enabled. Run npm run minio-storage:install from elevated PowerShell after quitting Docker Desktop.'
   }
 }
 
@@ -708,7 +708,7 @@ try {
   throw
 }
 
-Write-Output ('MinIO started safely after XFS mount on UUID ' + $script:StorageConfig.filesystemUuid + '.')
+Write-Output ('MinIO is ready safely on XFS UUID ' + $script:StorageConfig.filesystemUuid + '.')
 Write-Output ('Host available bytes: ' + $hostVolume.SizeRemaining + '; protected reserve: ' + $requiredHostReserve + '.')
 Write-Output ('XFS available bytes: ' + $xfsAvailable + '; protected reserve: ' + $xfsReserve + '.')
 Write-Output ('Verified buckets: ' + (@($script:StorageConfig.requiredBuckets) -join ', ') + '.')

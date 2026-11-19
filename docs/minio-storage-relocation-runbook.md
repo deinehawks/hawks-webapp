@@ -128,7 +128,31 @@ stops MinIO if a post-start health or filesystem assertion fails.
 After Windows, WSL, or Docker restarts, do not use the MinIO console or asset
 routes until the guarded helper passes. Docker Desktop automatic sign-in start
 must remain disabled, its Windows Run entry must remain absent, and MinIO must
-retain restart policy `no`. Run one elevated command from the repository root:
+retain restart policy `no`.
+
+For a one-click, branch-independent daily workflow, run this once from an
+elevated PowerShell window while Docker Desktop is fully stopped:
+
+```powershell
+npm run minio-storage:install
+```
+
+The installer backs up Docker Desktop settings before correcting auto-start,
+removes only the Docker Desktop Windows Run entry, and installs a stable local
+runtime plus a `Start ASIMOV Storage` desktop shortcut. The installed runtime
+copies the ignored machine configuration outside the Git checkout, writes a
+timestamped local log, requests elevation through UAC, and delegates to the
+same guarded helper. Rerun the installer after changing the helper or machine
+configuration.
+
+For normal startup, double-click `Start ASIMOV Storage`. To inspect state
+without attaching disks or starting services, run:
+
+```powershell
+npm run minio-storage:status
+```
+
+The original elevated repository command remains supported:
 
 ```powershell
 npm run minio-storage:start

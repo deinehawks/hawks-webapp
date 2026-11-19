@@ -1,6 +1,16 @@
 # Active Context
 
-Last updated: 2026-10-05
+Last updated: 2026-11-19
+
+Priority override: the MinIO daily-start workflow is implemented and locally
+accepted on `fix/minio-startup-ux`. The stable `Start ASIMOV Storage` desktop
+launcher requests UAC and delegates to the existing fail-closed helper; Docker
+Desktop auto-start remains disabled. `npm run minio-storage:status` is
+read-only, and `npm run minio-storage:install` refreshes the stable runtime and
+shortcut after helper or machine-config changes. Focused tests, installer dry
+run, live READY status, five-bucket/two-asset verification, and an unchanged
+container ID/start time on repeat launch pass. Next resume the Individual
+Signup Approval acceptance; keep infrastructure and auth work separate.
 
 Next-session priority: confirm the user's active UEMPC membership is Member
 and only AH-026032 is visible if one-survey recording is still required. Read-only
