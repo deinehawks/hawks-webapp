@@ -61,7 +61,10 @@ export function getSurveyTileUrl(survey: SurveyChoice & {
   if (!survey.code || !survey.flight_date || survey.ortho === null) return null;
   const date = new Date(survey.flight_date);
   if (!Number.isFinite(date.getTime())) return null;
-  return `/asimov-hawks/tiles/${survey.code.toLowerCase()}/${date.getFullYear()}/${survey.id}/ortho/${survey.ortho?.tile_folder ?? "round-corners"}/{z}/{x}/{y}.png`;
+  const assetBaseUrl = (
+    process.env.NEXT_PUBLIC_ASSET_BASE_URL ?? "/asimov-hawks"
+  ).replace(/\/+$/g, "");
+  return `${assetBaseUrl}/tiles/${survey.code.toLowerCase()}/${date.getFullYear()}/${survey.id}/ortho/${survey.ortho?.tile_folder ?? "round-corners"}/{z}/{x}/{y}.png`;
 }
 
 type SurveyLayerMap = {

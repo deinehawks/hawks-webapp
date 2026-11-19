@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "sourceRoot": "Z:\\surveys\\2026",
+  "datasetYear": 2026,
+  "batchKey": "example",
+  "maxSurveysPerWave": 3,
+  "pilotSurveyIds": [],
+  "approvedSurveys": [
+    {
+      "surveyId": "<SURVEY-ID>",
+      "expectedClientCode": "<CLIENT-CODE>",
+      "sourceRoot": "X:\\surveys\\2026",
+      "tileVariant": "round-corners",
+      "includeTiles": true,
+      "scope": "organization"
+    }
+  ],
+  "approvedPointClouds": [],
+  "ignoredPointClouds": []
+}

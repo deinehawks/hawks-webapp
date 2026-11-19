@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
-export default function Page() {
-  redirect("/dashboard");
+import { resolveAuthenticatedHomePath } from "@/lib/auth/post-auth-redirect";
+
+export default async function Page() {
+  redirect(await resolveAuthenticatedHomePath());
 }

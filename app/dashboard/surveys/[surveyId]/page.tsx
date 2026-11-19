@@ -1,13 +1,25 @@
 import SurveyMapCaller from "@/components/callers/survey-map-caller";
-import { getUserSurvey } from "@/lib/actions/survey";
-import { getObjectDetectionData } from "@/lib/actions/surveys";
+import { SurveyTimeline } from "@/components/survey-timeline";
+import {
+  getObjectDetectionData,
+  getUserSurvey,
+} from "@/lib/actions/surveys";
+import { getAccessibleSurveyTimeline } from "@/lib/surveys/timeline";
 import { SurveyMapStoreProvider } from "@/providers/survey-map-store-provider";
 import { getWorkshopDemoCountMultipliers } from "@/lib/workshop-visibility";
 
-export default async function Page(props: { params: { surveyId: string } }) {
-  const { surveyId } = await props.params;
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ surveyId: string }>;
+}) {
+  const { surveyId } = await params;
   const survey = await getUserSurvey(surveyId);
-  const detectedObjects = await getObjectDetectionData(surveyId);
+  const [detectedObjects, timeline] = await Promise.all([
+    getObjectDetectionData(surveyId, survey.client_id ?? undefined),
+    getAccessibleSurveyTimeline(survey),
+  ]);
+  const demoCountMultipliers = getWorkshopDemoCountMultipliers([survey]);
 
   if (!survey) {
     return (
@@ -19,8 +31,17 @@ export default async function Page(props: { params: { surveyId: string } }) {
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-2 h-full">
-      <SurveyMapStoreProvider>
-        <SurveyMapCaller survey={survey} detectedObjects={detectedObjects} demoCountMultipliers={getWorkshopDemoCountMultipliers([survey])} />
+      <SurveyTimeline
+        currentSurveyId={survey.id}
+        hrefBase="/dashboard/surveys"
+        timeline={timeline}
+      />
+      <SurveyMapStoreProvider key={survey.id}>
+        <SurveyMapCaller
+          survey={survey}
+          detectedObjects={detectedObjects}
+          demoCountMultipliers={demoCountMultipliers}
+        />
       </SurveyMapStoreProvider>
     </div>
   );

@@ -58,19 +58,8 @@ import {
   MoreVerticalIcon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { Tabs } from "./ui/tabs";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
 import Map, { Layer, Marker, Source } from "@vis.gl/react-maplibre";
 import {
   Sheet,
@@ -85,7 +74,6 @@ import { Separator } from "./ui/separator";
 import { Input } from "./ui/input";
 import { findExtremeCoordinates } from "@/lib/helpers";
 import { TableFacetedFilter } from "./data-table/faceted-filter";
-import { title } from "process";
 import { survey_data_types } from "@/data/survey-types";
 import Link from "next/link";
 
@@ -105,7 +93,7 @@ export const schema = z.object({
 });
 
 function includesStringFilter(row: any, key: string, filterValue: string[]) {
-  for (let value of filterValue) {
+  for (const value of filterValue) {
     if (!row?.original[key].includes(value)) {
       return false;
     }
@@ -113,7 +101,13 @@ function includesStringFilter(row: any, key: string, filterValue: string[]) {
   return true;
 }
 
-const columns: ColumnDef<z.infer<typeof schema>>[] = [
+export type SurveyTableRow = z.infer<typeof schema>;
+
+function createColumns(
+  surveyHrefBase: string,
+  orthomapHrefBase: string,
+): ColumnDef<SurveyTableRow>[] {
+  return [
   {
     id: "select",
     header: ({ table }) => (
@@ -150,7 +144,13 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
     cell: ({ row }) => {
       // const id: string = row.getValue("id");
       // return <div> {id.toUpperCase()} </div>;
-      return <TableCellViewer survey={row.original} />;
+      return (
+        <TableCellViewer
+          orthomapHrefBase={orthomapHrefBase}
+          survey={row.original}
+          surveyHrefBase={surveyHrefBase}
+        />
+      );
     },
 
     enableHiding: false,
@@ -179,7 +179,6 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
       const location: string = row.getValue("location");
       const barangay = location.split(",").at(0);
       const city = location.split(",").at(1);
-      const province = location.split(",").at(2);
 
       return <div className="w-32"> {`${barangay}, ${city}`} </div>;
       // return <div className="w-32"> {`Davao City`} </div>;
@@ -243,9 +242,22 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
       </DropdownMenu>
     ),
   },
-];
+  ];
+}
 
-export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
+export function DataTable({
+  data,
+  surveyHrefBase = "/dashboard/surveys",
+  orthomapHrefBase = "/dashboard/orthomap",
+}: {
+  data: SurveyTableRow[];
+  surveyHrefBase?: string;
+  orthomapHrefBase?: string;
+}) {
+  const columns = useMemo(
+    () => createColumns(surveyHrefBase, orthomapHrefBase),
+    [surveyHrefBase, orthomapHrefBase],
+  );
   const [searchInputPlaceholder, setSearchInputPlaceholder] = useState("");
 
   const [pagination, setPagination] = useState<PaginationState>({
@@ -501,7 +513,15 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
   );
 }
 
-function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
+function TableCellViewer({
+  survey,
+  surveyHrefBase,
+  orthomapHrefBase,
+}: {
+  survey: z.infer<typeof schema>;
+  surveyHrefBase: string;
+  orthomapHrefBase: string;
+}) {
   // ADD: Check if survey has valid boundary data
   const hasValidBoundaries =
     survey.geojson_boundaries &&
@@ -510,7 +530,12 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
 
   // ADD: Calculate bounds safely
   const bounds = hasValidBoundaries
-    ? findExtremeCoordinates(survey.geojson_boundaries)
+    ? findExtremeCoordinates(
+        (survey.geojson_boundaries as unknown as string[][]).map((pair) => [
+          parseFloat(pair[0]),
+          parseFloat(pair[1]),
+        ]),
+      )
     : null;
 
   // ADD: Calculate center coordinates safely
@@ -539,7 +564,7 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
                 initialViewState={{
                   longitude: centerLng,
                   latitude: centerLat,
-                  bounds: bounds,
+                  bounds: bounds ?? undefined,
                   fitBoundsOptions: { padding: 25 },
                 }}
                 mapStyle={{
@@ -677,10 +702,10 @@ function TableCellViewer({ survey }: { survey: z.infer<typeof schema> }) {
           </Table>
         </div>
         <SheetFooter className="mt-auto flex gap-2 sm:flex-col sm:space-x-0">
-          <Link href={`/dashboard/surveys/${survey.id}`}>
+          <Link href={`${surveyHrefBase}/${survey.id}`}>
             <Button className="w-full"> View {survey.id} </Button>
           </Link>
-          <Link href={`/dashboard/orthomap/${survey.code || ""}`}>
+          <Link href={`${orthomapHrefBase}/${survey.code || ""}`}>
             <Button variant="outline" className="w-full">
               {" "}
               View {survey.code || "Orthomap"}
@@ -702,3 +727,4 @@ function DataAvailabilityIndicator({
 
   return <CircleXIcon className="size-4 text-destructive" />;
 }
+

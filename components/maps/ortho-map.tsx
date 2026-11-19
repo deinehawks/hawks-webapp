@@ -1,6 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { getAssetBaseUrl } from "@/lib/assets/asset-urls";
+import {
+  OrthomapSurveyDateFilter,
+  type OrthomapDateOption,
+} from "./orthomap-survey-date-filter";
 import { ALL_SURVEYS, getSurveyChoices, getSurveySelectionData, getSurveyLabel, getSurveyTileUrl, sortSurveysById, orderSurveyLayers } from "@/lib/helpers/survey-selection";
 import { createSurveyPriorityMask } from "@/lib/helpers/survey-priority";
 import { SurveyChoicePopup, type SurveyChoiceLocation } from "./shared/survey-choice-popup";
@@ -111,6 +116,25 @@ type PopupInfo = {
   location?: string;
   tags?: string;
 };
+
+const ALL_DATES_VALUE = "all-dates";
+
+function normalizeFlightDate(value: string | Date | null | undefined) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+function formatFlightDate(value: string) {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -769,7 +793,38 @@ function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjec
   detectedObjects: ComputerVisionObject[] | null | undefined;
   demoCountMultipliers?: DemoCountMultipliers;
 }) {
-  const orderedSurveys = useMemo(() => sortSurveysById(availableSurveys), [availableSurveys]);
+  const [selectedDate, setSelectedDate] = useState(ALL_DATES_VALUE);
+  const dateOptions = useMemo<OrthomapDateOption[]>(() => {
+    const counts = new globalThis.Map<string, number>();
+    availableSurveys.forEach((survey) => {
+      if (!getSurveyTileUrl(survey)) return;
+      const date = normalizeFlightDate(survey.flight_date);
+      if (date) counts.set(date, (counts.get(date) ?? 0) + 1);
+    });
+    return [...counts.entries()]
+      .sort(([left], [right]) => right.localeCompare(left))
+      .map(([value, count]) => ({ value, count, label: formatFlightDate(value) }));
+  }, [availableSurveys]);
+  const dateFilteredSurveys = useMemo(
+    () => selectedDate === ALL_DATES_VALUE
+      ? availableSurveys
+      : availableSurveys.filter(
+          (survey) => normalizeFlightDate(survey.flight_date) === selectedDate,
+        ),
+    [availableSurveys, selectedDate],
+  );
+  useEffect(() => {
+    if (
+      selectedDate !== ALL_DATES_VALUE &&
+      !dateOptions.some((option) => option.value === selectedDate)
+    ) {
+      setSelectedDate(ALL_DATES_VALUE);
+    }
+  }, [dateOptions, selectedDate]);
+  const orderedSurveys = useMemo(
+    () => sortSurveysById(dateFilteredSurveys),
+    [dateFilteredSurveys],
+  );
   const [requestedId, setRequestedId] = useState(() => String(orderedSurveys[0].id));
   const selectionData = useMemo(
     () => getSurveySelectionData(orderedSurveys, detectedObjects ?? [], requestedId),
@@ -984,6 +1039,13 @@ function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjec
                 </div>
               </div>
 
+              <OrthomapSurveyDateFilter
+                onValueChange={setSelectedDate}
+                options={dateOptions}
+                totalCount={availableSurveys.filter((survey) => getSurveyTileUrl(survey)).length}
+                value={selectedDate}
+              />
+
               <div className="flex min-w-0 flex-wrap items-center gap-2 border-t pt-3" role="group" aria-label="Orthomap controls">
                 <div className="w-full min-w-0 sm:w-64">
                   <Label htmlFor="orthomap-survey" className="sr-only">Survey</Label>
@@ -1033,7 +1095,7 @@ function OrthoMapContent({ userProfile, surveys: availableSurveys, detectedObjec
                     // Add cache headers for better browser caching
                     if (
                       resourceType === "Tile" &&
-                      url.includes("/asimov-hawks/tiles/")
+                      url.includes(`${getAssetBaseUrl()}/tiles/`)
                     ) {
                       return {
                         url: url,

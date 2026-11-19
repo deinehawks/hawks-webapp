@@ -6,9 +6,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { getCurrentUserProfile } from "@/lib/actions/profiles";
 import { getAllUserSurveys } from "@/lib/actions/surveys";
-import { createClient } from "@/utils/supabase/server";
+import { getAuthenticatedUserContext } from "@/lib/auth/user-context";
+import { resolveOrgAdminAccess } from "@/lib/org-admin/access";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({
@@ -16,23 +17,21 @@ export default async function DashboardLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Get authenticated user
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    redirect("/auth/login");
+  const { user, profile } = await getAuthenticatedUserContext();
+  if (profile.account_status && profile.account_status !== "active") {
+    redirect("/account/pending");
   }
-
-  // Now get profile with correct user ID
-  const userProfile = await getCurrentUserProfile();
-  const surveys = await getAllUserSurveys();
+  const [surveys, orgAdminAccess] = await Promise.all([
+    getAllUserSurveys(),
+    profile.role === "user"
+      ? resolveOrgAdminAccess(user.id)
+      : Promise.resolve({ status: "none" } as const),
+  ]);
+  const sidebarOpen = (await cookies()).get("sidebar_state")?.value !== "false";
 
   return (
     <SidebarProvider
+      defaultOpen={sidebarOpen}
       style={
         {
           "--sidebar-width": "calc(var(--spacing) * 72)",
@@ -40,7 +39,16 @@ export default async function DashboardLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar surveys={surveys} user={user} userProfile={userProfile} />
+      <AppSidebar
+        surveys={surveys}
+        user={user}
+        userProfile={profile}
+        orgAdminOrganizationName={
+          orgAdminAccess.status === "active"
+            ? orgAdminAccess.organization.name
+            : undefined
+        }
+      />
       <SidebarInset>
         <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
           <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">

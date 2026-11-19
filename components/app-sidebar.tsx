@@ -1,106 +1,76 @@
-import Image from "next/image";
-import Link from "next/link";
+"use client";
 
-import hawks_logo from "@/public/hawks/logo.png";
-import hawks_typescript from "@/public/hawks/typescript.png";
-
-import { HouseIcon, LayoutDashboardIcon } from "lucide-react";
+import { LayoutDashboardIcon, ListIcon, ShieldCheckIcon } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+import type { Survey, UserProfile } from "@/lib/types";
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
-import { Button } from "@/components/ui/button";
+import { OrgAdminNav } from "@/components/org-admin/org-admin-nav";
+import { SidebarBrand } from "@/components/sidebar-brand";
+import { SidebarNavLink } from "@/components/sidebar-nav-link";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarHeader,
+  SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 
-export function AppSidebar({ surveys, user, userProfile }) {
+export function AppSidebar({
+  surveys,
+  user,
+  userProfile,
+  orgAdminOrganizationName,
+}: {
+  surveys: Survey[];
+  user: User;
+  userProfile: UserProfile;
+  orgAdminOrganizationName?: string;
+}) {
   return (
-    <Sidebar collapsible="offcanvas" variant="inset">
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-              asChild
-            >
-              <div className="flex items-center justify-start">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground">
-                  <div className="relative w-8">
-                    <Image
-                      src={hawks_logo}
-                      alt="Typescript logo of ASIMOV-HAWKS"
-                      style={{ width: "100%", height: "auto" }}
-                    />
-                  </div>
-                </div>
-                <div className="relative w-[150px]">
-                  <Image
-                    src={hawks_typescript}
-                    alt="Typescript logo of ASIMOV-HAWKS"
-                    style={{ width: "100%", height: "auto" }}
-                  />
-                </div>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
+    <Sidebar collapsible="icon" variant="inset">
+      <SidebarBrand href="/dashboard" />
       <SidebarContent>
-        {/* Dashboard Button */}
         <SidebarGroup>
+          <SidebarGroupLabel>Main</SidebarGroupLabel>
           <SidebarMenu>
-            <SidebarMenuItem className="flex items-center gap-2">
-              <SidebarMenuButton
-                tooltip="Dashboard"
-                className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
-                asChild
-              >
-                <Link href="/dashboard">
-                  <LayoutDashboardIcon />
-                  <span> Dashboard </span>
-                </Link>
-              </SidebarMenuButton>
-              <Link href={`/`}>
-                <Button
-                  size="icon"
-                  className="h-9 w-9 shrink-0 group-data-[collapsible=icon]:opacity-0"
-                  variant="outline"
-                >
-                  <HouseIcon />
-                  <span className="sr-only"> Homepage </span>
-                </Button>
-              </Link>
-            </SidebarMenuItem>
+            <SidebarNavLink
+              exact
+              href="/dashboard"
+              icon={LayoutDashboardIcon}
+              label="Dashboard"
+            />
+            <SidebarNavLink
+              href="/dashboard/surveys"
+              icon={ListIcon}
+              label="Surveys"
+            />
           </SidebarMenu>
         </SidebarGroup>
-        {/* Overview */}
-        {/* <SidebarGroup>
-            <SidebarGroupLabel>Orthomap</SidebarGroupLabel>
+        <NavMain surveys={surveys} />
+        {orgAdminOrganizationName ? (
+          <OrgAdminNav organizationName={orgAdminOrganizationName} />
+        ) : null}
+        {userProfile.role === "platform_admin" && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href={`/dashboard/orthomap/${userProfile.access_code}`}>
-                    <Building2Icon />
-                    <span> {userProfile.access_code} </span>
-                   
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              <SidebarNavLink
+                href="/admin"
+                icon={ShieldCheckIcon}
+                label="Platform Admin"
+              />
             </SidebarMenu>
-          </SidebarGroup> */}
-        <NavMain surveys={surveys} userProfile={userProfile} />
-        {/* <NavAccount /> */}
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   );
 }

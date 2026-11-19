@@ -64,7 +64,6 @@ export const createOrthoMapStore = (
     setAreAllSourcesLoaded: (areAllSourcesLoaded: boolean) =>
       set(() => ({ areAllSourcesLoaded })),
     setPopupInfo: (popupInfo: unknown) => set(() => ({ popupInfo })),
-    // Add new setters:
     setHoveredPairId: (hoveredPairId: string | null) =>
       set(() => ({ hoveredPairId })),
     setPlantPopupInfo: (plantPopupInfo: OrthoMapState["plantPopupInfo"]) =>

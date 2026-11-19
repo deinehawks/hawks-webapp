@@ -10,18 +10,19 @@ import { SurveyPopupShell } from "./survey-popup-shell";
 
 export type SurveyDetails = SurveyChoice & { location?: string | null; tags?: string | null };
 
-export function SurveyDetailsPopup({ survey, longitude, latitude, onClose }: {
+export function SurveyDetailsPopup({ survey, longitude, latitude, onClose, surveyHrefBase = "/dashboard/surveys" }: {
   survey: SurveyDetails;
   longitude: number;
   latitude: number;
   onClose: () => void;
+  surveyHrefBase?: string;
 }) {
   return (
     <SurveyPopupShell longitude={longitude} latitude={latitude} title={String(survey.id)}
       description={getSurveyLabel(survey) || undefined} icon={<MapPinned />} onClose={onClose}
       footer={
         <Button asChild size="sm" className="h-11 w-full justify-between rounded-lg px-3 sm:h-9">
-          <Link href={`/dashboard/surveys/${survey.id}`}>
+          <Link href={`${surveyHrefBase}/${survey.id}`}>
             View details <ArrowRight aria-hidden="true" className="size-4" />
           </Link>
         </Button>

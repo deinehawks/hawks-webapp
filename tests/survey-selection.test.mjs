@@ -238,6 +238,11 @@ function loadComponents(filename, extraExports = "") {
     "@/lib/helpers/survey-selection": selection,
     "@/lib/helpers/survey-priority": surveyPriority,
     "@/lib/helpers/survey-format": { formatSurveyArea, formatSurveyDate },
+    "@/lib/assets/asset-urls": {
+      getAssetBaseUrl: () => "/asimov-hawks",
+      buildTileAssetUrl: ({ clientCode, surveyId, tileFolder, year }) =>
+        `/asimov-hawks/tiles/${clientCode.toLowerCase()}/${year}/${surveyId}/ortho/${tileFolder}/{z}/{x}/{y}.png`,
+    },
     "./survey-popup-shell": { SurveyPopupShell: "SurveyPopupShell" },
     "./shared/survey-details-popup": { SurveyDetailsPopup: "SurveyDetailsPopup" },
     "./shared/survey-choice-popup": { SurveyChoicePopup: "SurveyChoicePopup" },

@@ -1,0 +1,482 @@
+# Active Context
+
+Last updated: 2026-11-19
+
+Latest integration: `workshop-survey-improvements` safely incorporates the
+current `development` branch without weakening auth/RLS or protected asset
+delivery and without dropping workshop map behavior. Validation passes for the
+full workshop suite, MinIO 4/4, TypeScript, route types, and targeted ESLint.
+Resume with Individual Signup Approval acceptance as separately scoped work;
+do not add it to the workshop branch.
+
+Previous priority override: the MinIO daily-start workflow is implemented,
+accepted, and integrated into `development`. The stable `Start ASIMOV Storage` desktop
+launcher requests UAC and delegates to the existing fail-closed helper; Docker
+Desktop auto-start remains disabled. `npm run minio-storage:status` is
+read-only, and `npm run minio-storage:install` refreshes the stable runtime and
+shortcut after helper or machine-config changes. Focused tests, installer dry
+run, live READY status, five-bucket/two-asset verification, and an unchanged
+container ID/start time on repeat launch pass. Next resume the Individual
+Signup Approval acceptance; keep infrastructure and auth work separate.
+
+Next-session priority: confirm the user's active UEMPC membership is Member
+and only AH-026032 is visible if one-survey recording is still required. Read-only
+inspection found a separate removed historical membership; active admin scope
+still returns all four surveys despite three revoked grants. No mutation was
+performed; the role change has not been confirmed. Publication lifecycle tests
+remain separately scoped. V2 is clean/pushed at `9c507324` on
+`fix/v2-recording-compat`; V3 closeout stays on `development`. The user
+confirmed all ten V3/V2 existing-asset/access browser smoke steps passed.
+Exact-hash apply, remote history, no-pending dry-run and read-only verifier pass;
+52 existing table counts and 26 application-table fingerprints are unchanged.
+Publication rows remain zero and all 77 active manifest entries are preserved.
+Discovery is live; anonymous API execution returns 401. No output publishing,
+manifest or production change occurred. Fresh ignored backup, 52-table restore parity,
+guarded empty-state rollback, baseline fingerprints and exact reapply pass.
+The revised migration explicitly denies service-role admin-RPC execution;
+focused pgTAP passes 38/38. Full staging-schema tests pass 245/246, with one
+pre-existing anonymous organization SELECT-grant/test mismatch; RLS returns
+zero rows. Evidence and approved hash:
+`docs/dynamic-survey-publishing-staging-rehearsal-2026-10-05.md`.
+The migration is applied only to non-production staging. Platform admins
+manage protected-delivery drafts and publication through narrow audited RPCs;
+verification remains service-role-only; V2 reads the RLS-authorized published
+catalog dynamically and treats its ignored selection/catalog files as
+historical evidence only. The existing active workshop manifest remains a
+fail-closed compatibility fallback. Earlier validation passes: clean replay,
+full pgTAP 242/242, V3 TypeScript/targeted ESLint and V2 recording
+tests 30/30. See `docs/dynamic-survey-publishing.md`.
+
+Branch integration: `ops/workshop-manifest-rollout`,
+`feature/dataset-onboarding`'s final smoke documentation, and
+`fix/workshop-multi-source-roots` are merged into `development`. The latter
+also contains the dynamic publishing code. V3 output detail keeps existing
+management available before the publication table exists; the new controls
+wait for the separately approved migration.
+
+The admin survey-ID display bug is fixed locally: semantic IDs such as
+`AH-026005` are no longer passed through the eight-character UUID formatter.
+The Surveys page now pages on the server in groups of 25, searches by partial
+survey ID and sorts stably by survey date then full ID. The table exposes total
+and visible ranges with responsive columns and Previous/Next controls. Focused
+ESLint, full TypeScript, whitespace and control-character checks pass. Before
+committing, search for `AH-026061`, navigate pages and inspect a narrow
+viewport in the authenticated V3 app.
+
+Current priority: smoke representative V2 orthomaps now that the exact-hash
+survey geospatial metadata staging apply and frozen verifier passed. The
+package updated only `min_x`, `min_y`, `max_x`, `max_y`,
+`boundaries` and `geojson_boundaries` for 56 surveys. Display metadata,
+outputs, manifest state and AH-026012/AH-026013 remained unchanged. Apply hash:
+`6fcd86b11cf24f18b198e290380312c7b19167ecec8ee022938e73ffc00b352b`.
+Evidence:
+`.tmp/workshop-assets/survey-metadata-20261002-r2/staging-apply-result.json`.
+
+The explicitly approved final r4 package is applied to staging. It left 56
+unknown dates null and preserved existing current outputs for
+AH-026012/AH-026013 exactly. Exact post-apply verification passed: 58 current
+orthos, 11 current PCDs and one audited apply. Its review-only transition passed
+rollback rehearsal and committed verification. The separately approved guarded
+activation then passed: the new 77-entry manifest is approved/active and the
+previous manifest is superseded/inactive.
+All uploads are complete; do not resume an uploader. No further manifest/output
+write is pending. The isolated V2 proxy is healthy on loopback port 8082;
+the user confirmed authenticated inactive-manifest denial (401 and no 200).
+The guarded activation package, fresh pre-activation backup and isolated
+rollback/apply/verify rehearsal passed. The user separately approved SHA-256
+`3f235e19908d236713f7eef753e26b03f965db47841ba987639156d5bd58587f`;
+the exact staging apply and read-only verifier passed. Post-activation anonymous
+asset denial remains 401/private/no-store and the internal route remains 404.
+See
+docs/workshop-cumulative-recording-package-2026-09-29.md.
+The historical upload/onboarding sequence below is superseded by that checkpoint.
+
+Complete representative orthomap plus signed-in permitted-user and denied
+cross-scope V2 asset smoke, then close recording readiness for the 58 selected
+surveys.
+
+Completed:
+
+1. Access Policy v2 and user-first signup are implemented in staging.
+2. Full user-assisted staging authorization and signup smoke passed.
+3. Branch `feature/org-admin` is active.
+4. Local org-admin database/RPC foundation and 16 focused pgTAP assertions are
+   implemented and passing.
+5. Generated database types include the new org-admin RPC contracts.
+6. Protected org-admin context, post-login routing, sidebar/layout, RPC-only
+   actions, and seven portal sections are implemented locally. Surveys are
+   read-only and Outputs are platform-admin-only.
+7. TypeScript, targeted ESLint, full pgTAP (142/142), and whitespace checks
+   pass.
+8. Both org-admin migrations passed staging inventory, backup/restore,
+   containment, dry-run, apply, history, contract, type, and automated test
+   gates on `llealjcaqvltrtdwwzrh`.
+9. User-assisted authenticated staging smoke passed for the complete org-admin
+   portal and authorization boundaries.
+10. The platform-admin onboarding review queue is implemented and its
+    single-migration staging gate passed on `llealjcaqvltrtdwwzrh`, including
+    backup/restore, containment replay, remote contract/history verification,
+    linked types, and the full 153/153 pgTAP suite.
+11. User-assisted authenticated staging smoke passed for org-admin onboarding
+    submission and platform-admin review; the org-admin phase is complete.
+12. `feature/org-admin` is pushed and merged into `development`; the new
+    `feature/survey-contract` branch starts from that integration tip.
+13. The first compatibility-safe survey update contract is implemented locally,
+    with generated contracts and focused/full validation passing.
+14. The checksummed backup/restore, migration/containment, one-file staging
+    apply, remote contract/history, linked types, automated suite, and
+    rolled-back database-role authorization smoke gates pass.
+15. Signed-in survey-contract staging smoke passed against deployment
+    `dcad51f2`; the update was restored and all access and compatibility checks
+    held.
+16. The user-tested org-admin navigation slice is integrated into
+    `development` at `0739e44c`.
+17. The workshop batch branch contains private-allowlist preparation, staging
+    and capacity gates, reviewed streaming uploads, a single hidden runner,
+    verification output, tests, and the operator runbook.
+18. The populated allowlist's 31-selection dry run completed. `AH-026012`
+    and `AH-026013` are ready; 29 selections lack exact staging survey rows,
+    and `AH-026038` also has empty tile variants. No wave, upload, or external
+    mutation ran.
+19. `AH-026038` is confirmed unfinished and will be removed. The resulting
+    30-survey batch contains 17 individual-client and 13 organization-client
+    surveys; 28 survey identities require a reviewed staging onboarding
+    transaction because the Platform Admin UI cannot create clients, surveys,
+    or batch records.
+20. Read-only staging inventory found two new individual client codes, one
+    existing individual client without a person mapping, one unclassified
+    organization client without a canonical mapping, and two correctly mapped
+    organization clients. No onboarding mutation ran.
+21. The checksummed staging backup and isolated restore/rehearsal gate passed.
+    The exact authorization migration and both onboarding transaction forms
+    validated in a disposable clone; focused clone authorization passed 16/16
+    and the clean local full suite passed 170/170.
+22. The approved authorization migration and onboarding transaction are now
+    applied to staging. All 30 records and scope relationships verify, BSBG is
+    organization/cooperative, no account or grant counts changed, and the
+    organization asset preparation reports all 13 surveys ready.
+23. Organization Wave 1 (`AH-026012` and `AH-026013`) is reviewed, frozen,
+    uploaded, fully verified, and signed off in staging. The checksum, 37,868
+    objects, four capacity checks, and four protected manifest entries passed.
+    No manifest was activated.
+24. The workshop runtime is upgraded through NVM to Node.js 22.22.0. The
+    repository engine, `.nvmrc`, lockfile, and Node type definitions are
+    aligned; AWS SDK imports, focused tests 18/18, targeted ESLint, and
+    TypeScript pass.
+25. Organization Wave 2 is reviewed, frozen, uploaded, fully verified, and
+    signed off in staging. All 383,975 objects and 24,142,306,973 bytes passed
+    object and group checks; five capacity checks and five organization-
+    protected manifest entries passed. The runner stopped cleanly and no
+    manifest was activated.
+26. Organization Wave 3 is frozen for `AH-026023`, `AH-026024`, and
+    `AH-026028`. Its approved staging run stopped on local `ENOSPC` and
+    produced no sign-off. Atomic JSON writes and zero-byte state recovery are
+    implemented and tested; the exact frozen config can resume after local
+    disk space is freed.
+27. Read-only User App Preview is integrated into `development` at
+    `2a359188` with a dedicated full-screen user-style
+    sidebar, target-scoped dashboard/survey/orthomap/detection data,
+    multi-client navigation, and explicit empty states. Static checks, full
+    pgTAP 170/170, workshop tests 18/18, and anonymous redirect smoke pass.
+28. The user passed authenticated User App Preview smoke: the Admin sidebar is
+    replaced, user-style navigation works, and Exit Preview returns to the
+    selected user's Admin record.
+29. The workshop capacity policy is integrated into `development` at
+    `3e1dd8bd`: retain the larger of 5% or 20 GiB after 10% transfer
+    overhead. New freeze and publish validation rejects stale policy metadata;
+    focused tests pass 18/18.
+30. The output-type restriction is integrated into `development` at
+    `76c8e915`. Its local replay, staging backup/rehearsal/apply, remote
+    contract, automated regression, rolled-back authorization smoke, and
+    local-application-to-staging smoke pass. The user also passed the hosted
+    no-mutation Chrome smoke for sign-in, output list, exact four-value
+    selector, draft/current/archived presentation, denied-role redirects,
+    console, and network health. The output-type staging gate is closed.
+31. Hosted smoke exposed Tailwind automatic source discovery blocking route
+    compilation under both Webpack and Turbopack. `fix/tailwind-source-scan`
+    explicitly limits discovery to application source directories and covers
+    every tracked utility-bearing file. Normal `npm run dev` now compiles
+    `/auth/login` in 10.5 seconds and returns `200` through NGINX. TypeScript,
+    focused ESLint, and whitespace checks pass. The fix is uncommitted and
+    pending normal integration.
+32. The Tailwind source-boundary fix is integrated into `development` at
+    `6653aa45`. `feature/dataset-onboarding` now implements the approved
+    platform-admin two-step UI and narrow preview/commit RPC contract. Clean
+    replay, focused pgTAP 37/37, full pgTAP 208/208, workshop tests 18/18,
+    route types, TypeScript, and targeted ESLint pass. Database lint has only
+    the known stale backfill finding.
+33. The user passed the full signed-in local Dataset Onboarding smoke against
+    127.0.0.1:54321: organization preview/commit, preview invalidation,
+    created survey links, private preview, all three blocking conflicts,
+    inline errors, authorization redirects, console, and network checks.
+34. Final branch review and staging rehearsal pass. Existing survey conflicts
+    are now case-insensitive. A fresh checksummed staging backup restored into
+    an isolated clone with all 48 compared base tables matching, the guarded
+    containment and exact reapply preserved the relevant-row fingerprint, clone
+    pgTAP passed 37/37, and the linked dry-run lists only migration
+    `20260911000000`. Only confirmed owner/operator farm relationships qualify;
+    staging has two qualifying organization relationships and zero qualifying
+    person relationships, so private onboarding cannot yet succeed there.
+35. After explicit approval, migration `20260911000000` was applied to
+    non-production staging. Remote history, function ownership/security/search
+    paths, RPC privileges, owner/operator rule, aggregate inventory, and
+    no-pending linked dry-run pass. Linked types restored the hosted PostgREST
+    marker and retain both RPC contracts; TypeScript and whitespace pass.
+36. The guarded containment artifact now verifies actual deployed function
+    ownership dynamically because staging uses `postgres` while the clone uses
+    `supabase_admin`. Missing-confirmation and wrong-role runs fail closed; the
+    owner containment/reapply cycle preserves the data fingerprint.
+37. Dataset Onboarding is merged into `development` at `b35c50f5`; the user
+    passed the post-merge no-mutation smoke, including platform-admin previews,
+    conflict validation, private fail-closed behavior, role denial, and clean
+    console/network checks. The detailed evidence is in
+    `docs/dataset-onboarding-staging-rollout-2026-09-14.md`.
+38. `feature/org-admin-tables` replaces repeated farm/survey cards with
+    responsive tables, keeps farm creation, moves farm editing to an explicitly
+    organization-scoped detail route, and links survey View Data through the
+    existing authenticated/RLS-protected route. Static checks, anonymous
+    redirects, and the full user-assisted authenticated/responsive smoke pass.
+39. The org-admin table slice is integrated into `development` at
+    `49355d2e` and its post-merge smoke passed. `feature/survey-timeline`
+    implements the RLS-scoped normal timeline, selected-user-scoped preview
+    timeline, responsive date navigation, explicit empty/current-only states,
+    output availability, and survey-keyed viewer reset. Route typegen,
+    TypeScript, targeted ESLint, whitespace, workshop regression 18/18, and
+    anonymous redirect smoke pass. The user confirmed the initial UI smoke.
+    The approved shadcn visual refinement adds standard Card composition,
+    stronger date/current hierarchy, concise output indicators, scroll snapping,
+    clearer mobile selection context, and tailored empty states. Post-refinement
+    TypeScript, targeted ESLint, whitespace, and workshop regression 18/18 pass.
+    The user then passed the complete post-refinement responsive smoke across
+    normal and User App Preview routes, representative timeline states,
+    navigation/viewer reset, authorization boundaries, keyboard behavior, and
+    console/network health. Evidence is in
+    `docs/survey-timeline-smoke-2026-09-17.md`. It is integrated into
+    `development` at `db137c74`.
+40. `feature/orthomap-date-filter` implements the approved shared Orthomap
+    filter. It preserves All dates, derives eligible current orthomosaics from
+    already-authorized surveys, and consistently filters rasters, boundaries,
+    labels, detections, FOI counts/layers, events, and popups. The MapLibre base
+    style remains stable and the camera refits to boundary or finite extent
+    bounds. Route typegen, TypeScript, targeted ESLint, whitespace, workshop
+    regression 18/18, login HTTP, and anonymous redirect checks pass. No
+    database, RLS, route, storage, asset-path, or server-scope contract changed.
+    It is merged locally into `development` at `5f941ce2`. Authenticated
+    multi-date interaction smoke is still pending until representative surveys
+    with different flight dates are available; evidence is in
+    `docs/orthomap-date-filter-local-validation-2026-09-17.md`.
+
+Next sequence:
+
+1. When representative multi-date survey data is available, complete
+   authenticated responsive smoke for All dates and date switching on normal
+   Orthomap and User App Preview, including zero/one/multiple-date states,
+   scope boundaries, camera, popups, keyboard, console, and network.
+2. If smoke later finds an issue, correct it on a focused branch and rerun the
+   affected static/regression gates.
+3. Push or deploy the locally merged `development` only through the normal
+   reviewed workflow; no push or deployment was performed in this session.
+4. Keep Wave 3 paused pending the dedicated 4 TB MinIO drive decision. Preserve
+   the frozen checksum and zero-byte recovery state; do not regenerate, upload,
+   relocate storage, or build a manifest.
+5. After the storage decision, use a separate infrastructure plan for MinIO
+   relocation or an explicitly approved Wave 3 resume. Keep later survey
+   timeline follow-ups separate from infrastructure work.
+
+Constraints:
+
+- RLS and server-side authorization remain authoritative.
+- Org-admin mutations use narrow audited RPCs; do not restore broad update
+  policies.
+- Org admins may promote an active ordinary member but cannot alter any
+  org-admin membership, including their own.
+- The strict org-admin context assumes the workshop rule of exactly one active
+  org-admin organization membership.
+- Navigation visibility never replaces the strict org-admin context, server
+  checks, or RLS, and does not expose Outputs or survey mutations.
+- Survey identity/client contraction and global output-type migration remain
+  separate slices.
+- Private asset support requires canonical people mappings, a null organization
+  scope, explicit protection-level enforcement, and eventual explicit grants;
+  never fabricate one-person organizations. No-organization account/dashboard
+  support remains deferred.
+- Docker Desktop container capacity is not sufficient evidence by itself.
+  Apply the same reserve policy to the physical host drive storing its data VHD.
+- Timeline entries are independently identified surveys sharing the same
+  primary `survey_farms` relationship and are ordered by
+  `surveys.flight_date`. Normal routes must remain RLS-scoped; User App Preview
+  must filter entries through the selected user's calculated effective scope.
+- The first timeline release switches between dated survey orthomosaics and
+  point clouds. It does not group survey IDs, add a processing-date column,
+  version detections, or provide side-by-side comparison.
+
+## 2026-09-22 MinIO relocation override
+
+The earlier next-sequence items that kept relocation pending a drive decision
+are superseded. The approved 1 TB decimal dynamic XFS VHDX cutover on `D:` is
+operational, the ext4 source is preserved as rollback, and MinIO starts only
+through the guarded helper with automatic restart disabled. Content-tree,
+Wave 1-2 evidence, authenticated object samples, service restart, capacity, and
+absent-VHD fail-closed checks pass.
+
+Next sequence:
+
+1. Recheck the compact single-survey date and responsive divider on desktop,
+   tablet, mobile, and User App Preview. The preceding full authenticated UI
+   smoke and this final refinement now pass.
+2. Correct the NGINX container's failing localhost health probe and explicitly
+   contain the direct MinIO 9000/9001 all-interface plus anonymous-listing
+   exposure before external acceptance. Anonymous protected routes correctly
+   return 401 when the Next auth upstream is running.
+3. After `AH-026095` and WebODM finish, schedule the coordinated
+   Windows/WSL/Docker restart and recovery test and obtain explicit approval
+   immediately before restarting Windows.
+4. Only after acceptance, regenerate/review/freeze Wave 3 for `AH-026023`,
+   `AH-026024`, and `AH-026028`; obtain separate upload approval before running
+   one uploader. Do not activate a partial manifest or delete rollback data.
+
+The relocation application smoke also produced a focused survey-viewer UI
+follow-up on the current branch. Tile zoom coverage and the OSM endpoint are
+fixed and user-confirmed. The card-heavy detail layout is now a flatter survey
+workspace: compact timeline rail, plain heading, and a single bordered viewer
+with an attached toolbar. Preserve timeline grouping, normal/preview links,
+RLS, asset authorization, and map/3D behavior. The complete authenticated
+desktop/tablet/mobile smoke passed. A compact `text-xs` date plus vertical
+desktop/horizontal mobile separator is implemented only for the single-survey
+row and needs one focused visual recheck; multi-survey behavior is unchanged.
+
+On 2026-09-23 MinIO was recovered from an uncontrolled restart that exposed
+the empty ext4 directory beneath the detached XFS mount. It is healthy on XFS
+again with all five buckets and the representative tile verified. Preserve the
+new early non-XFS stop, detached-device attach, and Hyper-V service handling in
+the startup helper. The machine-local Compose service now also pins restart
+policy `no`, consistent with the live container and guarded manual startup.
+Treat restart ordering as unresolved until a deliberately coordinated
+Windows/WSL/Docker test passes after active `AH-026095` and WebODM work is
+finished; do not begin Wave 3.
+
+The coordinated restart was executed after the pipeline was paused and WebODM
+was stopped. MinIO did not auto-start, but the stale Docker Desktop ext4 bridge
+recurred during guarded startup, so acceptance failed as designed. The helper
+stopped MinIO and recovery succeeded by mounting the intact XFS UUID, clearing
+only the verified stale bridge, recreating only MinIO, and rerunning the guard.
+Five buckets, health, capacity, representative tile/point-cloud access, and
+anonymous denial paths pass. Default config resolution in the PowerShell
+helper is fixed and the exact npm startup command is idempotent. Next, manually
+confirm signed-in Survey/Orthomap rendering and console/network health, then
+design stronger mount-order orchestration. Keep Wave 3 blocked; the user will
+run and monitor any later approved upload themselves.
+
+## 2026-09-23 stronger mount-ordering result
+
+The preceding failed restart is superseded for storage ordering by the repeat
+accepted cold start. Docker Desktop auto-start and its Windows Run entry are
+disabled. The elevated npm helper owns XFS attach/mount, Docker startup, MinIO
+recreation, exact retained-XFS bridge validation, both reserves, buckets,
+health, and representative assets. MinIO is healthy on the pinned image with
+restart `no`, `/data` on XFS, five buckets, and matching tile/point-cloud bytes.
+WebODM, `AH-026095`, and Wave 3 remain stopped.
+
+Next sequence:
+
+1. Finalize and integrate `fix/minio-edge-hardening` after its passed smoke.
+2. Regenerate/review/freeze the same Wave 3 scope and obtain separate upload
+   approval. The user, not Codex, will run and monitor the upload. Do not
+   activate a partial manifest or delete rollback data.
+
+The user passed the final signed-in post-restart Survey, 3D, Orthomap,
+authorized/cross-scope, five-bucket, and clean console/network smoke. The NGINX
+failure was isolated to `localhost` resolving to IPv6 `::1`; the machine-local
+healthcheck now uses `127.0.0.1` and NGINX is healthy. MinIO 9000/9001 now bind
+only to loopback, LAN connection attempts fail, and anonymous listing of both
+asset buckets returns 403. Exact anonymous GetObject is retained on the
+loopback/internal origin because the existing NGINX proxy is unsigned; public
+authorization remains enforced by NGINX `auth_request`. The guarded helper
+requires the exact single loopback bindings and passes idempotently. The user
+passed the final signed-in Survey orthomosaic, 3D, BARBCO2026 Orthomap,
+authorized/cross-scope, and clean console/network smoke after the policy
+change. Edge-hardening acceptance is complete.
+
+## 2026-09-23 Wave 3 regeneration handoff
+
+Storage relocation and edge hardening are integrated into `development` at
+merge commits `193a4500` and `8af15a59`. Wave 3 regeneration remains the next
+gate, with no upload approval implied.
+
+Two preparation runs failed safely on transient Z-drive directory enumeration
+for different surveys. The directories appeared absent during the error and
+became readable again shortly afterward. No regeneration output exists. The
+historical reviewed file/checksum and zero-byte state are unchanged.
+
+The uncommitted branch `fix/workshop-share-retries` retries only recognized
+transient directory and file-stat failures with visible bounded backoff for up
+to approximately 60 seconds, then fails closed. Regression is 24/24 and
+targeted ESLint, TypeScript, and whitespace pass. WebODM is stopped and MinIO
+is healthy on XFS.
+
+Next sequence:
+
+1. From the user's normal PowerShell where `Z:` is visible, run preparation
+   once with `WORKSHOP_HOST_VOLUME_ROOT=D:\`, stat concurrency 8, and output
+   root `.tmp/workshop-assets/regenerated-20260923`.
+2. Review the new inventory, blockers, capacity evidence, five generated
+   waves, and exact Wave 3 scope before freezing anything.
+3. If live preparation validates the retry fix, finalize the retry branch.
+   Freeze/checksum Wave 3 only after review. Do not start the runner, upload,
+   build a manifest, or delete rollback evidence.
+
+## 2026-09-25 verified migration outcome
+
+The preceding Wave 3 preparation/upload sequence is complete and superseded.
+All five organization and six private waves have complete verification reports.
+The expected staging/2026 set contains 30 surveys, all 30 appear in exactly one
+wave report, and there are no missing, unexpected, or cross-report duplicate
+surveys. All report completion and capacity gates pass. Totals are 1,944,728
+objects and 109,695,980,633 bytes. The runner is stopped after Private Wave
+006 with empty stderr.
+
+The combined review-only manifest draft was generated locally with 41 artifact
+entries and verified hashes recorded in
+`docs/workshop-asset-migration-completion-2026-09-25.md`. No manifest database
+write, approval, activation, or supersession occurred.
+
+The earlier plan to review and promote this draft is superseded by the
+additional-batch ownership correction below. Preserve the draft only as
+evidence; do not review or activate it.
+
+## 2026-09-25 additional batch
+
+The inactive 30-survey staging draft applied and verified successfully. A new
+28-survey allowlist supports explicit per-survey X/Z roots and expected staging
+client codes. Its initial read-only scan found healthy tile sources but no
+matching staging survey rows, so that scan generated no waves.
+
+The reviewed onboarding package was fully rehearsed and then applied to
+non-production staging after a fresh checksummed backup and exact rollback
+rehearsal. It corrects MCS to organization ownership, creates the missing
+MCS/UEMPC/BLC organizations and five farms, inserts 28 draft surveys, assigns
+primary farms to 48 surveys, and uses
+`United Employees Multi-Purpose Cooperative` as UEMPC's canonical database
+name. The inactive manifest remains blocked until its six MCS entries are
+rebuilt.
+
+The approved staging apply and verification are complete. The repeat dry run
+found all 28 surveys ready and generated ten waves; all ten were reviewed and
+frozen. The separate ignored runner at
+`.tmp/workshop-assets/additional-20260925/run-additional-overnight.ps1` is now
+processing additional Wave 001 (run ID `20260925-174429`). At handoff there
+were no completed additional-wave verification reports.
+
+Next session, check the runner once. If the batch completed, require exactly
+ten successful verification reports, the expected 28-survey coverage, and no
+stderr/capacity failures before any manifest work. If it stopped, diagnose the
+failed wave only; the batch is designed to stop on failure and resume without
+re-uploading fully verified waves. Do not start output onboarding, review or
+activate the invalid inactive manifest, or mutate production.
+
+The approved survey-event/flight model must also be recovered or reimplemented:
+the final Git audit found none of its reported local implementation or
+org-admin loader fix in the worktree, branches, stash, reflog, or unreachable
+objects. Its architecture is preserved in `.project_state/decisions.md`;
+`feature/survey-flights` currently equals `development` at `8af15a59`.
+Handle this after the live batch reaches a safe verified or failed-stop state.

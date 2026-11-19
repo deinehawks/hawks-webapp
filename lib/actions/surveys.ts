@@ -1,21 +1,47 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
-import { redirect, notFound } from "next/navigation";
-import { getUserProfile } from "./profiles";
 import path from "path";
-import { normalizeDetectionLabels } from "@/lib/helpers/detection-labels";
-import { getSurveyMaxZoom } from "@/lib/helpers/get-max-zoom";
-import { getWorkshopDataDirectory } from "@/lib/workshop-files";
-import { resolveSurveyTileFolder } from "@/lib/helpers/resolve-survey-tile-folder";
+import { notFound } from "next/navigation";
+
 import {
-  getWorkshopVisibility,
-  isWorkshopSurveyVisible,
-  isWorkshopSurveyIdVisible,
-  isWorkshopClientVisible,
-  filterWorkshopSurveys,
+  AuthorizationError,
+  getAuthenticatedUserContext,
+  requireAccessibleClientById,
+} from "@/lib/auth/user-context";
+import type { Tables } from "@/lib/database.types";
+import { getSurveyMaxZoom } from "@/lib/helpers/get-max-zoom";
+import { normalizeDetectionLabels } from "@/lib/helpers/detection-labels";
+import { resolveSurveyTileFolder } from "@/lib/helpers/resolve-survey-tile-folder";
+import type {
+  Client,
+  ComputerVisionObject,
+  Ortho,
+  PointCloud,
+  Survey,
+} from "@/lib/types";
+import { createClient } from "@/utils/supabase/server";
+import { getWorkshopDataDirectory } from "@/lib/workshop-files";
+import {
   filterWorkshopDetectionObjects,
+  filterWorkshopSurveys,
+  getWorkshopVisibility,
+  isWorkshopClientVisible,
+  isWorkshopSurveyIdVisible,
+  isWorkshopSurveyVisible,
 } from "@/lib/workshop-visibility";
+
+const SURVEY_SELECT = `
+  *,
+  client:clients!surveys_client_id_fkey(id, code, name),
+  orthos!orthos_survey_id_fkey(*),
+  point_clouds!point_clouds_survey_id_fkey(*)
+`;
+
+type SurveyQueryRow = Tables<"surveys"> & {
+  client: Pick<Client, "id" | "code" | "name"> | null;
+  orthos: Ortho[];
+  point_clouds: PointCloud[];
+};
 
 function isTransientNetworkError(error: unknown) {
   const message =
@@ -30,36 +56,51 @@ function isTransientNetworkError(error: unknown) {
   );
 }
 
-export async function getUserSurvey(id: string) {
+function normalizeSurvey(row: SurveyQueryRow): Survey {
+  const { orthos, point_clouds, client, ...survey } = row;
+
+  if (!client) {
+    throw new Error(`Survey ${row.id} is missing its client relationship.`);
+  }
+
+  delete (survey as Partial<SurveyQueryRow>).access_code;
+  delete (survey as Partial<SurveyQueryRow>).code;
+  delete (survey as Partial<SurveyQueryRow>).organization_code;
+  delete (survey as Partial<SurveyQueryRow>).ortho;
+  delete (survey as Partial<SurveyQueryRow>).point_cloud;
+
+  return {
+    ...survey,
+    client,
+    code: client.code,
+    ortho: orthos.find((item) => item.is_current) ?? null,
+    point_cloud: point_clouds.find((item) => item.is_current) ?? null,
+  };
+}
+
+function isDetectionObject(value: unknown): value is ComputerVisionObject {
+  if (!value || typeof value !== "object") return false;
+
+  const candidate = value as Partial<ComputerVisionObject>;
+  return (
+    typeof candidate.label === "string" &&
+    typeof candidate.areaCode === "string" &&
+    typeof candidate.pairId === "string" &&
+    typeof candidate.areaPairId === "string" &&
+    !!candidate.bbox &&
+    typeof candidate.bbox === "object"
+  );
+}
+
+export async function getUserSurvey(id: string): Promise<Survey> {
   if (!isWorkshopSurveyIdVisible(id)) notFound();
+
+  await getAuthenticatedUserContext();
   const supabase = await createClient();
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    redirect("/auth/login");
-  }
-
-  let userProfile;
-  try {
-    userProfile = await getUserProfile(user.id);
-  } catch (error) {
-    if (isTransientNetworkError(error)) {
-      throw new Error(
-        "Survey data is temporarily unavailable. Please try again.",
-      );
-    }
-    throw error;
-  }
-
-  const { access_code } = userProfile;
-
-  const { data: survey, error } = await supabase
+  const { data, error } = await supabase
     .from("surveys")
-    .select("*, ortho(*), point_cloud(*)")
+    .select(SURVEY_SELECT)
     .eq("id", id)
     .maybeSingle();
 
@@ -69,164 +110,172 @@ export async function getUserSurvey(id: string) {
         "Survey data is temporarily unavailable. Please try again.",
       );
     }
-    throw new Error("Failed to fetch survey data.");
+    throw new Error("Failed to fetch survey data.", { cause: error });
   }
 
-  if (!survey) {
-    throw new Error("Survey not found.");
+  if (!data) {
+    throw new Error("Survey not found or access denied.");
   }
 
-  if (survey.code !== access_code) {
-    throw new Error("Access denied to this survey data.");
-  }
-
-  if (!isWorkshopSurveyVisible(survey.code, survey.id)) notFound();
-
+  const survey = normalizeSurvey(data as SurveyQueryRow);
+  if (!isWorkshopSurveyVisible(survey.client.code, survey.id)) notFound();
   if (!survey.ortho) return survey;
 
-  const tileFolder = resolveSurveyTileFolder(
-    path.join(
-      getWorkshopDataDirectory("tiles"),
-      survey.code.toLowerCase(),
-      String(new Date(survey.flight_date).getFullYear()),
-      String(survey.id),
-      "ortho",
-    ),
-    survey.ortho.tile_folder,
+  const flightYear = survey.flight_date
+    ? String(new Date(survey.flight_date).getFullYear())
+    : "unknown";
+  const orthoRoot = path.join(
+    getWorkshopDataDirectory("tiles"),
+    survey.client.code.toLowerCase(),
+    flightYear,
+    String(survey.id),
+    "ortho",
   );
 
   return {
     ...survey,
-    ortho: { ...survey.ortho, tile_folder: tileFolder },
+    ortho: {
+      ...survey.ortho,
+      tile_folder: resolveSurveyTileFolder(
+        orthoRoot,
+        survey.ortho.tile_folder,
+      ),
+    },
   };
 }
 
-export async function getAllUserSurveys() {
-  const supabase = await createClient();
+export async function getAllUserSurveys(
+  requestedClientId?: string,
+): Promise<Survey[]> {
+  let client: Client;
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    redirect("/auth/login");
-  }
-
-  let userProfile;
   try {
-    userProfile = await getUserProfile(user.id);
+    client = await requireAccessibleClientById(requestedClientId);
   } catch (error) {
-    if (isTransientNetworkError(error)) {
-      console.error("User profile fetch failed temporarily:", error);
+    if (
+      error instanceof AuthorizationError &&
+      !requestedClientId &&
+      error.message === "Your profile is pending organization assignment."
+    ) {
       return [];
     }
     throw error;
   }
 
-  const { access_code } = userProfile;
+  const supabase = await createClient();
   const policy = getWorkshopVisibility();
-  if (!isWorkshopClientVisible(access_code, policy)) return [];
+  if (!isWorkshopClientVisible(client.code, policy)) return [];
 
-  const { data: surveys, error } = await supabase
+  const { data, error } = await supabase
     .from("surveys")
-    .select("*, ortho(*)")
-    .eq("access_code", access_code)
+    .select(SURVEY_SELECT)
+    .eq("client_id", client.id)
     .order("id");
 
   if (error) {
     if (isTransientNetworkError(error)) {
-      console.error("Survey list fetch failed temporarily:", error);
+      console.error("Survey list fetch failed temporarily:", error.message);
       return [];
     }
-    throw new Error("Failed to fetch survey data.");
+    throw new Error("Failed to fetch survey data.", { cause: error });
   }
 
   const root = getWorkshopDataDirectory("tiles");
 
-  const updatedSurveys = filterWorkshopSurveys(surveys ?? [], policy).map((survey) => {
+  return filterWorkshopSurveys(
+    (data as SurveyQueryRow[]).map(normalizeSurvey),
+    policy,
+  ).map((survey) => {
+    const flightYear = survey.flight_date
+      ? String(new Date(survey.flight_date).getFullYear())
+      : "unknown";
     const orthoRoot = path.join(
       root,
-      survey.code.toLowerCase(),
-      String(new Date(survey.flight_date).getFullYear()),
-      String(survey.id),
+      survey.client.code.toLowerCase(),
+      flightYear,
+      survey.id,
       "ortho",
     );
-    const tileFolder = resolveSurveyTileFolder(orthoRoot, survey.ortho?.tile_folder);
-    const maxZoom = getSurveyMaxZoom(path.join(orthoRoot, tileFolder));
+    const tileFolder = resolveSurveyTileFolder(
+      orthoRoot,
+      survey.ortho?.tile_folder,
+    );
 
     return {
       ...survey,
       ortho: survey.ortho
         ? { ...survey.ortho, tile_folder: tileFolder }
         : survey.ortho,
-      max_zoom: maxZoom,
+      max_zoom: getSurveyMaxZoom(path.join(orthoRoot, tileFolder)),
     };
   });
-
-  return updatedSurveys;
 }
 
-export async function getObjectDetectionData(id?: string) {
-  const supabase = await createClient();
+export async function getObjectDetectionData(
+  surveyId?: string,
+  requestedClientId?: string,
+): Promise<ComputerVisionObject[]> {
+  let client: Client;
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    redirect("/auth/login");
-  }
-
-  let userProfile;
   try {
-    userProfile = await getUserProfile(user.id);
+    client = await requireAccessibleClientById(requestedClientId);
   } catch (error) {
-    if (isTransientNetworkError(error)) {
-      console.error("User profile fetch failed temporarily:", error);
+    if (
+      error instanceof AuthorizationError &&
+      !requestedClientId &&
+      error.message === "Your profile is pending organization assignment."
+    ) {
       return [];
     }
     throw error;
   }
 
-  const { access_code } = userProfile;
-
-  if (!access_code) {
-    redirect("/error");
+  const supabase = await createClient();
+  const policy = getWorkshopVisibility();
+  if (
+    !isWorkshopClientVisible(client.code, policy) ||
+    (surveyId && !isWorkshopSurveyVisible(client.code, surveyId, policy))
+  ) {
+    return [];
   }
 
-  const policy = getWorkshopVisibility();
-  if (!isWorkshopClientVisible(access_code, policy) ||
-      (id && !isWorkshopSurveyVisible(access_code, id, policy))) return [];
+  const bucket = supabase.storage.from("detected-objects");
+  const uuidPath = `${client.id}/detections.json`;
 
   try {
-    const { data: detectedObjects, error } = await supabase.storage
-      .from("detected-objects")
-      .download(`${access_code.toLowerCase()}.json`);
+    let { data: detectedObjects, error } = await bucket.download(uuidPath);
+
+    // Compatibility fallback for the observation window. Once the bucket is
+    // private, storage RLS intentionally prevents access to this legacy path.
+    if (error || !detectedObjects) {
+      const legacyResult = await bucket.download(
+        `${client.code.toLowerCase()}.json`,
+      );
+      detectedObjects = legacyResult.data;
+      error = legacyResult.error;
+    }
 
     if (error || !detectedObjects) {
-      console.error("Object detection JSON unavailable:", error);
+      console.error("Object detection JSON unavailable:", error?.message);
       return [];
     }
 
     const jsonString = await detectedObjects.text();
+    if (!jsonString.trim()) return [];
 
-    if (!jsonString.trim()) {
-      return [];
-    }
-
-    const parsed = JSON.parse(jsonString);
+    const parsed: unknown = JSON.parse(jsonString);
     if (!Array.isArray(parsed)) return [];
-    const jsonObject = normalizeDetectionLabels(
-      filterWorkshopDetectionObjects(parsed, access_code, policy),
+
+    const objects = normalizeDetectionLabels(
+      filterWorkshopDetectionObjects(
+        parsed.filter(isDetectionObject),
+        client.code,
+        policy,
+      ),
     );
-
-    if (id) {
-      return jsonObject.filter((object: any) => object.areaCode === id);
-    }
-
-    return jsonObject;
+    return surveyId
+      ? objects.filter((object) => object.areaCode === surveyId)
+      : objects;
   } catch (error) {
     if (isTransientNetworkError(error)) {
       console.error("Object detection JSON fetch failed temporarily:", error);

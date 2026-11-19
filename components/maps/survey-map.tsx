@@ -1,6 +1,8 @@
 // survey-map.tsx
 "use client";
 
+import { buildTileAssetUrl } from "@/lib/assets/asset-urls";
+
 import {
   Card,
   CardContent,
@@ -520,7 +522,6 @@ function FeaturesOfInterest({
   const { surveyMode } = useSurveyModeStore();
 
   const id = survey?.id;
-  if (!id) return null;
 
   const counts = useMemo(() => countPlantDetections(detectedObjects), [detectedObjects]);
   const activeFilter = resolveDetectionFilter(selectedFoi, surveyMode, counts.coconut > 0);
@@ -607,6 +608,8 @@ function FeaturesOfInterest({
     () => calculateOptimalZoomLevels(allBananasFC.features as any),
     [allBananasFC.features],
   );
+
+  if (!id) return null;
 
   const showHealthy = activeFilter === "healthy" || activeFilter === "all";
   const showUnhealthy = activeFilter === "unhealthy" || activeFilter === "all";
@@ -1159,8 +1162,6 @@ function MapView({
     }
   }, [survey.id]);
 
-  const codeLower = String(survey.code ?? "").toLowerCase();
-
   const tileFolder = survey.ortho?.tile_folder ?? "round-corners";
   const flightYear =
     survey.flight_date != null
@@ -1197,7 +1198,12 @@ function MapView({
               id="ortho"
               type="raster"
               tiles={[
-                `/asimov-hawks/tiles/${codeLower}/${flightYear}/${survey.id}/ortho/${tileFolder}/{z}/{x}/{y}.png`,
+                buildTileAssetUrl({
+                  clientCode: String(survey.code),
+                  surveyId: String(survey.id),
+                  tileFolder,
+                  year: flightYear,
+                }),
               ]}
               tileSize={MAP_CONFIG.tileSize}
               scheme="tms"
@@ -1388,6 +1394,8 @@ export default function SurveyMap({
 }) {
   const [activeTab, setActiveTab] = useState("ortho");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const hasSurveyObject = Boolean(survey && typeof survey === "object");
+  const safeSurvey = hasSurveyObject ? survey : {};
 
   const globalCenter: MapCenter = {
     ...(fallbackCenter
@@ -1409,7 +1417,12 @@ export default function SurveyMap({
     }
   }, [activeTab, setSelectedFoi]);
 
-  if (!survey || typeof survey !== "object") {
+  const mapCenter = useMapCenter(safeSurvey, globalCenter);
+  const mapBounds = useMapBounds(safeSurvey);
+  const { hasValidCoordinates, hasOrthoTiles, shouldShowMap } =
+    useValidationState(safeSurvey);
+
+  if (!hasSurveyObject) {
     return (
       <div className="flex flex-1 flex-col h-full items-center justify-center p-8">
         <Card className="max-w-md">
@@ -1448,12 +1461,6 @@ export default function SurveyMap({
       </div>
     );
   }
-
-  const mapCenter = useMapCenter(survey, globalCenter);
-  const mapBounds = useMapBounds(survey);
-
-  const { hasValidCoordinates, hasOrthoTiles, shouldShowMap } =
-    useValidationState(survey);
 
   const tagsLower = String(survey.tags ?? "").toLowerCase();
 
@@ -1511,7 +1518,6 @@ export default function SurveyMap({
             )}
             {is3D && survey.code && (
               <ThreeDimensionalModelSelector
-                code={String(survey.code)}
                 hasPointCloud={hasPointCloud}
                 hasPhotogrammetryModel={hasPhotogrammetryModel}
                 hasLidarModel={hasLidarModel}
