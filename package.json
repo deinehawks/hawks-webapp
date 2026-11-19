@@ -32,7 +32,10 @@
                     "workshop-assets:rollout-package":  "node scripts/package-workshop-manifest-rollout.js",
                     "workshop-assets:rollout-test":  "node --test scripts/tests/workshop-manifest-rollout.test.js",
                     "workshop-assets:runner":  "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/workshop-asset-runner.ps1",
-                    "minio-storage:start":  "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/minio-storage-start.ps1"
+                    "minio-storage:start":  "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/minio-storage-start.ps1",
+                    "minio-storage:status":  "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/minio-storage-status.ps1",
+                    "minio-storage:install":  "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-minio-storage-launcher.ps1",
+                    "minio-storage:test":  "node --test scripts/tests/minio-storage-ux.test.js"
                 },
     "dependencies":  {
                          "@aws-sdk/client-s3":  "^3.1117.0",

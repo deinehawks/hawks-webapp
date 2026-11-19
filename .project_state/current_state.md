@@ -1,6 +1,18 @@
 # Current State
 
-Last updated: 2026-10-05
+Last updated: 2026-11-19
+
+MinIO startup UX is implemented locally on `fix/minio-startup-ux`. A one-time
+installer preserves Docker/XFS ordering while creating a stable runtime under
+local app data and a `Start ASIMOV Storage` desktop shortcut, so startup no
+longer depends on the currently checked-out Git branch. A read-only status
+command reports Docker auto-start, VHDX/UUID, engine, container, XFS, and HTTP
+health. The original guarded helper remains authoritative and still validates
+capacity, image, restart policy, bind/network/ports, buckets, health, and
+representative assets. Focused tests pass 4/4, installer `-WhatIf` passes, and
+the installed launcher passed a live idempotence check without changing the
+MinIO container ID or start time. No upload, database, production, WebODM, or
+pipeline action occurred.
 
 Session closeout: the latest staging/apply/browser results below supersede
 older pre-apply and running-workshop statuses. V2 remains a separate checkout;

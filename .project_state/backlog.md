@@ -1,6 +1,15 @@
 # Backlog
 
-Last updated: 2026-10-05
+Last updated: 2026-11-19
+
+## Latest completion
+
+- `fix/minio-startup-ux` adds a branch-independent installed runtime, one-click
+  elevated desktop launcher, read-only status command, actionable startup
+  errors, focused safety tests, and restart-recovery documentation. Local
+  installation and repeat-launch acceptance pass without restarting or
+  recreating healthy MinIO. Integration remains pending; do not mix it with
+  Individual Signup Approval changes.
 
 Latest priority override: dynamic survey publishing is implemented and
 integrated into `development`. Completed: user-assisted V3 controls and V2
