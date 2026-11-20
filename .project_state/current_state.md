@@ -1,5 +1,16 @@
 # Current state
-Last updated: 2026-11-09.
+Last updated: 2026-11-20.
+
+V2 MinIO reconciliation is complete on `integration/v2-minio`. The focused
+guarded-startup commit was rebased from `ce85467f` onto remote V2 baseline
+`a9ada054`; the reconciled commit is `6d7c82b8`. Local recovery branch
+`backup/v2-minio-pre-reconcile-20261120` preserves the original commit. The
+only conflict was additive `package.json` script resolution, retaining the
+new point-cloud navigation workshop test and `minio-storage:start`. PowerShell
+and JSON parsing, recording tests 32/32, workshop/UI tests 124/124, whitespace,
+and the production build pass. Standalone TypeScript and lint reproduce only
+the documented legacy V2 baseline. The operational MinIO helper was not run;
+no Docker, storage, asset, Supabase, V3, or production mutation occurred.
 
 The smoke-tested `feat/3d-viewer-navigation` branch is integrated locally
 into `integration/v2-latest`. Its compact popup fix is included. Conflict

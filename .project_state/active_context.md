@@ -1,16 +1,15 @@
 # Active context
-Last updated: 2026-10-27.
+Last updated: 2026-11-20.
 
-Finish the local V2-only consolidation on `integration/v2-latest`. The latest
-V2 UI/performance branch is merged at `ea2d410e`, and the saved grant-only
-presentation-client fallback is restored without widening RLS. Preserve the
-original stash until the final commit and validation are complete. Recording
-tests pass 32/32 and workshop/UI tests pass 107/107. Next route type generation
-and the production build pass; standalone TypeScript and lint retain only their
-documented legacy V2 failures. Anonymous HTTP smoke passes for login, root and
-protected-dashboard redirect. Next run authenticated responsive dashboard,
-navigation, Orthomap and 3D smoke. Do not merge V3 `development`, mutate
-staging, push, or alter assets/services.
+V2 MinIO reconciliation is complete on `integration/v2-minio` at `6d7c82b8`,
+based on remote `integration/v2-latest` at `a9ada054`. The original `ce85467f`
+is preserved locally at `backup/v2-minio-pre-reconcile-20261120`. Validation
+passes PowerShell/JSON parsing, recording 32/32, workshop/UI 124/124,
+whitespace and production build. Standalone TypeScript and lint retain only
+their documented legacy failures. Do not run the operational helper without
+separate approval. Next commit these state updates, push the reconciled branch,
+merge it into `integration/v2-latest`, validate the exact integration, and push
+the V2 baseline. Do not merge V3 `development` or mutate services/assets.
 
 Current priority is the V3 staging migration gate, not another V2 allowlist
 edit. This V2 checkout now dynamically displays only assets returned by the
