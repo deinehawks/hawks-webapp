@@ -1,5 +1,22 @@
 # Session handoff
-Last updated: 2026-11-09.
+Last updated: 2026-11-20.
+
+Resume on `integration/v2-latest`. The focused guarded MinIO startup commit was
+rebased from `ce85467f` onto remote V2 baseline `a9ada054`; reconciled commit is
+`6d7c82b8`. Local branch `backup/v2-minio-pre-reconcile-20261120` preserves the
+pre-rebase commit. The only conflict was `package.json`; resolution retained
+the latest point-cloud navigation test and added `minio-storage:start`.
+PowerShell/JSON parsing, recording tests 32/32, workshop/UI tests 124/124,
+whitespace and production build pass. Build retains the known Supabase Edge
+warnings. Standalone TypeScript and lint reproduce the documented legacy V2
+diagnostics and invalid `prefer const` rule; the reconciled diff contains no
+TypeScript source. The operational helper was not run. No Docker, storage,
+asset, Supabase, V3, production, WebODM or pipeline mutation occurred. Next
+state evidence was committed at `4aee0c2a`, the branch was pushed, and it was
+merged into the canonical V2 line. The exact merge tree repeats PowerShell/JSON
+parsing, recording 32/32, workshop/UI 124/124, whitespace and tree-equality
+checks. Next push the new V2 baseline, then prepare the agreed history-preserving
+V2 repository separation.
 
 The smoke-tested 3D navigation feature and compact Controls popup are now
 integrated locally into `integration/v2-latest` in the separate

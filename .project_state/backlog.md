@@ -1,18 +1,18 @@
 # Backlog
-Last updated: 2026-10-27.
+Last updated: 2026-11-20.
 
-Current V2 consolidation gates:
-- Commit the restored grant-only presentation-client fallback and state update
-  after focused review.
-- Completed: regenerated Next route types and passed the production build.
-  Standalone TypeScript and lint retain the documented legacy V2 failures.
-- Smoke the current branch at `127.0.0.1:3200` for login, responsive dashboard,
-  multi-client navigation, survey table, Orthomap, authorized point cloud,
-  empty scope and cross-scope denial.
-- Completed the anonymous subset: login/root return 200 and dashboard redirects
-  to login. Authenticated and real-asset checks remain pending.
-- Keep `development`, `main`, staging, assets, services and remotes unchanged;
-  push only after explicit approval.
+Current V2 MinIO integration gates:
+- Completed: rebase the focused MinIO port onto remote `integration/v2-latest`
+  at `a9ada054`; reconciled commit `6d7c82b8`, recovery ref preserved.
+- Completed: PowerShell/JSON parsing, recording 32/32, workshop/UI 124/124,
+  whitespace and production build. TypeScript/lint match the legacy baseline.
+- Completed: pushed `integration/v2-minio`, merged it into
+  `integration/v2-latest`, and repeated parsing, recording 32/32, workshop/UI
+  124/124, whitespace and exact-tree checks.
+- Pending: push the canonical V2 baseline, then prepare the agreed
+  history-preserving `hawks-webapp-v2` repository separation.
+- Do not run `npm run minio-storage:start` or alter Docker, storage, assets,
+  Supabase, V3, or production as part of source integration.
 
 Dynamic V3-backed discovery is locally complete. Pending: wait for the separate
 V3 migration review/rehearsal/staging approval, then restart V2 and smoke an
