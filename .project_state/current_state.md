@@ -81,8 +81,11 @@ null-organization grants, AH-026004 and AH-026007. The user confirmed both
 surveys render tiles through V2 on port 8082, the dashboard shows only those
 two surveys, direct access to out-of-scope AH-026020 is denied, logout/login
 preserves the scope, and V3 Users & Access agrees. Core authorization
-acceptance is complete. Responsive and empty/error checks, plus an explicit
-access-preview check if not already exercised, remain before final closeout.
+acceptance is complete. On 2026-11-20 the user also passed the responsive
+Signup Approvals, explicit TLW Access Preview, empty-farm, admin error-boundary,
+and clean valid-page console/network checks. The development-only no-write
+pending-request fixture was removed after smoke. Final acceptance is complete;
+only branch closeout and integration remain.
 Production is untouched. Evidence:
 `docs/individual-signup-approval-staging-rehearsal-2026-10-09.md`.
 
@@ -193,8 +196,9 @@ See docs/workshop-cumulative-recording-package-2026-09-29.md for current gates.
 This supersedes the older running-batch status below; existing user work and
 V3 branch remain unchanged.
 
-Current V3 branch: `feature/individual-signup-approval`; its implementation and
-staging work remain uncommitted locally. V2 remains on its separately pushed
+Current V3 branch: `feature/individual-signup-approval`; implementation and
+staging evidence are committed locally, while final responsive/evidence updates
+remain uncommitted for branch closeout. V2 remains on its separately pushed
 `fix/v2-recording-compat` branch with additional uncommitted grant-only client
 presentation changes.
 

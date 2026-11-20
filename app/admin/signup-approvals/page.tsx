@@ -43,14 +43,14 @@ export default async function SignupApprovalsPage() {
           <Card><CardContent className="p-6 text-sm text-muted-foreground">No signup requests yet.</CardContent></Card>
         ) : requests.map((request) => (
           <Card key={request.id}>
-            <CardHeader className="flex-row items-center justify-between gap-4">
-              <div>
-                <CardTitle className="text-base">{request.email}</CardTitle>
+            <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <CardTitle className="break-all text-base">{request.email}</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   Requested {new Date(request.created_at).toLocaleString()}
                 </p>
               </div>
-              <Badge variant="outline">{request.status}</Badge>
+              <Badge className="shrink-0" variant="outline">{request.status}</Badge>
             </CardHeader>
             <CardContent className="grid gap-4">
               {request.status === "pending" ? (
@@ -66,7 +66,7 @@ export default async function SignupApprovalsPage() {
                       : "No access configured")}
                     {request.initial_role ? ` · ${request.initial_role.replace("_", " ")}` : ""}
                   </p>
-                  {request.review_notes ? <p className="mt-1">{request.review_notes}</p> : null}
+                  {request.review_notes ? <p className="mt-1 break-words">{request.review_notes}</p> : null}
                   {request.status === "approved" ? (
                     <Button asChild className="mt-2 w-fit" size="sm" variant="outline">
                       <Link href={"/admin/users/" + request.profile_id}>Manage access</Link>

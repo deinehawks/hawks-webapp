@@ -55,9 +55,11 @@ a normal user with zero memberships and exactly active non-expiring grants for
 AH-026004 and AH-026007; the user confirmed both surveys render tiles through
 V2 on port 8082. The user also confirmed the dashboard exposes only those two
 surveys, AH-026020 is denied, logout/login preserves the scope, and V3
-Users & Access agrees. Core authorization acceptance is complete. Finish
-responsive and empty/error checks, and explicitly exercise access preview if
-the Users & Access check did not include it, before closing the feature.
+Users & Access agrees. Final acceptance was confirmed on 2026-11-20 with
+responsive Signup Approvals, explicit TLW
+Access Preview, the empty-farm and admin error states, and clean valid-page
+console/network behavior. The temporary development-only no-write fixture was
+removed. Close out and integrate the branch.
 Production remains untouched.
 
 Next-session priority: confirm the user's active UEMPC membership is Member

@@ -43,9 +43,9 @@ staging verification confirms an active normal user, zero memberships, and
 exactly active non-expiring grants for AH-026004/AH-026007; the user confirmed
 both render through V2 on port 8082. Exact two-survey visibility, AH-026020
 cross-scope denial, logout/login persistence, and V3 Users & Access scope all
-pass. P0: finish responsive and empty/error checks, explicitly run access
-preview if it was not part of the Users & Access check, then record final
-acceptance and prepare branch closeout.
+pass. Responsive Signup Approvals, explicit TLW Access Preview, empty/error
+states, and valid-page console/network checks passed on 2026-11-20. P0: close
+out and integrate `feature/individual-signup-approval` into V3 `development`.
 P1: design and implement a safe server-side Verify
 delivery action that performs trusted MinIO verification while keeping
 service-role credentials off the browser. Separately review the invalid staging
@@ -207,9 +207,6 @@ waiting instructions below are historical, not actions to repeat.
   representative multi-date surveys are available; preserve All dates by
   default and normal/preview authorization fail-closed. See
   `docs/orthomap-date-filter-local-validation-2026-09-17.md`.
-- Add no-organization signup approval and grant-derived dashboard client
-  selection so supported individual accounts can consume the private assets.
-
 ## Stabilization Cleanup
 
 - Remove the stale `app_private.backfill_legacy_organization_memberships`

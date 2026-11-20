@@ -33,7 +33,7 @@ export function SignupApprovalForm({
       <label className="grid gap-2 text-sm font-medium">
         Access setup
         <select
-          className="h-9 rounded-md border bg-background px-3 text-sm"
+          className="h-9 w-full min-w-0 rounded-md border bg-background px-3 text-sm"
           onChange={(event) =>
             setAccessSetup(event.target.value as AccessSetup)
           }
@@ -50,7 +50,7 @@ export function SignupApprovalForm({
           <label className="grid gap-2 text-sm font-medium">
             Organization
             <select
-              className="h-9 rounded-md border bg-background px-3 text-sm"
+              className="h-9 w-full min-w-0 rounded-md border bg-background px-3 text-sm"
               name="organizationId"
               required
             >
@@ -65,7 +65,7 @@ export function SignupApprovalForm({
           <label className="grid gap-2 text-sm font-medium">
             Initial role
             <select
-              className="h-9 rounded-md border bg-background px-3 text-sm"
+              className="h-9 w-full min-w-0 rounded-md border bg-background px-3 text-sm"
               defaultValue="member"
               name="initialRole"
               required
@@ -77,7 +77,7 @@ export function SignupApprovalForm({
           <label className="grid gap-2 text-sm font-medium md:col-span-2">
             Review notes
             <textarea
-              className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm"
+              className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm"
               maxLength={2000}
               name="reviewNotes"
             />
@@ -86,9 +86,10 @@ export function SignupApprovalForm({
             Approval activates the account and creates an active membership in
             the selected organization.
           </p>
-          <div className="flex gap-2 md:col-span-2">
-            <Button type="submit">Approve organization user</Button>
+          <div className="flex flex-col gap-2 sm:flex-row md:col-span-2">
+            <Button className="w-full sm:w-auto" type="submit">Approve organization user</Button>
             <Button
+              className="w-full sm:w-auto"
               formAction={rejectSignupRequest}
               formNoValidate
               type="submit"
@@ -112,14 +113,15 @@ export function SignupApprovalForm({
           <label className="grid gap-2 text-sm font-medium">
             Review notes
             <textarea
-              className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm"
+              className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm"
               maxLength={2000}
               name="reviewNotes"
             />
           </label>
-          <div className="flex gap-2">
-            <Button type="submit">Approve individual client</Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button className="w-full sm:w-auto" type="submit">Approve individual client</Button>
             <Button
+              className="w-full sm:w-auto"
               formAction={rejectSignupRequest}
               formNoValidate
               type="submit"

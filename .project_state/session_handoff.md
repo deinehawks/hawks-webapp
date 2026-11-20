@@ -79,9 +79,12 @@ now approved/active as a normal user with zero memberships and exactly active
 non-expiring null-organization grants for AH-026004/AH-026007. The user
 confirmed both surveys render tiles through V2 on port 8082, only those two
 surveys appear, AH-026020 is denied, logout/login preserves the scope, and V3
-Users & Access agrees. Core authorization acceptance is complete. Remaining:
-responsive and empty/error checks, plus explicit access preview if the admin
-scope check did not exercise it, then branch closeout. Production is untouched.
+Users & Access agrees. On 2026-11-20 the user passed responsive Signup
+Approvals, explicit TLW Access
+Preview, the empty-farm state, the admin error boundary, and clean valid-page
+console/network checks. The development-only no-write pending-request fixture
+was removed after smoke. Final acceptance is complete; close out and integrate
+the feature branch. Production is untouched.
 Full evidence:
 `docs/individual-signup-approval-staging-rehearsal-2026-10-09.md`.
 

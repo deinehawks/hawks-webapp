@@ -3,8 +3,8 @@
 Date: 2026-10-09. Target: non-production Supabase project
 `llealjcaqvltrtdwwzrh`. Status: implementation, rehearsal, explicitly approved
 staging apply, direct verification, TLW account activation, and positive V2
-tile acceptance complete. Core browser authorization acceptance is also
-complete; remaining UI edge-state checks are listed below. Production is
+tile acceptance complete. Browser authorization, responsive UI, access-preview,
+empty/error-state, and console/network acceptance are complete. Production is
 untouched.
 
 ## Exact approval scope
@@ -92,7 +92,7 @@ memberships and the same active null-organization grants for exactly
 `AH-026004` and `AH-026007`. No account, membership, grant, delivery, asset, or
 production mutation occurred during the schema rollout.
 
-## Remaining staging acceptance
+## Final staging acceptance
 
 Next:
 
@@ -101,16 +101,21 @@ Next:
 2. Completed by direct read-only staging verification: the account is an
    active normal user with zero memberships and exactly active non-expiring
    grants for `AH-026004` and `AH-026007`.
-3. Partially complete: the user confirmed both granted surveys render their
+3. Completed: the user confirmed both granted surveys render their
    protected tiles through V2 on port 8082.
 4. Completed 2026-10-13: the TLW dashboard shows only the two granted surveys;
    direct access to out-of-scope `AH-026020` is denied; logout/login preserves
    the two-survey scope; and V3 Users & Access agrees with that scope.
-5. Remaining: responsive and empty/error smoke, plus an explicit access-preview
-   check if it was not exercised during the Users & Access confirmation.
-
-The remaining UI checks require user-assisted smoke or a working browser-control
-session.
+5. Completed 2026-11-20: the user confirmed the Signup Approvals responsive
+   layout, the explicit TLW Access Preview calculation and empty-farm state,
+   the admin error boundary, and clean valid-page console/network behavior.
+   The preview reported zero memberships, two effective survey grants, zero
+   farms, and the intended AH-026004/AH-026007 scope. A development-only,
+   no-write pending-request fixture was used because staging had no pending
+   requests; its actions were disabled and the fixture was removed immediately
+   after the check. Long identifiers now wrap and approval actions stack on
+   narrow screens. No account, membership, grant, asset, or production mutation
+   was performed during final acceptance.
 
 Approved phrase retained as rollout evidence:
 
