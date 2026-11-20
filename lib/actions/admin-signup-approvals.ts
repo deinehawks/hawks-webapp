@@ -48,6 +48,25 @@ export async function approveSignupRequest(formData: FormData) {
   revalidatePath("/admin/users");
 }
 
+export async function approveIndividualSignupRequest(formData: FormData) {
+  await requirePlatformAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc(
+    "admin_approve_individual_signup_request",
+    {
+      target_request_id: required(formData, "requestId"),
+      target_review_notes: optional(formData, "reviewNotes") ?? undefined,
+    },
+  );
+  if (error) {
+    throw new Error("Failed to approve the individual signup request.", {
+      cause: error,
+    });
+  }
+  revalidatePath("/admin/signup-approvals");
+  revalidatePath("/admin/users");
+}
+
 export async function rejectSignupRequest(formData: FormData) {
   await requirePlatformAdmin();
   const supabase = await createClient();

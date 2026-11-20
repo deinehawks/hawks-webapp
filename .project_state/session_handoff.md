@@ -1,10 +1,9 @@
 # Session Handoff
 
-Last updated: 2026-11-19
+Last updated: 2026-11-20
 
-Current branch: `fix/minio-startup-ux` in an isolated worktree based on
-`development`. The dirty `workshop-survey-improvements` checkout was not
-modified.
+Current branch: `development` in the isolated integration worktree. The dirty
+`workshop-survey-improvements` checkout was not modified.
 
 The MinIO daily-start improvement is implemented and installed locally. The
 new one-time installer copies the guarded helper, read-only status command,
@@ -14,8 +13,21 @@ UAC, writes timestamped local logs, and preserves the full UUID/XFS/capacity/
 container/bucket/asset contract. Focused tests pass 4/4, installer `-WhatIf`
 passes, installed status reports READY, and the repeat launcher run preserved
 the healthy container ID and start time. No commit, push, upload, database,
-production, WebODM, or pipeline action occurred. Next review/integrate this
-focused branch, then resume Individual Signup Approval acceptance separately.
+production, WebODM, or pipeline action occurred. It is integrated into
+`development` at `a4eb2344`.
+
+Individual Signup Approval is integrated from commit `3e17db93`. The exact
+staging migration, rollback, verifier, focused/full pgTAP, generated types,
+grant-only TLW authorization, responsive UI, explicit access preview,
+empty/error states, and clean valid-page console/network checks pass. The
+temporary development-only no-write fixture was removed. Production is
+untouched. Full evidence:
+`docs/individual-signup-approval-staging-rehearsal-2026-10-09.md`.
+Post-merge route type generation, TypeScript, targeted ESLint, whitespace,
+fixture-removal checks, and full local pgTAP pass (262/262).
+
+Next preserve the agreed V2/V3 repository boundary and reconcile the approved
+local V2 MinIO work with the canonical V2 line before repository separation.
 
 Resume V3 from `development`. Session closeout commit message:
 `fix(publishing): harden RPC grants and complete staging rollout`.

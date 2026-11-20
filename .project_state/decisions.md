@@ -1,6 +1,6 @@
 ﻿# Decisions
 
-Last updated: 2026-10-05
+Last updated: 2026-10-09
 
 ## Current Decisions
 
@@ -73,9 +73,11 @@ Last updated: 2026-10-05
   manifest entries labeled organization, including null-organization entries.
   Correct their scope only through a reviewed superseding manifest; strict
   canonical enforcement applies to new private entries.
-- No-organization account signup and dashboard client selection remain
-  deferred. Private workshop assets stay platform-admin-only until a supported
-  account exists and the platform issues explicit null-organization grants.
+- Platform admins may approve an individual signup without creating an
+  organization or membership. The profile remains a normal user; access is
+  provided only through explicit null-organization farm or survey grants.
+  Grant-derived client-row visibility must not broaden survey authorization,
+  and fabricated one-person organizations remain prohibited.
 - Treat survey `id` and `code` as immutable dataset identity, and retain
   `client_id`, `access_code`, and `organization_code` as read-only
   compatibility fields. Platform-admin metadata edits use the narrow audited

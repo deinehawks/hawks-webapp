@@ -28,7 +28,7 @@ export default async function PendingAccountPage() {
           <p className="text-sm text-muted-foreground">
             {rejected
               ? "Your account is signed in but cannot access the application. Contact the platform administrator if this decision should be reviewed."
-              : "Your email is confirmed and your signup request is waiting for a platform administrator to assign your organization and role."}
+              : "Your email is confirmed and your signup request is waiting for a platform administrator to configure your account access."}
           </p>
           <form action={signOut}><Button type="submit" variant="outline">Sign out</Button></form>
         </CardContent>

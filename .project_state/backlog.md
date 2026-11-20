@@ -1,15 +1,18 @@
 # Backlog
 
-Last updated: 2026-11-19
+Last updated: 2026-11-20
 
 ## Latest completion
 
-- `fix/minio-startup-ux` adds a branch-independent installed runtime, one-click
+- `fix/minio-startup-ux` added a branch-independent installed runtime, one-click
   elevated desktop launcher, read-only status command, actionable startup
   errors, focused safety tests, and restart-recovery documentation. Local
   installation and repeat-launch acceptance pass without restarting or
-  recreating healthy MinIO. Integration remains pending; do not mix it with
-  Individual Signup Approval changes.
+  recreating healthy MinIO. It is integrated into `development` at `a4eb2344`.
+- Individual Signup Approval is implemented, staged, fully accepted, and
+  integrated into `development`. Production remains untouched. Next preserve
+  the agreed V2/V3 repository boundary and reconcile the approved local V2
+  MinIO work with the canonical V2 line before repository separation.
 
 Latest priority override: dynamic survey publishing is implemented and
 integrated into `development`. Completed: user-assisted V3 controls and V2

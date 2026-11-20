@@ -1,8 +1,8 @@
 # Current State
 
-Last updated: 2026-11-19
+Last updated: 2026-11-20
 
-MinIO startup UX is implemented locally on `fix/minio-startup-ux`. A one-time
+MinIO startup UX is integrated into `development` at `a4eb2344`. A one-time
 installer preserves Docker/XFS ordering while creating a stable runtime under
 local app data and a `Start ASIMOV Storage` desktop shortcut, so startup no
 longer depends on the currently checked-out Git branch. A read-only status
@@ -13,6 +13,19 @@ representative assets. Focused tests pass 4/4, installer `-WhatIf` passes, and
 the installed launcher passed a live idempotence check without changing the
 MinIO container ID or start time. No upload, database, production, WebODM, or
 pipeline action occurred.
+
+Individual Signup Approval is integrated into `development`. Platform Admin can
+choose Organization user or Individual client; the individual path activates a
+normal user without membership and preserves grant-specific authorization. The
+exact migration is applied to staging with clean history/verifier/count checks.
+TLW is active with zero memberships and exactly the AH-026004/AH-026007 grants.
+The user passed V2 permitted/cross-scope access, logout/login persistence, V3
+Users & Access, responsive Signup Approvals, explicit Access Preview,
+empty/error states, and valid-page console/network smoke. The temporary
+development-only fixture was removed. Production is untouched. Evidence:
+`docs/individual-signup-approval-staging-rehearsal-2026-10-09.md`.
+Post-merge route type generation, TypeScript, targeted ESLint, whitespace,
+fixture-removal checks, and the full local pgTAP suite pass (262/262).
 
 Session closeout: the latest staging/apply/browser results below supersede
 older pre-apply and running-workshop statuses. V2 remains a separate checkout;

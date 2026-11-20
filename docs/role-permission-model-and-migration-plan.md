@@ -51,10 +51,13 @@ Suspension makes organization-scoped grants ineffective without erasing history.
   request; it does not create membership or resource access.
 - Pending and rejected profiles are routed to the account-status page and remain
   outside the protected dashboard/admin surfaces.
-- Platform admins review the queue, select an active organization and initial
+- Platform admins review the queue. Organization approval selects an active
+  organization and initial
   `member` or `org_admin` role, then approve or reject.
-- Approval atomically activates the profile and creates its active membership.
-  Rejection retains the Auth/profile/request audit trail while blocking access.
+- Both approval paths atomically activate the profile. Organization approval
+  creates its active membership; individual approval creates no membership and
+  requires explicit null-organization farm or survey grants. Rejection retains
+  the Auth/profile/request audit trail while blocking access.
 - Organization admins submit onboarding requests; they do not create Auth accounts. They may create and cancel their own pending requests, while platform admins review the queue.
 - Organization admins may promote an active ordinary member in their own active
   organization, but cannot mutate their own or another org-admin membership.
